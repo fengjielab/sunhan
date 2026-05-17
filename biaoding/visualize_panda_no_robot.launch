@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<launch>
+  <!-- 加载 Panda 带夹爪的 URDF 模型（绝对路径） -->
+  <param name="robot_description"
+         command="/opt/ros/noetic/bin/xacro --inorder /home/mfj/sunhan/franka_ws/src/franka_ros/franka_description/robots/panda_arm_hand.urdf.xacro" />
+
+  <!-- 关节状态发布器 GUI（滑块拖动） -->
+  <node name="joint_state_publisher_gui" pkg="joint_state_publisher_gui" type="joint_state_publisher_gui">
+    <param name="use_gui" value="true" />
+  </node>
+
+  <!-- 机器人状态发布器（TF） -->
+  <node name="robot_state_publisher" pkg="robot_state_publisher" type="state_publisher" />
+
+  <!-- 启动 RViz -->
+  <node pkg="rviz" type="rviz" output="screen" name="rviz" />
+</launch>

@@ -62,6 +62,24 @@
 **依赖**: `std_msgs`, `actionlib_msgs`
 **作用**: 定义了 Franka 机器人在 ROS 中通信所需的全部消息类型、服务接口和动作接口。
 
+**文件清单**:
+```
+franka_msgs/
+├── msg/
+│   ├── FrankaState.msg   ← 机器人完整状态（1kHz 发布）
+│   └── Errors.msg         ← 37 种错误码
+├── srv/
+│   ├── SetEEFrame.srv                   ← 设置末端坐标系
+│   ├── SetKFrame.srv                    ← 设置阻抗参考坐标系
+│   ├── SetCartesianImpedance.srv        ← 设置笛卡尔刚度
+│   ├── SetJointImpedance.srv            ← 设置关节刚度
+│   ├── SetLoad.srv                      ← 设置负载参数
+│   ├── SetForceTorqueCollisionBehavior.srv  ← 碰撞检测阈值（简化版）
+│   └── SetFullCollisionBehavior.srv     ← 碰撞检测阈值（完整版）
+└── action/
+    └── ErrorRecovery.action             ← 错误恢复
+```
+
 ### 2.1 消息 (msg)
 
 #### [`FrankaState.msg`](franka_ws/src/franka_ros/franka_msgs/msg/FrankaState.msg) — 最核心的消息
@@ -70,83 +88,255 @@
 
 | 字段 | 类型 | 含义 | 用途 |
 |------|------|------|------|
-| `q[7]` | float64[7] | 7 个关节的**实际**角度 (rad) | 反馈当前位姿 |
+| **— 位姿相关 —** | | | |
+| `q[7]` | float64[7] | 7 个关节的**实际**角度 (rad) | 反馈当前关节位姿 |
 | `q_d[7]` | float64[7] | 7 个关节的**期望**角度 (rad) | 和 `q` 对比看跟踪误差 |
+| `theta[7]` | float64[7] | 电机侧编码器读出的关节角度 (rad) | 与 `q` （连杆侧）对比可看出关节柔性变形 |
+| `dtheta[7]` | float64[7] | 电机侧角速度 (rad/s) | |
+| `O_T_EE[16]` | float64[16] | 末端执行器位姿矩阵 (4×4, **列主序**) | **末端当前位姿** ⭐ |
+| `O_T_EE_d[16]` | float64[16] | 末端期望位姿 | 位姿跟踪误差 |
+| `O_T_EE_c[16]` | float64[16] | 控制命令中的末端位姿 | |
+| `F_T_EE[16]` | float64[16] | 法兰→末端的变换矩阵 (4×4) | 装了夹爪/工具后必须设，否则 `O_T_EE` 就是法兰位姿 |
+| `EE_T_K[16]` | float64[16] | 末端→阻抗参考系的变换 (4×4) | 阻抗控制时决定参考系原点在哪 |
+| **— 速度/加速度相关 —** | | | |
 | `dq[7]` | float64[7] | 实际关节速度 (rad/s) | 速度反馈 |
 | `dq_d[7]` | float64[7] | 期望关节速度 (rad/s) | |
+| `ddq_d[7]` | float64[7] | 期望关节加速度 (rad/s²) | 前馈控制 |
+| `O_dP_EE_d[6]` | float64[6] | 期望末端速度 [x,y,z,rx,ry,rz] | 笛卡尔速度控制时用 |
+| `O_dP_EE_c[6]` | float64[6] | 命令中的末端速度 | |
+| `O_ddP_EE_c[6]` | float64[6] | 命令中的末端加速度 | 前馈 |
+| **— 力矩相关 —** | | | |
 | `tau_J[7]` | float64[7] | 关节实际力矩 (Nm) | 力矩反馈 |
-| `tau_J_d[7]` | float64[7] | 关节期望力矩 (Nm) | |
-| `tau_ext_hat_filtered[7]` | float64[7] | **滤波后的外部力矩估计** ⭐ | 碰撞检测/力控 |
-| `O_T_EE[16]` | float64[16] | 末端执行器在位姿矩阵 (4x4, 列主序) | **末端当前位姿** |
-| `O_T_EE_d[16]` | float64[16] | 末端期望位姿 | 位姿跟踪误差 |
-| `O_T_EE_c[16]` | float64[16] | 命令中的末端位姿 | |
-| `F_T_EE[16]` | float64[16] | 法兰到末端的变换矩阵 | 装了夹爪/工具后需设置 |
-| `EE_T_K[16]` | float64[16] | 末端到阻抗参考系的变换 | 阻抗控制参考系 |
-| `O_F_ext_hat_K[6]` | float64[6] | 外部力的估计 (在阻抗参考系中) | [Fx,Fy,Fz,Tx,Ty,Tz] |
-| `m_ee` | float64 | 末端执行器质量 | |
-| `F_x_Cee[3]` | float64[3] | 末端执行器重心位置 | |
-| `I_ee[9]` | float64[9] | 末端执行器惯量 (3x3) | |
-| `m_load` | float64 | 负载质量 | |
-| `m_total` | float64 | 总质量 (m_ee + m_load) | |
-| `elbow[2]` | float64[2] | 肘部位置 [sign, q_b] | 冗余自由度 |
-| `cartesian_collision[6]` | float64[6] | 笛卡尔碰撞检测状态 | |
-| `joint_collision[7]` | float64[7] | 关节碰撞检测状态 | |
-| `cartesian_contact[6]` | float64[6] | 笛卡尔接触状态 | |
-| `joint_contact[7]` | float64[7] | 关节接触状态 | |
-| `control_command_success_rate` | float64 | 控制命令成功率 | 网络质量指标 |
+| `dtau_J[7]` | float64[7] | 关节力矩导数 (Nm/s) | |
+| `tau_J_d[7]` | float64[7] | 关节期望力矩 (Nm) | 力矩控制时用 |
+| `tau_ext_hat_filtered[7]` | float64[7] | **滤波后的外部力矩估计** ⭐ | 碰撞检测 / 力控 / 拖动示教 |
+| `K_F_ext_hat_K[6]` | float64[6] | 外力矩在阻抗参考系中的估计 | 刚度较低时比上面更准 |
+| `O_F_ext_hat_K[6]` | float64[6] | 外部力估计 (世界系, 阻抗参考系) | [Fx,Fy,Fz,Tx,Ty,Tz] |
+| **— 肘部（冗余自由度） —** | | | |
+| `elbow[2]` | float64[2] | 肘部实际 [sign, q_b] | sign=±1, q_b=肘部角度 |
+| `elbow_d[2]` | float64[2] | 肘部期望 | |
+| `elbow_c[2]` | float64[2] | 肘部命令 | |
+| `delbow_c[2]` | float64[2] | 肘部命令速度 | |
+| `ddelbow_c[2]` | float64[2] | 肘部命令加速度 | |
+| **— 碰撞/接触状态 —** | | | |
+| `cartesian_collision[6]` | float64[6] | 笛卡尔碰撞检测信号 | 某轴超阈值则触发 |
+| `joint_collision[7]` | float64[7] | 关节碰撞检测信号 | |
+| `cartesian_contact[6]` | float64[6] | 笛卡尔接触信号 | 轻触不触发碰撞但能感知 |
+| `joint_contact[7]` | float64[7] | 关节接触信号 | |
+| **— 质量和惯量 —** | | | |
+| `m_ee` | float64 | 末端执行器质量 (kg) | 通过 `SetEEFrame` 隐含传递 |
+| `F_x_Cee[3]` | float64[3] | 末端执行器重心 (m) | |
+| `I_ee[9]` | float64[9] | 末端执行器惯量 (3×3 矩阵, 列主序) | |
+| `m_load` | float64 | 负载质量 (kg) | 通过 `SetLoad` 设置 |
+| `F_x_Cload[3]` | float64[3] | 负载重心 (m) | `F_x_center_load` |
+| `I_load[9]` | float64[9] | 负载惯量 (3×3) | |
+| `m_total` | float64 | 总质量 = m_ee + m_load | 机器人内部自动算 |
+| `F_x_Ctotal[3]` | float64[3] | 总重心 | |
+| `I_total[9]` | float64[9] | 总惯量 | |
+| **— 其他 —** | | | |
+| `time` | float64 | 时间戳 (s) | |
+| `control_command_success_rate` | float64 | 控制命令成功率 (0~1) | 网络通信质量指标 |
 | `robot_mode` | uint8 | 机器人模式枚举 | 值见下面 |
-| `current_errors` | Errors | 当前错误 | |
-| `last_motion_errors` | Errors | 上一次运动的错误 | |
+| `current_errors` | Errors | 当前激活的错误 | |
+| `last_motion_errors` | Errors | 上一次运动的错误（已清除） | |
 
 **`robot_mode` 枚举值**:
-```python
-ROBOT_MODE_OTHER = 0
-ROBOT_MODE_IDLE = 1               # 空闲
-ROBOT_MODE_MOVE = 2               # 运动中
-ROBOT_MODE_GUIDING = 3            # 手动引导
-ROBOT_MODE_REFLEX = 4             # 反射（错误触发）
-ROBOT_MODE_USER_STOPPED = 5      # 用户停止
-ROBOT_MODE_AUTOMATIC_ERROR_RECOVERY = 6  # 自动错误恢复
-```
+| 值 | 常量名 | 含义 |
+|----|--------|------|
+| 0 | `ROBOT_MODE_OTHER` | 其他 |
+| 1 | `ROBOT_MODE_IDLE` | 空闲，电机已上电但未运动 |
+| 2 | `ROBOT_MODE_MOVE` | 正常运动（正在执行控制命令） |
+| 3 | `ROBOT_MODE_GUIDING` | 手动引导（拖动示教模式） |
+| 4 | `ROBOT_MODE_REFLEX` | 反射模式（因错误触发保护） |
+| 5 | `ROBOT_MODE_USER_STOPPED` | 用户停止 |
+| 6 | `ROBOT_MODE_AUTOMATIC_ERROR_RECOVERY` | 自动错误恢复中 |
 
 #### [`Errors.msg`](franka_ws/src/franka_ros/franka_msgs/msg/Errors.msg) — 错误码
 
-共 37 种错误状态，全部是 `bool` 类型。需要记住常见的：
+共 **37 种**错误状态，全部是 `bool` 类型。收到 `FrankaState` 后检查 `current_errors` 里的字段可判断具体错误类型。
 
-| 常见错误 | 含义 |
-|----------|------|
-| `joint_position_limits_violation` | 关节超限位 |
-| `cartesian_position_limits_violation` | 笛卡尔空间超限位 |
-| `self_collision_avoidance_violation` | 自碰撞检测触发 |
-| `joint_velocity_violation` | 关节速度超出 |
-| `cartesian_velocity_violation` | 笛卡尔速度超出 |
-| `force_control_safety_violation` | 力控安全触发 |
-| `joint_reflex` | 关节反射 |
-| `cartesian_reflex` | 笛卡尔反射 |
-| `power_limit_violation` | 功率限制 |
-| `instability_detected` | 检测到不稳定 |
+**按类别分组**:
 
-### 2.2 服务 (srv)
+| 类别 | 字段 | 含义 |
+|------|------|------|
+| **基本限位** | `joint_position_limits_violation` | 关节角度超限位 ⭐ |
+| | `cartesian_position_limits_violation` | 笛卡尔位姿超限位 |
+| | `joint_velocity_violation` | 关节速度超限 ⭐ |
+| | `cartesian_velocity_violation` | 笛卡尔速度超限 |
+| | `self_collision_avoidance_violation` | 自碰撞检测触发 ⭐ |
+| | `power_limit_violation` | 功率限制触发 |
+| | `instability_detected` | 检测到不稳定（振荡）⭐ |
+| **反射** | `joint_reflex` | 关节反射触发 ⭐ |
+| | `cartesian_reflex` | 笛卡尔反射触发 |
+| **力控安全** | `force_control_safety_violation` | 期望力过大或异常 |
+| | `force_controller_desired_force_tolerance_violation` | 力控期望力容差越限 |
+| **控制器异常** | `controller_torque_discontinuity` | 控制力矩不连续 |
+| | `tau_j_range_violation` | 关节力矩指令超范围 |
+| | `communication_constraints_violation` | 通信约束违反 |
+| **运动生成器** | `joint_motion_generator_*` (4种) | 关节运动生成器各类错误 |
+| | `cartesian_motion_generator_*` (7种) | 笛卡尔运动生成器各类错误 |
+| **其他** | `max_goal_pose_deviation_violation` | 目标位姿偏差过大 |
+| | `max_path_pose_deviation_violation` | 路径位姿偏差过大 |
+| | `start_elbow_sign_inconsistent` | 起始肘部符号不一致 |
 
-| 服务 | 请求参数 | 说明 |
-|------|----------|------|
-| [`SetEEFrame`](franka_ws/src/franka_ros/franka_msgs/srv/SetEEFrame.srv) | `F_T_EE[16]` (4×4 变换矩阵) | 设置法兰到末端执行器的变换，装了不同工具必须设 |
-| [`SetKFrame`](franka_ws/src/franka_ros/franka_msgs/srv/SetKFrame.srv) | `EE_T_K[16]` (4×4 变换矩阵) | 设置阻抗控制的参考坐标系 |
-| [`SetCartesianImpedance`](franka_ws/src/franka_ros/franka_msgs/srv/SetCartesianImpedance.srv) | `cartesian_stiffness[6]` | 设笛卡尔刚度 [x,y,z,rx,ry,rz] |
-| [`SetJointImpedance`](franka_ws/src/franka_ros/franka_msgs/srv/SetJointImpedance.srv) | `joint_stiffness[7]` | 设关节刚度 7 个关节 |
-| [`SetLoad`](franka_ws/src/franka_ros/franka_msgs/srv/SetLoad.srv) | `mass`, `F_x_center_load[3]`, `load_inertia[9]` | 设负载参数（质量/重心/惯量） |
-| [`SetForceTorqueCollisionBehavior`](franka_ws/src/franka_ros/franka_msgs/srv/SetForceTorqueCollisionBehavior.srv) | 力矩+力的上下限 (26 个值) | 设碰撞检测阈值（简化版） |
-| [`SetFullCollisionBehavior`](franka_ws/src/franka_ros/franka_msgs/srv/SetFullCollisionBehavior.srv) | 加速度/正常态的力矩和力上下限 (52 个值) | 设完整的碰撞检测阈值 |
+> ⭐ 标注的是日常开发中最常遇到的错误。
 
-**注意**：每个服务都返回 `bool success` + `string error`。
+### 2.2 服务 (srv) — 逐个详解
+
+所有服务都遵循统一返回格式：
+```
+---
+bool success       # 是否成功
+string error       # 失败时的错误信息
+```
+
+#### ① [`SetEEFrame.srv`](franka_ws/src/franka_ros/franka_msgs/srv/SetEEFrame.srv) — 设置末端坐标系
+
+```
+float64[16] F_T_EE    # 法兰(Flange)→末端执行器(EE)的 4×4 变换矩阵
+```
+
+- **问：末端坐标系是什么？**
+  - 法兰坐标系 = 机器人第 6 轴末端接口的坐标系，默认 `O_T_EE` 算出来的就是法兰位姿。
+  - 装夹爪、相机或其他工具后 ≠ 机器人末端真正的接触点/操作点。
+  - `F_T_EE` 就是告诉你"工具装在法兰的哪个位置、什么朝向"。
+- **为什么要设？**
+  - 不设的话 `O_T_EE` 只是**法兰盘**的位姿，不是**工具末端**的位姿。
+  - 设了之后 `O_T_EE` 自动变成工具末端的位姿，做笛卡尔运动时机器人按工具末端轨迹运动。
+  - 涉及的工具参数（质量/重心/惯量）通过 `F_x_Cee`、`I_ee`、`m_ee` 反映在 `FrankaState` 里。
+
+#### ② [`SetKFrame.srv`](franka_ws/src/franka_ros/franka_msgs/srv/SetKFrame.srv) — 设置阻抗参考坐标系
+
+```
+float64[16] EE_T_K    # 末端(EE)→阻抗参考系(K)的 4×4 变换
+```
+
+- **问：阻抗参考坐标系是什么？**
+  - 在笛卡尔阻抗控制中，阻抗弹簧的"零位"定义在这个参考系里。
+  - 例如：你在阻抗控制中拧螺丝，希望绕螺丝轴线转时刚度低、其他方向刚度高——就要把 K 系设在螺丝轴线上。
+- **为什么要设？**
+  - 默认 K 系与 EE 系重合（阻抗控制以末端为参考）。
+  - 改变 K 系可以改变阻抗控制的"锚点"——例如你拿一个长工具，希望用力控制时参考点在工具尖端而不是法兰。
+  - 对应 `FrankaState` 中的 `EE_T_K` 字段，`O_F_ext_hat_K` 的外力估计也是在这个坐标系中表达的。
+
+#### ③ [`SetCartesianImpedance.srv`](franka_ws/src/franka_ros/franka_msgs/srv/SetCartesianImpedance.srv) — 设置笛卡尔阻抗
+
+```
+float64[6] cartesian_stiffness   # [x, y, z, rx, ry, rz] 方向的刚度
+```
+
+- **参数**：6 个方向的刚度值 (N/m 和 Nm/rad)
+  - `x, y, z` — 平动刚度，范围 [0, 3000] N/m
+  - `rx, ry, rz` — 转动刚度，范围 [0, 300] Nm/rad
+  - 每个方向独立可调，0 表示该方向完全不施加恢复力（纯被动柔顺）
+- **典型用法**：
+  - 装配任务：z 轴刚度低（顺从），其他方向刚度高（精确跟踪）
+  - 拖动示教：所有轴刚度设为 0
+  - 力控打磨：法向刚度低，切向刚度高
+
+#### ④ [`SetJointImpedance.srv`](franka_ws/src/franka_ros/franka_msgs/srv/SetJointImpedance.srv) — 设置关节阻抗
+
+```
+float64[7] joint_stiffness   # 7 个关节各自的刚度
+```
+
+- **参数**：7 个关节的刚度值 (Nm/rad)
+  - 每个关节的刚度独立可调
+  - 关节 1~7 刚度范围通常是 [0, 1000] Nm/rad（具体看型号）
+- **与笛卡尔阻抗的关系**：
+  - 笛卡尔阻抗 = 通过运动学转换到关节空间的等效刚度
+  - 关节阻抗 = 直接在关节层面设刚度，更底层
+  - 如果只设笛卡尔阻抗，机器人在内部计算时会自动推导出关节刚度的变化
+
+#### ⑤ [`SetLoad.srv`](franka_ws/src/franka_ros/franka_msgs/srv/SetLoad.srv) — 设置负载参数
+
+```
+float64 mass              # 负载质量 (kg)
+float64[3] F_x_center_load  # 负载重心 (m)，在末端坐标系中的位置
+float64[9] load_inertia    # 负载惯量矩阵 (3×3, 列主序)
+```
+
+- **问：为什么要设负载？**
+  - 机器人内部的重力补偿、惯性补偿、外力估计都需要知道"手上拿的东西有多重、重心在哪"。
+  - 不设或设错 → 负载越重，重力补偿越不准 → 外力估计偏差大 → 碰撞检测可能误报或漏报。
+  - 对应 `FrankaState` 里的 `m_load`、`F_x_Cload`、`I_load` 字段。
+- **典型设置场景**：
+  - 安装吸盘 → 设吸盘质量/重心
+  - 夹取工件后 → 设工件质量/重心（可运行时动态修改）
+
+#### ⑥ [`SetForceTorqueCollisionBehavior.srv`](franka_ws/src/franka_ros/franka_msgs/srv/SetForceTorqueCollisionBehavior.srv) — 碰撞检测阈值（简化版）
+
+```
+float64[7] lower_torque_thresholds_nominal   # 关节力矩下限 [J1~J7]
+float64[7] upper_torque_thresholds_nominal   # 关节力矩上限 [J1~J7]
+float64[6] lower_force_thresholds_nominal    # 笛卡尔力下限 [x,y,z,rx,ry,rz]
+float64[6] upper_force_thresholds_nominal    # 笛卡尔力上限 [x,y,z,rx,ry,rz]
+```
+
+共 26 个参数：7×2 力矩阈值 + 6×2 力阈值。
+
+- **工作原理**：
+  - 机器人实时计算 `tau_ext_hat_filtered`（外部力矩估计）。
+  - 当某个关节/方向的估计值超出设置的上下限 → 触发碰撞保护 → 急停+报错。
+- **什么时候用**：
+  - 需要屏蔽某个方向的碰撞检测（如拖动示教时全放开）
+  - 需要提高灵敏度（如精密装配）
+  - 默认值比较保守，可以根据实际负载调整
+
+#### ⑦ [`SetFullCollisionBehavior.srv`](franka_ws/src/franka_ros/franka_msgs/srv/SetFullCollisionBehavior.srv) — 碰撞检测阈值（完整版）
+
+```
+float64[7] lower_torque_thresholds_acceleration   # 加速阶段 关节力矩下限
+float64[7] upper_torque_thresholds_acceleration   # 加速阶段 关节力矩上限
+float64[7] lower_torque_thresholds_nominal        # 匀速阶段 关节力矩下限
+float64[7] upper_torque_thresholds_nominal        # 匀速阶段 关节力矩上限
+float64[6] lower_force_thresholds_acceleration    # 加速阶段 笛卡尔力下限
+float64[6] upper_force_thresholds_acceleration    # 加速阶段 笛卡尔力上限
+float64[6] lower_force_thresholds_nominal         # 匀速阶段 笛卡尔力下限
+float64[6] upper_force_thresholds_nominal         # 匀速阶段 笛卡尔力上限
+```
+
+共 52 个参数：分成 `acceleration`（加速阶段）和 `nominal`（匀速/静止阶段）两套阈值。
+
+- **与简化版的区别**：
+  - 简化版只设 `nominal` 阈值（26 个值）
+  - 完整版额外多设一套 `acceleration` 阈值
+  - 加速阶段惯性力更大，阈值应该设得比匀速阶段高，避免误触发
 
 ### 2.3 动作 (action)
 
-| Action | 作用 | 输入 | 输出 |
-|--------|------|------|------|
-| [`ErrorRecovery`](franka_ws/src/franka_ros/franka_msgs/action/ErrorRecovery.action) | 清除机器人错误 | 无 | 无 |
+#### [`ErrorRecovery.action`](franka_ws/src/franka_ros/franka_msgs/action/ErrorRecovery.action) — 错误恢复
 
-`ErrorRecovery` 没有 goal，调用它就自动恢复错误状态。
+action 定义（三个 `---` 分隔 Goal / Result / Feedback）：
+```
+# (空 — 无 Goal/Result/Feedback)
+---
+---
+```
+
+- **Goal**：无输入参数 — 调用即触发错误恢复
+- **Result**：无输出参数 — 恢复成功 $\\rightarrow$ SUCCESS，失败 $\\rightarrow$ ABORTED
+- **Feedback**：无反馈
+
+**调用方式**：
+- 作为 **ROS Action** 调用（通过 `actionlib`）：
+  ```python
+  import actionlib
+  from franka_msgs.msg import ErrorRecoveryAction, ErrorRecoveryGoal
+  client = actionlib.SimpleActionClient('/franka_control/error_recovery', ErrorRecoveryAction)
+  client.wait_for_server()
+  client.send_goal(ErrorRecoveryGoal())
+  client.wait_for_result()
+  ```
+- 作为 **Service** 调用（ROS 自动为 action 生成对应 service）：
+  ```bash
+  rosservice call /franka_control/error_recovery "{}"
+  ```
+
+**什么时候用**：
+- 机器人触发碰撞保护并进入 Reflex 模式后
+- `current_errors` 中检测到非致命错误后
+- 恢复前一定要确保障碍物已清除，否则恢复后碰撞阈值更低可能二次触发
 
 ### 🧪 动手验证
 
