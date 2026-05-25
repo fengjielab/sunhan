@@ -97,7 +97,7 @@ int main(int argc, char** argv) {
         }
         if (max_vel > 0.02) continue;
 
-        tau_sum +=
+        tau_sum -=
             Eigen::Map<const Eigen::Matrix<double, 7, 1>>(
                 state.tau_ext_hat_filtered.data());
         last_state = state;

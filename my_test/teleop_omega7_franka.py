@@ -16,19 +16,34 @@ import time
 import ctypes
 import numpy as np
 import forcedimension_core.dhd as dhd
+import forcedimension_core.drd as drd
 import panda_py
 from panda_py import controllers
 
 # ============================================================
 # 配置参数
 # ============================================================
-SCALE_POS = 0.5        # 移动缩放
-CONTROL_FREQ = 200.0   # 控制频率 (Hz)
+SCALE_POS = 3.0        # 位置映射倍数：Omega 手柄位移 → Franka 末端位移（改大后遥操作更灵敏）
 SIGN = np.array([-1.0, -1.0, 1.0])  # 坐标轴方向修正
+
+POS_CONTROL_FREQ = 200.0       # 位置控制频率 (Hz) — 只管机械臂末端，不阻塞
+GRIPPER_UPDATE_FREQ = 10.0     # 夹爪控制频率 (Hz) — 单独降频，10Hz 足够
 
 GRIPPER_SPEED = 0.1    # 夹爪速度 (m/s)
 GRIPPER_FORCE = 20.0   # 夹爪夹持力 (N)
 GRIPPER_MAX = 0.08     # 夹爪最大开度 (m)
+
+GRIPPER_INTERVAL = 0.05  # 夹爪命令最小间隔 (s) — 避免高频下发阻塞主循环
+
+# Omega.7 夹爪角度 → Franka 夹爪开度
+# 实测 Omega.7 夹爪角度为负值：
+#   完全张开约 -60°，完全捏合约 0°（越接近 0 = 捏得越紧）
+GRIPPER_ANGLE_OPEN  = -60.0  # Omega.7 夹爪完全张开时的角度（度）
+GRIPPER_ANGLE_CLOSE =   0.0  # Omega.7 夹爪完全捏合时的角度（度）
+
+# Franka 夹爪 grasp() 必须提供的容错参数
+GRIPPER_EPS_INNER = 0.005
+GRIPPER_EPS_OUTER = 0.005
 
 
 def main():
@@ -40,6 +55,16 @@ def main():
         print("   ❌ Omega.7 连接失败，检查 USB 线")
         sys.exit(1)
     print(f"   ✓ 已连接: {dhd.getSystemName()}")
+
+    # 启动 DRD 高频伺服（使 Omega 能输出力/夹持力）
+    if drd.start() < 0:
+        print("   ⚠️  DRD 启动失败（不影响位置控制，仅力反馈不可用）")
+    else:
+        print("   ✓ DRD 高频伺服已启动")
+
+    # 开启力输出（零力模式，阻尼最小，操作更顺滑）
+    dhd.enableForce(True)
+    print("   ✓ 力输出已开启（零力透明模式）")
 
     # -----------------------------------------------------------
     # 2. 连接 Franka 机械臂
@@ -110,69 +135,94 @@ def main():
     # -----------------------------------------------------------
     # 7. 主控制循环
     # -----------------------------------------------------------
-    dt = 1.0 / CONTROL_FREQ
+    dt_pos = 1.0 / POS_CONTROL_FREQ       # 5ms
+    dt_gripper = 1.0 / GRIPPER_UPDATE_FREQ  # 100ms
 
     # 夹爪状态跟踪
-    grasp_hysteresis = 0.005  # 防抖阈值
-    gripper_was_open = True   # 记录上次夹爪是否打开
-    last_gripper_cmd = 0.08   # 上次发送的开度
+    grasp_hysteresis = 0.01      # 防抖阈值：开度变化超过 12mm 才触发命令
+    gripper_was_open = True      # 记录上次夹爪是否打开
+    last_gripper_cmd = 0.08      # 上次发送的开度
+    last_gripper_time = 0.0      # 上次夹爪更新的时间戳
+    last_print_time = 0.0        # 上次打印刷新的时间戳
+
+    # 夹爪读数缓存（每次位置循环都读，但只在夹爪循环里处理）
+    omega_grip = 0.0
+    button_grasp = 0
+
+    loop_count = 0
 
     try:
         while True:
-            loop_start = time.time()
+            t_loop_start = time.perf_counter()
 
-            # ---- a. 读取 Omega.7 位置（位置控制） ----
+            # ======== 1. 读 Omega7 位置 ========
+            t1 = time.perf_counter()
             raw_pos = np.zeros(3)
             dhd.getPosition(raw_pos)
+            t2 = time.perf_counter()
+
+            # ======== 2. 计算目标位置 ========
             delta = raw_pos - omega_home
             target_pos = virtual_ref + delta * SCALE_POS * SIGN
+            t3 = time.perf_counter()
+
+            # ======== 3. 发给 Franka ========
             ctrl.set_control(target_pos, init_ori)
+            t4 = time.perf_counter()
 
-            # ---- b. 读取 Omega 夹钳开度（夹爪控制） ----
-            gap = ctypes.c_double()
-            dhd.getGripperGap(ctypes.byref(gap))
-            omega_grip = max(0.0, gap.value)  # 夹钳开度 ≥ 0
+            # 每周期发送零力指令，保持手柄零力透明（无阻力手感）
+            dhd.setForce(np.zeros(3))
 
-            # 读取灰色按钮
+            # 同时读取夹爪角度和按钮（读值不阻塞，供夹爪循环使用）
+            gripper_angle = ctypes.c_double()
+            dhd.getGripperAngleDeg(gripper_angle)
+            omega_grip = gripper_angle.value
             button_grasp = dhd.getButton(0)
 
-            # ---- c. 映射到 Franka 夹爪 ----
-            # Omega 夹钳开度 [0~0.03m] → Franka 夹爪开度 [0.0~GRIPPER_MAX]
-            grip_norm = min(1.0, omega_grip / 0.03)  # 归一化
-            target_width = grip_norm * GRIPPER_MAX
+            # ======== 4. 夹爪（低频执行） ========
+            t5 = time.perf_counter()
+            now = time.time()
+            if (now - last_gripper_time) >= dt_gripper:
+                grip_norm = np.clip(
+                    (omega_grip - GRIPPER_ANGLE_CLOSE) / (GRIPPER_ANGLE_OPEN - GRIPPER_ANGLE_CLOSE),
+                    0.0, 1.0
+                )
+                target_width = grip_norm * GRIPPER_MAX
+                width_change = abs(target_width - last_gripper_cmd)
+                if width_change > grasp_hysteresis:
+                    if grip_norm > 0.8:
+                        gripper.move(target_width, GRIPPER_SPEED)
+                        gripper_was_open = True
+                    elif grip_norm < 0.2:
+                        gripper.grasp(
+                            target_width, GRIPPER_SPEED, GRIPPER_FORCE,
+                            GRIPPER_EPS_INNER, GRIPPER_EPS_OUTER,
+                        )
+                        gripper_was_open = False
+                    else:
+                        gripper.move(target_width, GRIPPER_SPEED)
+                    last_gripper_cmd = target_width
+                if button_grasp:
+                    gripper.move(GRIPPER_MAX, GRIPPER_SPEED)
+                    last_gripper_cmd = GRIPPER_MAX
+                last_gripper_time = now
 
-            # 防抖：变化够大才发送
-            width_change = abs(target_width - last_gripper_cmd)
-            if width_change > grasp_hysteresis:
-                # 夹钳完全松开 → 夹爪张开
-                if grip_norm > 0.8:
-                    gripper.move(target_width, GRIPPER_SPEED)
-                    gripper_was_open = True
-                # 夹钳捏合 → 夹爪抓取
-                elif grip_norm < 0.2:
-                    gripper.grasp(target_width, GRIPPER_SPEED, GRIPPER_FORCE)
-                    gripper_was_open = False
-                else:
-                    gripper.move(target_width, GRIPPER_SPEED)
-                last_gripper_cmd = target_width
+            t_loop_end = time.perf_counter()
 
-            # 灰色按钮 → 完全张开
-            if button_grasp:
-                gripper.move(GRIPPER_MAX, GRIPPER_SPEED)
-                last_gripper_cmd = GRIPPER_MAX
+            # ======== 每 100 周期打印一次统计 ========
+            loop_count += 1
+            if loop_count % 100 == 0:
+                print(f"\n=== 周期 #{loop_count} ===")
+                print(f"  总周期: {(t_loop_end - t_loop_start)*1000:.2f} ms")
+                print(f"  Omega读: {(t2 - t1)*1000:.2f} ms")
+                print(f"  计算:    {(t3 - t2)*1000:.2f} ms")
+                print(f"  Franka写:{(t4 - t3)*1000:.2f} ms")
+                print(f"  夹爪:    {(t5 - t4)*1000:.2f} ms")
+                print(f"  其他/idle:{(t_loop_end - t5)*1000:.2f} ms")
 
-            # ---- d. 显示信息 ----
-            grip_status = "🖐 张开" if grip_norm > 0.5 else "✊ 抓紧"
-            print(
-                f"\r   Omega Δ: x={delta[0]:+.3f} y={delta[1]:+.3f} z={delta[2]:+.3f}  "
-                f"|  夹钳: {omega_grip:.3f}→{target_width*1000:.0f}mm {grip_status}  "
-                f"|  目标: {target_pos[0]:.3f} {target_pos[1]:.3f} {target_pos[2]:.3f}   ",
-                end="",
-            )
-
-            # ---- e. 控制频率 ----
-            elapsed = time.time() - loop_start
-            sleep_time = dt - elapsed
+            # ======== 控制周期（按 200Hz 位置频率 sleep） ========
+            elapsed = time.perf_counter() - t_loop_start
+            sleep_time = dt_pos - elapsed
             if sleep_time > 0:
                 time.sleep(sleep_time)
 
@@ -190,3 +240,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
