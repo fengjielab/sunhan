@@ -32,11 +32,14 @@ shared_control_node.py — 共享控制架构主节点
 日期: 2026-05
 """
 
+import os
 import sys
 import time
 import threading
 import ctypes
 import argparse
+import multiprocessing as mp
+from typing import Optional
 import numpy as np
 import forcedimension_core.dhd as dhd
 import forcedimension_core.drd as drd
@@ -55,6 +58,10 @@ from biaoding.vision_physics_mapper import VisionPhysicsMapper, PhysicsProfile
 # 配置参数
 # ═══════════════════════════════════════════
 
+# 检测保持（holdover）配置
+DETECTION_HOLD_TIMEOUT = 5.0       # 检测丢失后保持参数的最大时间 (s)
+FALLBACK_DETECTION_LABEL = "hold"  # 保持模式下的显示标签
+
 # 机器人
 ROBOT_IP = "192.168.1.51"
 
@@ -70,20 +77,101 @@ FORCE_PRINT_FREQ = 10.0      # 力反馈打印 (Hz)
 
 # 夹爪
 GRIPPER_SPEED = 0.1
-GRIPPER_FORCE = 20.0
 GRIPPER_MAX = 0.08
-GRIPPER_EPS_INNER = 0.005
-GRIPPER_EPS_OUTER = 0.005
-GRIPPER_ANGLE_OPEN = -60.0
-GRIPPER_ANGLE_CLOSE = 0.0
 GRIPPER_HYSTERESIS = 0.01
 
+# Omega.7 夹钳意图阈值
+OMEGA_ACTIVE_THRESHOLD = 0.7  # grip_norm < 0.7 → 用户开始操作（保持 profile）
+OMEGA_GRASP_THRESHOLD = 0.3   # grip_norm < 0.3 → 用户正在抓取（锁定 profile）
+
 # 视觉
-YOLO_MODEL_PATH = "yolo11n.pt"
-CONF_THRESHOLD = 0.5
+YOLO_MODEL_PATH = "/home/mfj/sunhan/yolo/ultralytics-8.3.163/yolo11n.pt"
+CONF_THRESHOLD = 0.25
 
 # 默认阻抗
 DEFAULT_IMPEDANCE = np.diag([200.0, 200.0, 200.0, 10.0, 10.0, 10.0])
+
+
+# ═══════════════════════════════════════════
+# YOLO 独立进程（拥有独立 GIL，不受控制循环争用）
+# ═══════════════════════════════════════════
+
+def _yolo_process_main(
+    model_path: str,
+    conf_threshold: float,
+    frame_queue: mp.Queue,
+    result_queue: mp.Queue,
+):
+    """
+    独立进程入口：YOLO 推理（完全隔离 GIL 争用）
+
+    主进程通过 frame_queue 发送 RGB 帧，YOLO 进程
+    通过 result_queue 返回检测结果字典 {class, bbox, profile, conf}。
+
+    以 daemon 方式运行，主进程退出时自动终止。
+    """
+    _sys = __import__("sys")
+    _sys.path.insert(0, "/home/mfj/sunhan")
+
+    import queue as _q
+    import numpy as _np
+
+    from biaoding.vision_physics_mapper import VisionPhysicsMapper
+
+    pid = os.getpid()
+    print(f"[YOLO进程-{pid}] 已启动", flush=True)
+
+    mapper = VisionPhysicsMapper(
+        model_path=model_path,
+        conf_threshold=conf_threshold,
+    )
+
+    cycle = 0
+    while True:
+        try:
+            rgb = frame_queue.get(timeout=0.5)
+        except _q.Empty:
+            if cycle == 0:
+                print(f"[YOLO进程-{pid}] 等待帧入队...", flush=True)
+            continue
+
+        try:
+            cycle += 1
+            det = mapper.detect_and_map(rgb)
+
+            if det is not None:
+                # 转换为可 pickle 格式
+                bbox = det["bbox"]
+                det["bbox"] = tuple(map(int, bbox))
+                result_queue.put(det)
+                print(
+                    f"[YOLO进程-{pid}] 🟢 #{cycle}: {det['class']} "
+                    f"({det['profile'].label}) conf={det['conf']:.2f}",
+                    flush=True,
+                )
+            else:
+                # 打印所有检测到的物体（便于调试）
+                _results = mapper._model(rgb, verbose=False)[0]
+                if len(_results.boxes) > 0:
+                    _all = [
+                        f"{_results.names[int(b.cls[0])]}({float(b.conf[0]):.2f})"
+                        for b in _results.boxes
+                    ]
+                    if cycle <= 5 or cycle % 20 == 0:
+                        print(
+                            f"[YOLO进程-{pid}] 推理 #{cycle}: "
+                            f"检测到但未通过过滤: {', '.join(_all)}",
+                            flush=True,
+                        )
+                elif cycle <= 5 or cycle % 20 == 0:
+                    print(
+                        f"[YOLO进程-{pid}] 推理 #{cycle}: 未检测到任何物体",
+                        flush=True,
+                    )
+        except Exception as e:
+            print(f"[YOLO进程-{pid}] ⚠️ 推理异常 #{cycle}: {e}", flush=True)
+            import traceback
+            traceback.print_exc()
 
 
 class SharedControlNode:
@@ -106,6 +194,32 @@ class SharedControlNode:
         """
         self.mode = mode
         self.running = False
+        self._enable_visualize = True  # 默认显示摄像头画面
+
+        # ── 检测保持（holdover）状态 ──
+        self._last_seen_class = "N/A"       # 最后检测到的物体类别
+        self._last_seen_label = "unknown"   # 最后检测到的标签 soft/hard/medium
+        self._last_seen_cycle = 0           # 最后检测成功时的 cycle 编号
+        self._last_detection_time = 0.0     # 最后检测成功的时间戳
+        self._is_holding = False            # 是否处于"保持模式"
+
+        # ── Omega.7 夹钳意图状态（用户意图的唯一来源，不用 Franka 宽度）──
+        # Omega 角度: -30°=张开, 0°=捏合
+        # omega_grip_norm: 0=捏合, 1=张开
+        #   张开 (>0.7) → 用户未操作 → 标准 5s 超时回退
+        #   半捏合 (0.3~0.7) → 用户正在靠近 → 保持 profile，不回退
+        #   全捏合 (<0.3) → 用户正在抓取 → 锁定 profile
+        self._omega_grip_norm = 0.0
+        self._user_active = False
+        self._user_grasping = False
+        self._grasp_profile: Optional[PhysicsProfile] = None
+        self._grasp_profile_applied = False
+
+        # ── 参数锁定（首次识别后保持到实验结束）──
+        self._profile_locked = False       # 是否已锁定
+        self._locked_profile: Optional[PhysicsProfile] = None  # 锁定的参数
+        self._locked_class = "N/A"         # 锁定时的物体类别
+        self._locked_label = "unknown"     # 锁定时的标签
 
         # ── 运行模式打印 ──
         mode_names = {
@@ -122,6 +236,7 @@ class SharedControlNode:
         #                   admittance_K, approach_speed, label
         self.mapper: VisionPhysicsMapper = None
         self.current_profile: PhysicsProfile = None
+        self._default_profile: PhysicsProfile = None   # 默认 profile（用于超时回退）
         self._profile_lock = threading.Lock()
 
         # ── 机器人状态 (由主线程更新，视觉线程读取) ──
@@ -175,7 +290,7 @@ class SharedControlNode:
         init_ori = self.panda.get_orientation().copy()
         print(f"   初始末端: {np.round(init_pos, 4)}")
 
-        # 5. Omega.7 标定
+        # 5. Omega.7 标定 — 位置零点 + 夹爪角度范围
         print("[初始化] 标定 Omega.7 零点（松开手柄）...")
         time.sleep(1.0)
         omega_home = np.zeros(3)
@@ -201,17 +316,24 @@ class SharedControlNode:
         self._init_ori = init_ori.copy()
         print("   ✓ 控制器已启动")
 
-        # 7. 视觉模块
+        # 7. 视觉模块（YOLO 在独立进程中加载，避免 GIL 争用）
         if self.mode in ("b", "c"):
-            print("[初始化] YOLO + 视觉查表 ...")
-            self.mapper = VisionPhysicsMapper(
-                model_path=YOLO_MODEL_PATH,
-                conf_threshold=CONF_THRESHOLD,
-            )
-            self.current_profile = self.mapper.get_default()
-            print(f"   ✓ 初始 profile: {self.current_profile.label}")
+            self._enable_vision = True
+            print("[初始化] 视觉模块（YOLO 将在独立进程中加载）...")
         else:
+            self._enable_vision = False
             print("[初始化] 模式A: 跳过视觉模块")
+
+        # 初始 profile（所有模式共用，避免后续 None 引用导致 AttributeError）
+        self._default_profile = PhysicsProfile(
+            K_trans=0.4, K_grip=0.3, F_target=10.0,
+            deadband=0.3, admittance_K=100.0,
+            approach_speed=0.03, label="unknown",
+        )
+        self.current_profile = PhysicsProfile.from_dict(
+            self._default_profile.to_dict()
+        )  # 深拷贝，避免与 _default_profile 共享同一对象
+        print(f"   ✓ 初始 profile: {self.current_profile.label}")
 
         # 8. 子模块
         print("[初始化] 力估计/导纳/夹持力/力反馈 子模块 ...")
@@ -244,30 +366,74 @@ class SharedControlNode:
         # 夹爪状态
         self._last_gripper_cmd = GRIPPER_MAX
         self._last_gripper_time = 0.0
-        self._gripper_was_open = True
+
+        # ── 夹爪角度：运行时自适应归一化 ──
+        # Omega.7 典型范围: -30°=完全张开, 0°=完全捏合
+        # 归一化公式: grip_norm = (max - raw) / (max - min)
+        #   raw=-30° → grip_norm=1.0 → 完全张开
+        #   raw=0°   → grip_norm=0.0 → 完全捏合
+        # 运行时只向外扩展（min 向下, max 向上）
+        self._grip_min = -30.0   # 最小角度（完全张开）
+        self._grip_max = 0.0     # 最大角度（完全捏合）
 
     # ═══════════════════════════════════════════
     # 视觉线程
     # ═══════════════════════════════════════════
 
     def _vision_loop(self):
-        """视觉检测循环 (30Hz, 独立线程)
+        """视觉检测循环 — 双进程架构
 
-        每帧检测 → 查 PhysicsProfile → 事件触发更新 stiffness + 力反馈增益
+        主进程 (本线程): 30fps 捕获 + 显示 (永不阻塞)
+        ──────────────────────────────────────────────
+        wait_for_frames → 入队 frame_queue → 读 result_queue → imshow → 循环
+
+        YOLO 独立进程: 异步推理 (拥有独立 GIL)
+        ──────────────────────────────────────
+        读 frame_queue → detect_and_map → 入队 result_queue → 循环
+
+        使用 multiprocessing.Queue 进行跨进程通信，YOLO 推理
+        完全不受主线程 200Hz 控制循环的 GIL 争用影响。
         """
         import cv2
         import pyrealsense2 as rs
+        import queue as _q
 
-        # 配置 RealSense
+        # ── 配置 RealSense ──
         pipeline = rs.pipeline()
         config = rs.config()
         config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
         pipeline.start(config)
         align = rs.align(rs.stream.color)
-
         print("[视觉线程] RealSense D435i 已启动")
 
+        if self._enable_visualize:
+            cv2.namedWindow("Camera View", cv2.WINDOW_NORMAL)
+            cv2.resizeWindow("Camera View", 640, 480)
+            # 启动OpenCV GUI线程（防止Qt后端报跨线程timer警告）
+            cv2.startWindowThread()
+            print("[视觉线程] 📷 相机画面已开启（按 'q' 关闭画面）")
+
+        # ── 进程间通信 ──
+        frame_queue = mp.Queue(maxsize=2)    # RGB 帧 → YOLO 进程
+        result_queue = mp.Queue(maxsize=2)   # 检测结果 ← YOLO 进程
+
+        # ── 启动 YOLO 独立进程 ──
+        yolo_proc = mp.Process(
+            target=_yolo_process_main,
+            args=(YOLO_MODEL_PATH, CONF_THRESHOLD,
+                  frame_queue, result_queue),
+            daemon=True,
+        )
+        yolo_proc.start()
+        print(f"[视觉线程] YOLO 独立进程已启动 (PID={yolo_proc.pid})")
+
+        # ── 共享状态（仅在本线程使用，无需锁）──
+        last_det = {"bbox": None, "active": False}
+        _cycle = 0  # 视觉循环帧计数器（修复: 之前引用了未定义的 cycle 变量）
+
+        # ── 主循环: 30fps 捕获 + 显示 ──
         while self.running:
+            _cycle += 1
             try:
                 frames = pipeline.wait_for_frames(timeout_ms=5000)
                 aligned = align.process(frames)
@@ -277,36 +443,111 @@ class SharedControlNode:
 
                 rgb = np.asanyarray(color_frame.get_data())
 
-                # YOLO 检测 + 查表
-                det = self.mapper.detect_and_map(rgb)
+                # ── 送帧 → YOLO 进程 ──
+                try:
+                    frame_queue.put_nowait(rgb)
+                except _q.Full:
+                    pass  # YOLO 处理不过来时丢帧（不影响显示）
 
-                if det is not None:
-                    profile = det["profile"]
-                    class_name = det["class"]
+                # ── 收结果 ← YOLO 进程 ──
+                try:
+                    det = result_queue.get_nowait()
+                    # 更新检测框（用于显示）
+                    last_det["bbox"] = det["bbox"]
+                    last_det["profile"] = det["profile"]
+                    last_det["class"] = det["class"]
+                    last_det["conf"] = det["conf"]
+                    last_det["active"] = True
 
-                    with self._profile_lock:
-                        self.current_profile = profile
+                    if not self._profile_locked:
+                        # ── 首次识别 → 锁定参数 ──
+                        self._profile_locked = True
+                        self._locked_profile = PhysicsProfile.from_dict(
+                            det["profile"].to_dict()
+                        )
+                        self._locked_class = det["class"]
+                        self._locked_label = det["profile"].label
+                        # 更新控制参数（线程安全锁）
+                        with self._profile_lock:
+                            self.current_profile = self._locked_profile
+                        with self.latest_detection_lock:
+                            self.latest_detection = det
+                        if self.mode == "c":
+                            self.admittance.apply_profile(self._locked_profile)
+                        self.feedback_sched.set_profile(self._locked_profile)
+                        print(
+                            f"\n  🔒 参数已锁定 — 物体={det['class']} "
+                            f"label={det['profile'].label} "
+                            f"K_trans={det['profile'].K_trans:.2f} "
+                            f"(直到实验结束)\n"
+                        )
+                    else:
+                        # ── 已锁定 → 仅更新显示，不更新控制参数 ──
+                        with self.latest_detection_lock:
+                            self.latest_detection = det
+                        # 调试：检测到不同物体时提示
+                        if (det["class"] != self._locked_class
+                                and _cycle % 30 == 0):
+                            print(
+                                f"[视觉] 检测到 {det['class']}，"
+                                f"但参数已锁定为 {self._locked_class}"
+                            )
 
-                    with self.latest_detection_lock:
-                        self.latest_detection = det
-
-                    # 事件触发: 更新 stiffness + 力反馈增益
-                    if self.mode == "c":
-                        self.admittance.apply_profile(profile)
-                        self.feedback_sched.set_profile(profile)
-
-                    print(f"[视觉] 🟢 {class_name} ({profile.label}) "
-                          f"K_trans={profile.K_trans} deadband={profile.deadband}")
-                else:
-                    # 用默认值
+                    # 更新检测保持状态（用于显示和状态打印）
+                    self._last_seen_class = det["class"]
+                    self._last_seen_label = det["profile"].label
+                    self._last_seen_cycle = _cycle
+                    self._last_detection_time = time.time()
+                    self._is_holding = False
+                except _q.Empty:
                     pass
+
+                # ── 显示 (30fps, 永不阻塞) ──
+                if self._enable_visualize:
+                    display = rgb.copy()
+                    if last_det["active"]:
+                        x1, y1, x2, y2 = map(int, last_det["bbox"])
+                        color_map = {
+                            "soft": (0, 255, 0),
+                            "medium": (0, 255, 255),
+                            "hard": (0, 0, 255),
+                        }
+                        box_color = color_map.get(
+                            last_det["profile"].label, (255, 255, 255)
+                        )
+                        cv2.rectangle(display, (x1, y1), (x2, y2), box_color, 2)
+                        label = (
+                            f"{last_det['class']} | {last_det['profile'].label} "
+                            f"| {last_det['conf']:.2f}"
+                        )
+                        cv2.putText(display, label, (x1, y1 - 10),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, box_color, 2)
+                    else:
+                        cv2.putText(display, "No detection", (10, 30),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.6,
+                                    (128, 128, 128), 2)
+                    cv2.putText(display, f"Mode: {self.mode}", (10, 460),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.5,
+                                (255, 255, 255), 1)
+                    if self._profile_locked:
+                        lock_text = f"\U0001f512 LOCKED: {self._locked_class}/{self._locked_label}"
+                        cv2.putText(display, lock_text, (10, 475),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.5,
+                                    (0, 255, 255), 2)
+                    cv2.imshow("Camera View", display)
+                    if cv2.waitKey(1) & 0xFF == ord('q'):
+                        print("[视觉线程] 用户关闭画面窗口")
+                        self._enable_visualize = False
+                        # 仅关闭显示，不调用destroyWindow（跨线程Qt会报错）
+                        # 进程退出时OS自动清理
 
             except Exception as e:
                 if self.running:
                     print(f"[视觉] ⚠️ 异常: {e}")
-                time.sleep(0.1)
 
         pipeline.stop()
+        # 不调用destroyAllWindows（跨线程Qt会报QObject::killTimer警告）
+        # 进程退出时OS自动清理所有GUI资源
         print("[视觉线程] 已停止")
 
     # ═══════════════════════════════════════════
@@ -331,7 +572,7 @@ class SharedControlNode:
         dt_force_print = 1.0 / FORCE_PRINT_FREQ
 
         # 启动视觉线程
-        if self.mapper is not None:
+        if self._enable_vision:
             vision_thread = threading.Thread(target=self._vision_loop, daemon=True)
             vision_thread.start()
             print("[主线程] 视觉线程已启动")
@@ -352,6 +593,7 @@ class SharedControlNode:
         try:
             while True:
                 t_start = time.perf_counter()
+                now = time.time()  # 统一时间戳，供抓取检测/超时检测/夹爪控制共用
 
                 # ── 1. 读 Omega.7 ──
                 raw_pos = np.zeros(3)
@@ -374,6 +616,43 @@ class SharedControlNode:
                 if self.grip_est.contact_detected:
                     self._render_contact_pulse()
                     self.grip_est.reset_contact()
+
+                # ── 3a. Omega.7 夹钳状态 → 用户意图判定 ──
+                # 计算 omega_grip_norm (0=完全捏合, 1=完全张开)
+                # _omega_grip 在 _update_gripper() 中更新（10Hz），其他循环沿用旧值
+                # 归一化公式与 _update_gripper() 一致
+                _grip_range = max(self._grip_max - self._grip_min, 1.0)
+                omega_grip_norm = (self._grip_max - self._omega_grip) / _grip_range
+                self._omega_grip_norm = omega_grip_norm
+
+                # 更新用户操作状态
+                self._user_active = omega_grip_norm < OMEGA_ACTIVE_THRESHOLD  # 夹钳捏合>30%
+                user_grasping = omega_grip_norm < OMEGA_GRASP_THRESHOLD       # 夹钳捏合>70%
+
+                if user_grasping and not self._user_grasping:
+                    # 用户从张开/半捏合 → 全捏合：锁定当前 profile
+                    self._user_grasping = True
+                    self._grasp_profile_applied = False
+                    with self._profile_lock:
+                        self._grasp_profile = PhysicsProfile.from_dict(
+                            self.current_profile.to_dict()
+                        )
+                    print(
+                        f"\n  🔒 用户抓取锁定 — Omega={self._omega_grip:.1f}° "
+                        f"(norm={omega_grip_norm:.2f}) | "
+                        f"label={self.current_profile.label}, "
+                        f"K_trans={self.current_profile.K_trans:.2f}"
+                    )
+
+                elif not user_grasping and self._user_grasping:
+                    # 用户从全捏合 → 松开：解除锁定
+                    self._user_grasping = False
+                    self._grasp_profile = None
+                    self._grasp_profile_applied = False
+                    print(
+                        f"\n  🔓 用户抓取解除 — Omega={self._omega_grip:.1f}° "
+                        f"(norm={omega_grip_norm:.2f})"
+                    )
 
                 # ── 4. 力反馈计算 + 渲染 ──
                 if self.mode == "a":
@@ -410,9 +689,67 @@ class SharedControlNode:
                 self.ctrl.set_control(target_pos, self._init_ori)
 
                 # ── 7. 夹爪控制 (降频) ──
-                now = time.time()
                 if (now - self._last_gripper_time) >= dt_gripper:
                     self._update_gripper()
+
+                # ── 检测保持 + 用户意图驱动的 profile 管理 ──
+                if self._enable_vision and self._last_detection_time > 0:
+
+                    # 如果参数已锁定，跳过所有检测保持/超时回退逻辑
+                    if self._profile_locked:
+                        self._is_holding = True
+                    else:
+                        time_since_last_det = now - self._last_detection_time
+                        omega_norm = self._omega_grip_norm  # 0=捏合, 1=张开
+
+                        if self._user_grasping:
+                            # ── 场景：Omega 全捏合 → 锁定 profile ──
+                            # 用户正在抓取，无论检测结果如何，锁定开始抓取时的 profile
+                            with self._profile_lock:
+                                if (self._grasp_profile is not None
+                                        and self.current_profile != self._grasp_profile):
+                                    self.current_profile = self._grasp_profile
+                            # 只在首次进入时同步更新子模块
+                            if not self._grasp_profile_applied and self._grasp_profile is not None:
+                                if self.mode == "c" and self.admittance is not None:
+                                    self.admittance.apply_profile(self._grasp_profile)
+                                self.feedback_sched.set_profile(self._grasp_profile)
+                                self._grasp_profile_applied = True
+                                print(f"  🔒 抓取 profile 已应用到子模块")
+                            self._is_holding = True
+
+                        elif self._user_active:
+                            # ── 场景：Omega 半捏合 → 保持最后检测的 profile ──
+                            # 用户正在靠近/对准物体，即使超时也保持 profile
+                            # 当有新的检测结果时，视觉线程会更新 current_profile（正常运行）
+                            # 当检测丢失时，保持最后的 profile
+                            if time_since_last_det > DETECTION_HOLD_TIMEOUT:
+                                # 保持当前 profile，不回退
+                                self._is_holding = True
+                            elif time_since_last_det > 1.0:
+                                self._is_holding = True
+                            else:
+                                self._is_holding = False
+
+                        else:
+                            # ── 场景：Omega 完全张开 → 标准超时逻辑 ──
+                            # 用户没有在操作，按标准 5 秒超时回退
+                            if time_since_last_det > DETECTION_HOLD_TIMEOUT:
+                                with self._profile_lock:
+                                    if self.current_profile != self._default_profile:
+                                        self.current_profile = self._default_profile
+                                        print(
+                                            f"\n  ⚠️  检测保持超时 ({time_since_last_det:.1f}s > "
+                                            f"{DETECTION_HOLD_TIMEOUT}s)，回退到默认参数"
+                                        )
+                                        if self.mode == "c" and self.admittance is not None:
+                                            self.admittance.apply_profile(self._default_profile)
+                                        self.feedback_sched.set_profile(self._default_profile)
+                                self._is_holding = False
+                            elif time_since_last_det > 1.0:
+                                self._is_holding = True
+                            else:
+                                self._is_holding = False
 
                 # ── 力反馈统计打印 ──
                 loop_count += 1
@@ -440,36 +777,61 @@ class SharedControlNode:
     # ═══════════════════════════════════════════
 
     def _update_gripper(self):
-        """夹爪控制逻辑 (10Hz)"""
+        """夹爪控制逻辑 (10Hz) — daemon 线程中 stop+move 永不阻塞
+
+        Omega.7 夹钳角度直接映射到 Franka 夹爪宽度。
+        每次发命令前先 gripper.stop() 中止任何正在进行的运动，
+        确保夹爪不会因为被物体卡住而阻塞后续命令。
+        stop+move 在独立 daemon 线程中执行，不阻塞 200Hz 主循环。
+        """
         gripper_angle = ctypes.c_double()
         dhd.getGripperAngleDeg(gripper_angle)
-        self._omega_grip = gripper_angle.value
+        raw = gripper_angle.value
+        self._omega_grip = raw
         self._button_grasp = dhd.getButton(0)
 
-        grip_norm = np.clip(
-            (self._omega_grip - GRIPPER_ANGLE_CLOSE) / (GRIPPER_ANGLE_OPEN - GRIPPER_ANGLE_CLOSE),
-            0.0, 1.0,
-        )
-        target_width = grip_norm * GRIPPER_MAX
-        width_change = abs(target_width - self._last_gripper_cmd)
+        # ── Omega.7 夹爪归一化 ──
+        if raw < self._grip_min:
+            self._grip_min = raw
+        if raw > self._grip_max:
+            self._grip_max = raw
 
-        if width_change > GRIPPER_HYSTERESIS:
-            if grip_norm > 0.8:
-                self.gripper.move(target_width, GRIPPER_SPEED)
-            elif grip_norm < 0.2:
-                self.gripper.grasp(
-                    target_width, GRIPPER_SPEED, GRIPPER_FORCE,
-                    GRIPPER_EPS_INNER, GRIPPER_EPS_OUTER,
-                )
-            else:
-                self.gripper.move(target_width, GRIPPER_SPEED)
+        grip_range = self._grip_max - self._grip_min
+        if grip_range > 1.0:
+            grip_norm = np.clip(
+                (self._grip_max - raw) / grip_range, 0.0, 1.0
+            )
+        else:
+            grip_norm = 0.0
+        target_width = grip_norm * GRIPPER_MAX
+
+        # 按钮 → 强制张开
+        if self._button_grasp:
+            target_width = GRIPPER_MAX
+
+        # ── 在线程中执行 stop+move，不阻塞主循环 ──
+        if abs(target_width - self._last_gripper_cmd) > GRIPPER_HYSTERESIS:
+            threading.Thread(
+                target=self._gripper_cmd_thread,
+                args=(target_width,),
+                daemon=True,
+            ).start()
             self._last_gripper_cmd = target_width
 
-        if self._button_grasp:
-            self.gripper.move(GRIPPER_MAX, GRIPPER_SPEED)
-            self._last_gripper_cmd = GRIPPER_MAX
-
         self._last_gripper_time = time.time()
+
+    def _gripper_cmd_thread(self, width: float):
+        """线程内：先 stop 中止旧命令 → move 发新命令"""
+        try:
+            # 中止任何正在进行的夹爪运动，释放夹爪 FSM
+            try:
+                self.gripper.stop()
+            except Exception:
+                pass  # 没有运动中的命令时 stop() 可能抛异常，忽略
+            # 发送新命令
+            self.gripper.move(width, GRIPPER_SPEED)
+        except Exception as e:
+            print(f"   ⚠️ 夹爪 cmd 异常 ({width:.3f}): {e}")
 
     def _render_contact_pulse(self):
         """接触事件: Omega.7 夹持通道脉冲提示"""
@@ -485,10 +847,36 @@ class SharedControlNode:
         F_ext = self._F_ext_current[:3]
         f_grip = self._f_grip_current
 
-        profile_label = self.current_profile.label if self.current_profile else "N/A"
-        profile_class = self.latest_detection["class"] if self.latest_detection else "N/A"
+        # ── 用 Omega.7 意图状态决定显示内容 ──
+        if self._enable_vision and self._last_detection_time > 0:
+            if self._profile_locked:
+                # 参数已锁定（首次识别后保持到实验结束）
+                profile_class = f"🔒{self._locked_class}"
+                profile_label = f"{self._locked_label}(locked)"
+            elif self._user_grasping:
+                # 全捏合锁定
+                profile_class = f"🔒{self._last_seen_class}"
+                profile_label = f"{self._last_seen_label}(lock)"
+            elif self._user_active:
+                # 半捏合保持
+                profile_class = f"⏸{self._last_seen_class}"
+                profile_label = self._last_seen_label
+            elif self._is_holding:
+                # 保持期内（<5s）
+                profile_class = f" ⏸{self._last_seen_class}"
+                profile_label = self._last_seen_label
+            else:
+                # 超时回退
+                profile_class = "⚠️回退默认"
+                profile_label = "default"
+        else:
+            # 无视觉或从未检测到
+            profile_class = f" {self._last_seen_class}"
+            profile_label = "unknown"
 
-        print(f"[{loop_count:>6}] 物体={profile_class:<12} label={profile_label:<8} "
+        print(f"[{loop_count:>6}] 意图={'抓取' if self._user_grasping else '靠近' if self._user_active else '空闲':>4} "
+              f"Omega_norm={self._omega_grip_norm:.2f} "
+              f"物体={profile_class:<14} label={profile_label:<14} "
               f"F_ext=({F_ext[0]:+.2f},{F_ext[1]:+.2f},{F_ext[2]:+.2f}) "
               f"F_fb=({F[0]:+.2f},{F[1]:+.2f},{F[2]:+.2f}) "
               f"grip={f_grip:.2f}")
@@ -529,9 +917,15 @@ def main():
         choices=["a", "b", "c"],
         help="实验模式: a=传统, b=固定增益, c=本文方法 (默认)",
     )
+    parser.add_argument(
+        "--visualize", action="store_true",
+        help="显示 YOLO 检测实时画面窗口（默认已开启，此选项保留向后兼容）",
+    )
     args = parser.parse_args()
 
     node = SharedControlNode(mode=args.mode)
+    # 摄像头画面默认开启（_enable_visualize 已在构造函数中设为 True）
+    # 向后兼容：保留 --visualize 参数，但无需额外赋值
     node.initialize()
     node.run()
 

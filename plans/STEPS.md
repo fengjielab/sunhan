@@ -1,6 +1,8 @@
-# 分步验证计划 — 在真实机械臂上逐步验证每个功能
+# 分步验证 + 对比实验计划
 
-> **原则**：每一步都是一个可独立运行的 Python 脚本，跑完后观察现象、记录数据、确认是否符合预期。不符合就改代码，符合就进入下一步。
+> **两步走**：
+> 1. **Step 0-5**: 在真实机械臂上逐步验证每个功能模块（每步独立运行）
+> 2. **Step 6**: 系统化对比实验（基于 [`experiment_design.md`](plans/experiment_design.md)）
 
 ---
 
@@ -33,38 +35,30 @@ Step 4: 力反馈在线验证
 Step 5: 完整三线集成验证
     ├── 5a: 模式B (视觉+固定增益) 完整流程跑通
     └── 5b: 模式C (视觉+自适应) 完整流程跑通
+    │
+    ▼
+Step 6: 🎯 对比实验（本任务核心）
+    └── 每个操作员: 3 模式 × 5 物体 × 5 重复 = 75 次抓取
+         ├── NASA-TLX 问卷 × 3（每模式结束后）
+         ├── 数据保存 → experiment_trial_runner.py
+         └── 分析 → experiment_analysis.py
 ```
+
+---
+
+## 各文件速查
+
+| 文件 | 功能 |
+|------|------|
+| [`plans/experiment_design.md`](plans/experiment_design.md) | 📋 **完整实验设计方案**（变量定义、流程、假设、统计方法） |
+| [`plans/nasa_tlx_template.md`](plans/nasa_tlx_template.md) | 📝 可打印 NASA-TLX 问卷（每模式一张） |
+| [`plans/experiment_trial_runner.py`](plans/experiment_trial_runner.py) | 🏃 试验运行器（拉丁方随机化、逐次记录结果） |
+| [`plans/experiment_analysis.py`](plans/experiment_analysis.py) | 📊 数据分析+图表+统计检验+LaTeX表格 |
+| [`plans/shared_control_node.py`](plans/shared_control_node.py) | 🔧 底层共享控制节点（模式A/B/C） |
 
 ---
 
 ## Step 0: 硬件连接检查 + 基线遥操作
-
-**目标**：确认所有硬件正常工作，[`my_test/teleop_omega7_franka.py`](my_test/teleop_omega7_franka.py) 可流畅运行。
-
-**操作**：
-```bash
-# 直接在 teleop 基础上跑，确认 baseline 没问题
-cd ~/sunhan
-python3 my_test/teleop_omega7_franka.py
-```
-
-**观察清单**：
-- [ ] Omega.7 连接成功（打印系统名）
-- [ ] Franka 连接成功（无错误）
-- [ ] 手柄移动 → 机械臂跟随（方向正确、无抖动、延迟<50ms）
-- [ ] 夹钳捏合 → 夹爪闭合（角度映射正确）
-- [ ] Ctrl+C 安全停止
-
-**预期问题**：
-- 方向不对 → 调 [`SIGN`](my_test/teleop_omega7_franka.py:27)
-- 速度太慢/太快 → 调 [`SCALE_POS`](my_test/teleop_omega7_franka.py:26)
-- 夹爪映射不对 → 调 [`GRIPPER_ANGLE_OPEN/CLOSE`](my_test/teleop_omega7_franka.py:41-42)
-
-**进入下一步的条件**：机械臂流畅跟随手柄移动，夹爪可以抓取/释放。
-
----
-
-## Step 1: 力估计器在线验证
 
 ### 1a — 空载噪声测试
 
@@ -280,6 +274,102 @@ python3 plans/shared_control_node.py --mode c
 ```
 - 完整体验：视觉→刚度→力反馈 全部自适应
 - 确认切换平滑无震荡
+
+---
+
+## Step 6: 🎯 系统化对比实验
+
+**这是本项目的核心环节，用于采集论文所需的对比数据。**
+
+### 实验设计总览
+
+详细设计见 [`plans/experiment_design.md`](plans/experiment_design.md)。
+
+| 维度 | 内容 |
+|------|------|
+| 自变量 | 3 模式 (A/B/C) × 5 物体 (apple/banana/bottle/book/cell phone) |
+| 重复次数 | 每种组合 5 次 |
+| 总试验数 | 3 × 5 × 5 = **75 次/人** |
+| 操作员 | ≥ 3 人 |
+| 主观评价 | NASA-TLX 问卷每模式 1 份 |
+| 随机化 | 拉丁方 + 物体内随机 |
+
+### 实验流程（操作员视角）
+
+```
+1. 操作员就位，练习 5 分钟自由操作
+2. 执行模式 X 的 25 次抓取（5 物体 × 5 重复，顺序随机）
+   ├── 每次：接近→夹持→提升→移动→释放
+   └── 人工判定：成功(s)/失败(f)/破损(d)/重试(r)
+3. 填写 NASA-TLX 问卷 × 1
+4. 换下一模式，重复 2-3
+5. 全部完成
+```
+
+### 启动命令
+
+```bash
+# ── 前置验证（确保所有模块正常）──
+
+# Step 0: 硬件基线
+python3 my_test/teleop_omega7_franka.py
+
+# Step 1: 力估计器验证
+python3 plans/step_1a_force_noise.py
+
+# Step 2: 自适应导纳验证
+python3 plans/step_2b_visual_trigger.py --simulate
+
+# Step 3: 夹持力基线
+python3 plans/step_3a_grip_baseline.py
+
+# ── 对比实验 ──
+
+# 方式1: 完整实验（按照拉丁方顺序自动执行全部 75 次）
+python3 plans/experiment_trial_runner.py --full --operator 1
+# 完成后换操作员2:
+python3 plans/experiment_trial_runner.py --full --operator 2
+# 完成后换操作员3:
+python3 plans/experiment_trial_runner.py --full --operator 3
+
+# 方式2: 仅打印计划（dry-run，确认后执行）
+python3 plans/experiment_trial_runner.py --full --operator 1 --dry-run
+
+# 方式3: 单次快速测试（调试用）
+python3 plans/experiment_trial_runner.py --operator 1 --mode c --obj banana --trial 1
+
+# ── 数据分析（实验完成后）──
+
+python3 plans/experiment_analysis.py data/experiment_*/operator_*/ --output ./paper_figures
+```
+
+### 实验材料准备清单
+
+- [ ] 5 种物体: apple × 5, banana × 5, bottle × 1, book × 1, cell phone × 1
+- [ ] 托盘 × 1（放置于机械臂 20cm 外）
+- [ ] NASA-TLX 纸质问卷 × （3 模式 × 3 操作员 + 备份）= 15 份
+- [ ] 笔 × 3
+- [ ] 实验记录表（人工记录成功/失败/破损）
+
+### NASA-TLX 问卷填写时机
+
+```
+模式A 全部完成 → 📝 填写第1份 TLX → 休息1分钟
+模式B 全部完成 → 📝 填写第2份 TLX → 休息1分钟
+模式C 全部完成 → 📝 填写第3份 TLX → 完成
+```
+
+问卷模板见 [`plans/nasa_tlx_template.md`](plans/nasa_tlx_template.md)。
+
+### 预期结果（基于参数映射表推算）
+
+| 指标 | 模式A | 模式B | 模式C | 预期效果 |
+|------|-------|-------|-------|---------|
+| 软物体成功率 | ~60% | ~70% | ~90% | 自适应刚度保护软物体 |
+| 硬物体成功率 | ~80% | ~85% | ~95% | 适中刚度提高可控性 |
+| 软物体破损率 | ~30% | ~20% | ~5% | C 最低 |
+| Raw TLX | ~12 | ~9 | ~6 | C 最省力 |
+| 力反馈峰值(软) | ~0N | ~2N | ~0.5N | C 自适应增益降低过大反馈力 |
 
 ---
 

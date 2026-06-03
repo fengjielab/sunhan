@@ -98,79 +98,82 @@ class VisionPhysicsMapper:
     # ── 内建默认查表（基于经验值，可 JSON 覆盖）──
     DEFAULT_TABLE: Dict[str, dict] = {
         # ===== soft =====
+        # 力反馈增益提升(0.6~0.65)：软物体需要更清晰的力觉感知来精细操控
+        # 导纳刚度保持低值(30~60)：物理上保护物体不受冲击
         "apple": {
-            "K_trans": 0.3, "K_grip": 0.2, "F_target": 8.0,
+            "K_trans": 0.65, "K_grip": 0.2, "F_target": 8.0,
             "deadband": 0.3, "admittance_K": 50.0,
             "approach_speed": 0.02, "label": "soft",
-            "description": "软物体-苹果: 低刚度、小力",
+            "description": "软物体-苹果: 低导纳刚度保护+中高等力反馈增益",
         },
         "banana": {
-            "K_trans": 0.3, "K_grip": 0.2, "F_target": 6.0,
+            "K_trans": 0.65, "K_grip": 0.2, "F_target": 6.0,
             "deadband": 0.3, "admittance_K": 50.0,
             "approach_speed": 0.015, "label": "soft",
-            "description": "软物体-香蕉: 极低刚度、极小力、超慢速",
+            "description": "软物体-香蕉: 低导纳刚度保护+中高等力反馈增益、超慢速",
         },
         "orange": {
-            "K_trans": 0.35, "K_grip": 0.25, "F_target": 7.0,
+            "K_trans": 0.65, "K_grip": 0.25, "F_target": 7.0,
             "deadband": 0.25, "admittance_K": 60.0,
             "approach_speed": 0.02, "label": "soft",
-            "description": "软物体-橙子: 低刚度",
+            "description": "软物体-橙子: 低导纳刚度保护+中高等力反馈增益",
         },
         "teddy bear": {
-            "K_trans": 0.2, "K_grip": 0.1, "F_target": 3.0,
+            "K_trans": 0.6, "K_grip": 0.1, "F_target": 3.0,
             "deadband": 0.5, "admittance_K": 30.0,
             "approach_speed": 0.01, "label": "soft",
-            "description": "软物体-毛绒玩具: 极柔策略",
+            "description": "软物体-毛绒玩具: 极低导纳刚度+中等力反馈增益",
         },
         # ===== medium =====
         "bottle": {
-            "K_trans": 0.5, "K_grip": 0.4, "F_target": 15.0,
+            "K_trans": 0.6, "K_grip": 0.4, "F_target": 15.0,
             "deadband": 0.4, "admittance_K": 150.0,
             "approach_speed": 0.03, "label": "medium",
-            "description": "中硬-瓶子: 中等刚度",
+            "description": "中硬-瓶子: 中等刚度+中等力反馈",
         },
         "cup": {
-            "K_trans": 0.5, "K_grip": 0.4, "F_target": 12.0,
+            "K_trans": 0.6, "K_grip": 0.4, "F_target": 12.0,
             "deadband": 0.4, "admittance_K": 150.0,
             "approach_speed": 0.025, "label": "medium",
-            "description": "中硬-杯子: 中等刚度、略低力",
+            "description": "中硬-杯子: 中等刚度+中等力反馈",
         },
         "bowl": {
-            "K_trans": 0.45, "K_grip": 0.35, "F_target": 10.0,
+            "K_trans": 0.55, "K_grip": 0.35, "F_target": 10.0,
             "deadband": 0.35, "admittance_K": 120.0,
             "approach_speed": 0.025, "label": "medium",
-            "description": "中硬-碗: 中等刚度",
+            "description": "中硬-碗: 中等刚度+中等力反馈",
         },
         # ===== hard =====
+        # 硬物体力反馈增益适当降低(0.8~1.0)：避免过强的突兀感
         "book": {
-            "K_trans": 1.0, "K_grip": 0.8, "F_target": 25.0,
+            "K_trans": 0.85, "K_grip": 0.8, "F_target": 25.0,
             "deadband": 0.5, "admittance_K": 300.0,
             "approach_speed": 0.05, "label": "hard",
-            "description": "硬物体-书本: 正常刚度、正常力",
+            "description": "硬物体-书本: 正常刚度+中高力反馈",
         },
         "cell phone": {
-            "K_trans": 1.0, "K_grip": 0.8, "F_target": 20.0,
+            "K_trans": 0.85, "K_grip": 0.8, "F_target": 20.0,
             "deadband": 0.5, "admittance_K": 300.0,
             "approach_speed": 0.04, "label": "hard",
-            "description": "硬物体-手机: 中高刚度、谨慎夹持",
+            "description": "硬物体-手机: 中高刚度+中高力反馈",
         },
         "keyboard": {
-            "K_trans": 1.0, "K_grip": 0.8, "F_target": 22.0,
+            "K_trans": 0.85, "K_grip": 0.8, "F_target": 22.0,
             "deadband": 0.5, "admittance_K": 300.0,
             "approach_speed": 0.05, "label": "hard",
-            "description": "硬物体-键盘: 正常刚度",
+            "description": "硬物体-键盘: 正常刚度+中高力反馈",
         },
         "mouse": {
-            "K_trans": 0.9, "K_grip": 0.7, "F_target": 18.0,
+            "K_trans": 0.8, "K_grip": 0.7, "F_target": 18.0,
             "deadband": 0.45, "admittance_K": 250.0,
             "approach_speed": 0.04, "label": "hard",
-            "description": "硬物体-鼠标: 中等刚度",
+            "description": "硬物体-鼠标: 中等刚度+中高力反馈",
         },
         "scissors": {
-            "K_trans": 1.2, "K_grip": 1.0, "F_target": 30.0,
+            "K_trans": 1.0, "K_grip": 1.0, "F_target": 30.0,
             "deadband": 0.6, "admittance_K": 400.0,
             "approach_speed": 0.06, "label": "hard",
-            "description": "硬物体-剪刀: 高刚度、大力",
+            "description": "硬物体-剪刀: 高刚度+高力反馈",
         },
         # ===== unknown / default =====
         "__default__": {

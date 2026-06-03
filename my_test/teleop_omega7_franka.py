@@ -23,7 +23,7 @@ from panda_py import controllers
 # ============================================================
 # 配置参数
 # ============================================================
-SCALE_POS = 3.0        # 位置映射倍数：Omega 手柄位移 → Franka 末端位移（改大后遥操作更灵敏）
+SCALE_POS = 5.0        # 位置映射倍数：Omega 手柄位移 → Franka 末端位移（改大后遥操作更灵敏）
 SIGN = np.array([-1.0, -1.0, 1.0])  # 坐标轴方向修正
 
 POS_CONTROL_FREQ = 200.0       # 位置控制频率 (Hz) — 只管机械臂末端，不阻塞
@@ -36,10 +36,8 @@ GRIPPER_MAX = 0.08     # 夹爪最大开度 (m)
 GRIPPER_INTERVAL = 0.05  # 夹爪命令最小间隔 (s) — 避免高频下发阻塞主循环
 
 # Omega.7 夹爪角度 → Franka 夹爪开度
-# 实测 Omega.7 夹爪角度为负值：
-#   完全张开约 -60°，完全捏合约 0°（越接近 0 = 捏得越紧）
-GRIPPER_ANGLE_OPEN  = -60.0  # Omega.7 夹爪完全张开时的角度（度）
-GRIPPER_ANGLE_CLOSE =   0.0  # Omega.7 夹爪完全捏合时的角度（度）
+# 运行时自适应归一化：边操作边学习 min/max，无需预先标定
+# 注意：Omega.7 夹爪角度为负值，完全张开约 -60°，完全捏合约 0°
 
 # Franka 夹爪 grasp() 必须提供的容错参数
 GRIPPER_EPS_INNER = 0.005
@@ -106,6 +104,11 @@ def main():
     print(f"   Omega 零点: {np.round(omega_home, 4)}")
     print("   ✓ 标定完成")
 
+    # ── 夹爪角度：运行时自适应归一化 ──
+    # 使用 -30°(张开)/0°(捏合) 初始化，运行时只向外扩展。
+    grip_min = -30.0   # 最小角度（完全张开）
+    grip_max = 0.0     # 最大角度（完全捏合）
+
     virtual_ref = init_pos.copy()
 
     # -----------------------------------------------------------
@@ -139,17 +142,43 @@ def main():
     dt_gripper = 1.0 / GRIPPER_UPDATE_FREQ  # 100ms
 
     # 夹爪状态跟踪
-    grasp_hysteresis = 0.01      # 防抖阈值：开度变化超过 12mm 才触发命令
-    gripper_was_open = True      # 记录上次夹爪是否打开
-    last_gripper_cmd = 0.08      # 上次发送的开度
-    last_gripper_time = 0.0      # 上次夹爪更新的时间戳
-    last_print_time = 0.0        # 上次打印刷新的时间戳
+    import threading
+    gripper_busy = False
+    gripper_pending_width = GRIPPER_MAX   # 追赶模式：始终记录最新目标
+    gripper_last_cmd = GRIPPER_MAX         # 上次已执行的命令
+    gripper_hysteresis = 0.003             # 死区 ≈ 0.24mm / 8mm ≈ 3% (更灵敏)
+    last_gripper_time = 0.0
+    last_print_time = 0.0
 
     # 夹爪读数缓存（每次位置循环都读，但只在夹爪循环里处理）
     omega_grip = 0.0
     button_grasp = 0
 
     loop_count = 0
+
+    def gripper_worker():
+        """在独立线程中执行阻塞的 move/grasp（追赶模式）"""
+        nonlocal gripper_busy, gripper_last_cmd, gripper_pending_width
+        try:
+            while True:
+                tw = gripper_pending_width
+                if abs(tw - gripper_last_cmd) <= gripper_hysteresis:
+                    break
+                grip_norm = tw / GRIPPER_MAX
+                if grip_norm > 0.8:
+                    gripper.move(tw, GRIPPER_SPEED)
+                elif grip_norm < 0.2:
+                    gripper.grasp(tw, GRIPPER_SPEED, GRIPPER_FORCE,
+                                  GRIPPER_EPS_INNER, GRIPPER_EPS_OUTER)
+                else:
+                    gripper.move(tw, GRIPPER_SPEED)
+                gripper_last_cmd = tw
+                if abs(gripper_pending_width - tw) <= gripper_hysteresis:
+                    break
+        except Exception as e:
+            print(f"\n   ⚠️ 夹爪命令失败: {e}")
+        finally:
+            gripper_busy = False
 
     try:
         while True:
@@ -179,32 +208,32 @@ def main():
             omega_grip = gripper_angle.value
             button_grasp = dhd.getButton(0)
 
-            # ======== 4. 夹爪（低频执行） ========
+            # ======== 4. 夹爪（低频执行，独立线程不阻塞主循环） ========
             t5 = time.perf_counter()
             now = time.time()
             if (now - last_gripper_time) >= dt_gripper:
-                grip_norm = np.clip(
-                    (omega_grip - GRIPPER_ANGLE_CLOSE) / (GRIPPER_ANGLE_OPEN - GRIPPER_ANGLE_CLOSE),
-                    0.0, 1.0
-                )
+                # 运行时自适应归一化：用 -60°/0° 初始化，运行时只向外扩展
+                if omega_grip < grip_min:
+                    grip_min = omega_grip
+                if omega_grip > grip_max:
+                    grip_max = omega_grip
+                grip_range = grip_max - grip_min
+                if grip_range > 1.0:
+                    grip_norm = np.clip(
+                        (grip_max - omega_grip) / grip_range, 0.0, 1.0
+                    )
                 target_width = grip_norm * GRIPPER_MAX
-                width_change = abs(target_width - last_gripper_cmd)
-                if width_change > grasp_hysteresis:
-                    if grip_norm > 0.8:
-                        gripper.move(target_width, GRIPPER_SPEED)
-                        gripper_was_open = True
-                    elif grip_norm < 0.2:
-                        gripper.grasp(
-                            target_width, GRIPPER_SPEED, GRIPPER_FORCE,
-                            GRIPPER_EPS_INNER, GRIPPER_EPS_OUTER,
-                        )
-                        gripper_was_open = False
-                    else:
-                        gripper.move(target_width, GRIPPER_SPEED)
-                    last_gripper_cmd = target_width
+
+                # 始终记录最新目标（即使 worker 正忙也不丢）
+                gripper_pending_width = target_width
                 if button_grasp:
-                    gripper.move(GRIPPER_MAX, GRIPPER_SPEED)
-                    last_gripper_cmd = GRIPPER_MAX
+                    gripper_pending_width = GRIPPER_MAX
+
+                # 仅在 worker 空闲时触发
+                if not gripper_busy and abs(target_width - gripper_last_cmd) > gripper_hysteresis:
+                    gripper_busy = True
+                    threading.Thread(target=gripper_worker, daemon=True).start()
+
                 last_gripper_time = now
 
             t_loop_end = time.perf_counter()

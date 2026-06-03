@@ -222,31 +222,60 @@ f_grip = ||τ_wrist|| / τ_max
 
 ---
 
-## 第6层：对比实验（待执行）
+## 第6层：对比实验（设计方案已就绪）
+
+> 完整的实验设计方案见 [`plans/experiment_design.md`](plans/experiment_design.md)
 
 ### 实验平台
 - 硬件：Franka Emika Panda、Omega.7、RealSense D435i
 - 软件：Ubuntu 22.04 + Python 3.10 + panda_py + forcedimension_core + YOLOv11n
 
-### 实验任务
-操作员通过 Omega.7 控制 Panda，抓取桌面上的 5 类物体（apple, banana, book, cell phone, bottle），移至 20cm 外托盘放下。
+### 实验设计
 
-### 三种对比模式（已内置在 shared_control_node.py）
+| 维度 | 内容 |
+|------|------|
+| 自变量 | 3 模式 (A/B/C) × 5 物体 (apple/banana/bottle/book/cell phone) |
+| 重复次数 | 每组合 5 次 |
+| 总试验数 | **75 次/人**，≥3 人 |
+| 随机化 | 拉丁方(模式) + 随机(物体内) |
+| 主观评价 | NASA-TLX (Raw TLX, 0-20)，每模式1份 |
+
+### 三种对比模式
 
 | 模式 | 视觉引导 | 力反馈 | 导纳刚度 |
 |------|---------|--------|---------|
-| 模式A | 无 | 固定零力 | 固定K=200 |
-| 模式B | 有 | 固定增益K=0.6 | 固定K=200 |
-| 模式C | 有 | 自适应增益 | 自适应K(c) |
+| 模式A (Baseline) | 无 | 零力(透明模式) | 固定K=200 |
+| 模式B (固定增益) | 有 | 固定K_trans=0.6 | 固定K=200 |
+| 模式C (本文方法) | 有 | 自适应K_trans(c) | 自适应K(c) |
 
 ### 评价指标
-1. 任务成功率（%）
-2. 任务完成时间（s）
-3. 软物体破损率（%）
-4. NASA-TLX 主观负荷评分（1-10）
+| 指标 | 类型 | 来源 |
+|------|------|------|
+| 抓取成功率 (%) | 客观 | 人工判定 |
+| 任务完成时间 (s) | 客观 | 人工+时间戳 |
+| 软物体破损率 (%) | 客观 | 人工检查 |
+| |F_fb| 均值/峰值 | 客观 | CSV 数据 |
+| |F_ext| 峰值 | 客观 | CSV 数据 |
+| f_grip 均值 | 客观 | CSV 数据 |
+| NASA-TLX (Raw TLX 0-20) | 主观 | 问卷 |
 
-### 实验脚本（待创建）
-- `plans/experiment_runner.py` — 实验流程自动化 + 数据记录
+### 实验脚本
+
+| 脚本 | 功能 | 状态 |
+|------|------|------|
+| [`plans/experiment_trial_runner.py`](plans/experiment_trial_runner.py) | 试验执行器（拉丁方+逐次记录） | ✅ 已完成 |
+| [`plans/experiment_analysis.py`](plans/experiment_analysis.py) | 数据分析+图表+统计+LaTeX | ✅ 已完成 |
+| [`plans/nasa_tlx_template.md`](plans/nasa_tlx_template.md) | NASA-TLX 问卷（可打印） | ✅ 已完成 |
+
+### 启动命令
+
+```bash
+# 完整实验（操作员1，拉丁方顺序A→B→C）
+python3 plans/experiment_trial_runner.py --full --operator 1
+
+# 数据分析
+python3 plans/experiment_analysis.py data/experiment_*/operator_*/ --output ./paper_figures
+```
 
 ---
 
@@ -265,6 +294,10 @@ f_grip = ||τ_wrist|| / τ_max
 | 第3层 | 夹持力近似估计 | ✅ 已完成 | [`plans/grip_force_estimator.py`](plans/grip_force_estimator.py) |
 | 第4层 | 主端自适应力反馈调度 | ✅ 已完成 | [`plans/force_feedback_scheduler.py`](plans/force_feedback_scheduler.py) |
 | 第5层 | 系统架构图 | ❌ 待绘制 | — |
-| 第6层 | 对比实验 | ❌ 待执行 | [`plans/experiment_runner.py`](plans/experiment_runner.py) (待创建) |
+| 第6层 | 对比实验（设计） | ✅ 已完成 | [`plans/experiment_design.md`](plans/experiment_design.md) |
+| 第6.1层 | 实验运行器 | ✅ 已完成 | [`plans/experiment_trial_runner.py`](plans/experiment_trial_runner.py) |
+| 第6.2层 | 数据分析+图表 | ✅ 已完成 | [`plans/experiment_analysis.py`](plans/experiment_analysis.py) |
+| 第6.3层 | NASA-TLX问卷 | ✅ 已完成 | [`plans/nasa_tlx_template.md`](plans/nasa_tlx_template.md) |
+| 第6层执行 | 在真实机械臂上跑实验 | 🔲 **待执行** | 需要3名操作员，约2-3小时 |
 | 第7层 | 论文撰写 | ❌ 待撰写 | — |
 | 第8层 | 审阅与修改 | ❌ 待完成 | — |

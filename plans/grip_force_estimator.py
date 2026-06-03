@@ -45,11 +45,11 @@ class GripForceEstimator:
     """
 
     WRIST_JOINT_INDICES = [4, 5, 6]  # J5, J6, J7 (0-indexed)
-    # 以下默认值基于 step_3a 真实机器人实测标定 (2026-05):
-    #   ||τ_wrist|| 空载基线: mean=0.16 Nm, std≈0.00 Nm, max=0.16 Nm
-    #   tau_max=3.0  → f_grip = 0.16/3.0 ≈ 0.05 (空载)
+    # 以下默认值基于 step_3a 真实机器人实测标定 (2026-05-30):
+    #   ||τ_wrist|| 空载基线: mean=0.17 Nm, std≈0.00 Nm, max=0.17 Nm
+    #   tau_max=3.0  → f_grip = 0.17/3.0 ≈ 0.06 (空载)
     #                  f_grip = 1.5/3.0  ≈ 0.50 (典型夹持)
-    #                  f_grip = 3.0/3.0  ≈ 1.00 (最大)
+    #                  f_grip = 3.0/3.0  ≈ 1.00 (最大夹持)
     TAU_MAX_DEFAULT = 3.0
     DEFAULT_WIDTH_EPSILON = 0.002
     DEFAULT_TORQUE_THRESHOLD = 1.0
