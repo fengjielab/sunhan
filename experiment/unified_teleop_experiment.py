@@ -1,20 +1,22 @@
 #!/usr/bin/env python3
 """
-unified_teleop_experiment.py — 统一遥操作实验脚本（修订版）
+unified_teleop_experiment.py — 视觉语义驱动的多参数阻抗辅助遥操作实验脚本
 ===============================================================
 
-基于 interactive_teleop.py 的优雅架构，融合 4 种实验模式 + YOLO 视觉 + 评分卡。
+基于 interactive_teleop.py 的遥操作架构，融合 4 种实验模式、YOLO 视觉、
+视觉语义-阻抗策略库、轨迹记录和评分卡。
 
 【修订要点】
-1. Mode B 改为三档选择（1/2/3 = 软/中/硬），确保实验可重复、与 C 组公平对比
-2. Mode C/D YOLO 只在物体类别变化时更新参数，避免 200Hz 震荡
-3. 录制改为手动 r 键控制，模式切换不再自动保存/自动开始
-4. 增加实验计数器，实时提示当前进度（n/10）
-5. YOLO 子进程支持 OpenCV 普通摄像头 fallback
-6. 最终汇总输出均值、标准差、成功率等统计量
-7. 评分卡增加变形量（mm）输入
-8. 参数过渡增加线程锁，避免并发读写异常
-9. 菜单同步更新，反映新的按键映射
+1. Mode B 改为三档策略选择（1/2/3 = 软/中/硬），确保实验可重复、与 C 组公平对比
+2. Mode C 由视觉自动调用多参数阻抗策略库，YOLO 只在物体类别变化时更新参数
+3. Mode D 仅显示/记录视觉识别结果，不改变阻抗、力反馈或夹爪参数
+4. 录制改为手动 r 键控制，模式切换不再自动保存/自动开始
+5. 增加实验计数器，实时提示当前进度（n/10）
+6. YOLO 子进程支持 OpenCV 普通摄像头 fallback
+7. 最终汇总输出均值、标准差、成功率等统计量
+8. 评分卡增加变形量（mm）输入
+9. 参数过渡增加线程锁，避免并发读写异常
+10. CSV/JSON 记录策略来源和完整多参数策略快照
 
 实验流程:
    放物体 → 按 s/m/h 标记类别 → 按 a/b/c/d 切换模式 → 按 r 开始录制 → 
@@ -22,7 +24,7 @@ unified_teleop_experiment.py — 统一遥操作实验脚本（修订版）
 
 按键:
    a → mode a (固定阻抗)          b → mode b (人工选阻抗: 1/2/3 选软/中/硬)
-   c → mode c (自动YOLO+查表)      d → mode d (YOLO只选夹爪速度)
+   c → mode c (视觉自动策略库)      d → mode d (仅视觉显示/记录)
    s → 标记软物体                  m → 标记中等物体
    h → 标记硬物体                  r → 开始/停止录制 + 评分卡
 
@@ -88,8 +90,29 @@ from vision_physics_mapper import (
     VisionPhysicsMapper,
     PhysicsProfile,
 )
-from grip_force_estimator import GripForceEstimator
-from force_estimator import ForceEstimator
+try:
+    from grip_force_estimator import GripForceEstimator
+except ImportError:
+    class GripForceEstimator:
+        def __init__(self, *args, **kwargs):
+            self.f_grip = 0.0
+            self.contact_detected = False
+
+        def update(self, *args, **kwargs):
+            return 0.0
+
+try:
+    from force_estimator import ForceEstimator
+except ImportError:
+    class ForceEstimator:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def update(self, *args, **kwargs):
+            return np.zeros(6)
+
+        def estimate(self, *args, **kwargs):
+            return np.zeros(6)
 
 
 # ═══════════════════════════════════════════════════════
@@ -185,6 +208,7 @@ DEFAULT_DEADBAND = 0.3
 DEFAULT_SCALE = 3.0
 
 DEFAULT_GRIPPER_SPEED = 0.05
+DEFAULT_GRIPPER_FORCE_LIMIT = 20.0
 
 GRIPPER_SPEED = 0.1
 GRIPPER_FORCE = 20.0
@@ -219,6 +243,7 @@ TRAJECTORY_CSV_HEADER = [
     "F_fb_x", "F_fb_y", "F_fb_z",
     "f_grip", "f_grip_filtered", "contact_detected",
     "K_trans", "K_rot", "damping_ratio", "deadband", "K_fb", "scale",
+    "gripper_force_limit", "strategy_source",
     "target_x", "target_y", "target_z",
     "actual_x", "actual_y", "actual_z",
     "pos_error_x", "pos_error_y", "pos_error_z",
@@ -227,10 +252,10 @@ TRAJECTORY_CSV_HEADER = [
 ]
 
 # ═══════════════════════════════════════════════════════
-# 实验参数表（软/中/硬三档）
+# 视觉语义-阻抗策略库（软/中/硬三档）
 # ═══════════════════════════════════════════════════════
 
-OBJECT_PARAMS = {
+SEMANTIC_IMPEDANCE_STRATEGY_LIBRARY = {
     "soft": {
         "K_trans": 50, "K_rot": 5, "D_trans": 14.1, "D_rot": 4.5, "M": 0.5,
         "K_fb": 0.3, "deadband": 0.3,
@@ -253,6 +278,9 @@ OBJECT_PARAMS = {
         "admittance_K": 150.0, "approach_speed": 0.05,
     },
 }
+
+# 兼容旧变量名：已有代码和文档中仍可能引用 OBJECT_PARAMS。
+OBJECT_PARAMS = SEMANTIC_IMPEDANCE_STRATEGY_LIBRARY
 
 
 # ═══════════════════════════════════════════════════════
@@ -370,7 +398,7 @@ def print_scorecard(mode: str, object_label: str,
     print(f"║               📊 实验评分卡{' ' * 27}║")
     print("╠" + "═" * 55 + "╣")
     mode_display = {"a": "固定阻抗", "b": "人工选阻抗",
-                     "c": "自动YOLO+查表", "d": "YOLO只选夹爪速度"}
+                     "c": "视觉自动策略库", "d": "仅视觉显示/记录"}
     mode_name = mode_display.get(mode, mode)
     print(f"║  模式:  mode {mode} ({mode_name}){' ' * (28 - len(mode_name))}║")
     emoji = {"soft": "🟢", "medium": "🟡", "hard": "🔴"}
@@ -452,7 +480,7 @@ def print_comparison_table(results: List[dict], object_label: str) -> None:
     print("╚════╧════════╧════════╧══════════╧═══════╧══════╧══════╧══════╧══════╝")
     best = results[best_idx]
     mode_display = {"a": "固定阻抗", "b": "人工选阻抗",
-                     "c": "自动YOLO+查表", "d": "YOLO只选夹爪速度"}
+                     "c": "视觉自动策略库", "d": "仅视觉显示/记录"}
     print(f"  🏆 mode {best['mode']} ({mode_display.get(best['mode'], '')}) 综合最优")
     print()
 
@@ -500,6 +528,8 @@ class UnifiedTeleopExperiment:
         self._deadband_cur = DEFAULT_DEADBAND
         self._scale_cur = DEFAULT_SCALE
         self._gripper_speed = DEFAULT_GRIPPER_SPEED
+        self._gripper_force_limit = DEFAULT_GRIPPER_FORCE_LIMIT
+        self._strategy_source = "fixed_baseline"
 
         # ── 线程锁（新增） ──
         self._param_lock = threading.Lock()
@@ -573,7 +603,7 @@ class UnifiedTeleopExperiment:
     def mode_name(m: str) -> str:
         names = {
             "a": "固定阻抗", "b": "人工选阻抗",
-            "c": "自动YOLO+查表", "d": "YOLO只选夹爪速度",
+            "c": "视觉自动策略库", "d": "仅视觉显示/记录",
         }
         return names.get(m, "未知")
 
@@ -832,7 +862,11 @@ class UnifiedTeleopExperiment:
     # ═══════════════════════════════════════════
 
     def _apply_mode_params(self, mode: str):
-        """根据模式设置控制参数（修订版：B组改为查表，C/D组变化检测）"""
+        """根据模式设置控制参数。
+
+        Mode A/D 使用固定基线；Mode B 使用人工选择的语义策略；
+        Mode C 使用 YOLO 识别结果自动调用视觉语义-阻抗策略库。
+        """
         if mode == "a":
             # 固定阻抗：所有物体使用同一套默认参数
             target_K = DEFAULT_K_TRANS
@@ -842,9 +876,11 @@ class UnifiedTeleopExperiment:
                 self._deadband_cur = DEFAULT_DEADBAND
                 self._K_fb_cur = DEFAULT_K_FB
                 self._gripper_speed = DEFAULT_GRIPPER_SPEED
+                self._gripper_force_limit = DEFAULT_GRIPPER_FORCE_LIMIT
+                self._strategy_source = "fixed_baseline"
 
         elif mode == "b":
-            # 人工选阻抗：根据当前标记的物体类型查表应用参数
+            # 人工选阻抗：根据操作者选择的 soft/medium/hard 策略应用参数
             if self._profile_from_yolo and hasattr(self._profile_from_yolo, 'label'):
                 p = self._profile_from_yolo
                 target_K = getattr(p, 'K_trans', DEFAULT_K_TRANS)
@@ -854,6 +890,10 @@ class UnifiedTeleopExperiment:
                     self._deadband_cur = getattr(p, 'deadband', DEFAULT_DEADBAND)
                     self._K_fb_cur = getattr(p, 'K_fb', DEFAULT_K_FB)
                     self._gripper_speed = getattr(p, 'gripper_speed', DEFAULT_GRIPPER_SPEED)
+                    self._gripper_force_limit = getattr(
+                        p, 'gripper_force_limit', DEFAULT_GRIPPER_FORCE_LIMIT
+                    )
+                    self._strategy_source = f"manual_{getattr(p, 'label', self._object_label)}"
             else:
                 # 未选择时默认用中等
                 params = OBJECT_PARAMS["medium"]
@@ -864,9 +904,11 @@ class UnifiedTeleopExperiment:
                     self._deadband_cur = params["deadband"]
                     self._K_fb_cur = params["K_fb"]
                     self._gripper_speed = params["gripper_speed"]
+                    self._gripper_force_limit = params["gripper_force_limit"]
+                    self._strategy_source = "manual_medium_default"
 
         elif mode == "c":
-            # 自动YOLO+查表：根据 YOLO 识别的物体类型查表
+            # 本文方法：视觉语义自动调用多参数阻抗策略库
             if self._profile_from_yolo:
                 p = self._profile_from_yolo
                 target_K = getattr(p, 'K_trans', DEFAULT_K_TRANS)
@@ -876,6 +918,10 @@ class UnifiedTeleopExperiment:
                     self._deadband_cur = getattr(p, 'deadband', DEFAULT_DEADBAND)
                     self._K_fb_cur = getattr(p, 'K_fb', DEFAULT_K_FB)
                     self._gripper_speed = getattr(p, 'gripper_speed', DEFAULT_GRIPPER_SPEED)
+                    self._gripper_force_limit = getattr(
+                        p, 'gripper_force_limit', DEFAULT_GRIPPER_FORCE_LIMIT
+                    )
+                    self._strategy_source = f"vision_{getattr(p, 'label', self._object_label)}"
             else:
                 params = OBJECT_PARAMS.get(self._object_label, OBJECT_PARAMS["medium"])
                 target_K = params["K_trans"]
@@ -885,20 +931,20 @@ class UnifiedTeleopExperiment:
                     self._deadband_cur = params["deadband"]
                     self._K_fb_cur = params["K_fb"]
                     self._gripper_speed = params["gripper_speed"]
+                    self._gripper_force_limit = params["gripper_force_limit"]
+                    self._strategy_source = f"vision_fallback_{self._object_label}"
 
         elif mode == "d":
-            # YOLO只选夹爪速度：阻抗固定，仅夹爪速度随物体变化
+            # 视觉消融：只显示/记录 YOLO 结果，不改变任何控制参数
             target_K = DEFAULT_K_TRANS
             target_Kr = DEFAULT_K_ROT
             target_zeta = DEFAULT_DAMPING_RATIO
             with self._param_lock:
                 self._deadband_cur = DEFAULT_DEADBAND
                 self._K_fb_cur = DEFAULT_K_FB
-            if self._profile_from_yolo:
-                self._gripper_speed = getattr(self._profile_from_yolo, 'gripper_speed', DEFAULT_GRIPPER_SPEED)
-            else:
-                params = OBJECT_PARAMS.get(self._object_label, OBJECT_PARAMS["medium"])
-                self._gripper_speed = params["gripper_speed"]
+                self._gripper_speed = DEFAULT_GRIPPER_SPEED
+                self._gripper_force_limit = DEFAULT_GRIPPER_FORCE_LIMIT
+                self._strategy_source = "vision_display_only"
 
         else:
             return
@@ -912,6 +958,8 @@ class UnifiedTeleopExperiment:
               f"deadband={self._deadband_cur:.2f}, "
               f"K_fb={self._K_fb_cur:.2f}, "
               f"gripper_speed={self._gripper_speed:.3f}, "
+              f"gripper_force_limit={self._gripper_force_limit:.1f}, "
+              f"source={self._strategy_source}, "
               f"scale={self._scale_cur:.1f}")
 
     def _switch_mode(self, new_mode: str):
@@ -944,6 +992,8 @@ class UnifiedTeleopExperiment:
                 "deadband": self._deadband_cur,
                 "scale": self._scale_cur,
                 "gripper_speed": self._gripper_speed,
+                "gripper_force_limit": self._gripper_force_limit,
+                "strategy_source": self._strategy_source,
             }
         try:
             with open(self.SAVE_FILE, "w") as f:
@@ -967,6 +1017,10 @@ class UnifiedTeleopExperiment:
                     setattr(self, attr, val)
                 elif key == "gripper_speed":
                     self._gripper_speed = val
+                elif key == "gripper_force_limit":
+                    self._gripper_force_limit = val
+                elif key == "strategy_source":
+                    self._strategy_source = val
 
         if self.ctrl:
             K = self._build_stiffness(self._K_trans_cur, self._K_rot_cur)
@@ -1011,6 +1065,8 @@ class UnifiedTeleopExperiment:
             "deadband": self._deadband_cur,
             "K_fb": self._K_fb_cur,
             "scale": self._scale_cur,
+            "gripper_force_limit": self._gripper_force_limit,
+            "strategy_source": self._strategy_source,
             "target_x": self._virtual_ref[0],
             "target_y": self._virtual_ref[1],
             "target_z": self._virtual_ref[2],
@@ -1056,6 +1112,7 @@ class UnifiedTeleopExperiment:
                     f"{row['damping_ratio']:.2f}",
                     f"{row['deadband']:.3f}", f"{row['K_fb']:.3f}",
                     f"{row['scale']:.2f}",
+                    f"{row['gripper_force_limit']:.2f}", row["strategy_source"],
                     f"{row['target_x']:.6f}", f"{row['target_y']:.6f}",
                     f"{row['target_z']:.6f}",
                     f"{row['actual_x']:.6f}", f"{row['actual_y']:.6f}",
@@ -1084,6 +1141,8 @@ class UnifiedTeleopExperiment:
         with open(metrics_path, "w") as f:
             f.write(f"Mode: {self._mode}\n")
             f.write(f"Object: {self._object_label}\n")
+            f.write(f"Object Class: {self._object_class}\n")
+            f.write(f"Strategy Source: {self._strategy_source}\n")
             f.write(f"Duration: {auto_metrics['completion_time_s']:.2f}s\n")
             f.write(f"Path Length: {auto_metrics['path_length_m']:.4f}m\n")
             f.write(f"Avg Speed: {auto_metrics['avg_speed_m_s']:.3f}m/s\n")
@@ -1105,8 +1164,25 @@ class UnifiedTeleopExperiment:
             "auto_metrics": auto_metrics,
             "manual_scores": manual_scores,
             "trajectory_file": str(fpath),
+            "metrics_file": str(metrics_path),
+            "strategy_source": self._strategy_source,
+            "strategy_snapshot": {
+                "K_trans": self._K_trans_cur,
+                "K_rot": self._K_rot_cur,
+                "damping_ratio": self._damping_ratio_cur,
+                "K_fb": self._K_fb_cur,
+                "deadband": self._deadband_cur,
+                "gripper_speed": self._gripper_speed,
+                "gripper_force_limit": self._gripper_force_limit,
+            },
             "timestamp": timestamp,
         }
+        score_path = fpath.with_name(fpath.stem + "_score.json")
+        result["score_file"] = str(score_path)
+        with open(score_path, "w", encoding="utf-8") as f:
+            json.dump(result, f, ensure_ascii=False, indent=2)
+        print(f"  🧾 评分已保存: {score_path}")
+
         self._results.append(result)
         self._per_object_results[self._object_label].append(result)
 
@@ -1351,7 +1427,7 @@ class UnifiedTeleopExperiment:
             pass
 
     # ═══════════════════════════════════════════
-    # YOLO 检测轮询（修订：只在类别变化时更新参数）
+    # YOLO 检测轮询（Mode C 更新策略；Mode D 只显示/记录）
     # ═══════════════════════════════════════════
 
     def _poll_yolo_result(self):
@@ -1361,7 +1437,7 @@ class UnifiedTeleopExperiment:
             det = self._result_queue.get_nowait()
             if det is not None:
                 new_label = det["profile"].label
-                # 只在类别变化或首次检测时更新参数（避免 200Hz 震荡）
+                # 只在类别变化或首次检测时处理（避免 200Hz 震荡）
                 if new_label != self._object_label or self._last_seen_cycle == -999:
                     self._object_label = new_label
                     self._object_class = det["class"]
@@ -1370,8 +1446,8 @@ class UnifiedTeleopExperiment:
                         self._profile_from_yolo = det["profile"]
                         self._apply_mode_params(self._mode)
                     elif self._mode == "d":
-                        self._profile_from_yolo = det["profile"]
-                        self._apply_mode_params(self._mode)
+                        # 消融对照：视觉只参与显示和记录，不改阻抗/力反馈/夹爪。
+                        pass
 
                 # 更新视觉信息（不触发参数变化）
                 self._last_seen_class = det["class"]
@@ -1524,6 +1600,8 @@ class UnifiedTeleopExperiment:
             db = self._deadband_cur
             scale = self._scale_cur
             gripper_speed = self._gripper_speed
+            gripper_force_limit = self._gripper_force_limit
+            strategy_source = self._strategy_source
 
         status = (f"[{self._loop_count // int(CTRL_FREQ)}s] "
                   f"mode={self._mode} "
@@ -1535,6 +1613,8 @@ class UnifiedTeleopExperiment:
                   f"db={db:.2f} "
                   f"s={scale:.1f} "
                   f"grip={gripper_speed:.3f} "
+                  f"FgripLim={gripper_force_limit:.0f} "
+                  f"src={strategy_source} "
                   f"|F_ext|={np.linalg.norm(self._F_ext_current[:3]):.2f} "
                   f"rec={'🔴' if self._recording else '⚫'}"
                   f"btn={'🟢' if self._button_now else '⚪'}")
@@ -1548,7 +1628,7 @@ class UnifiedTeleopExperiment:
         print("  ⌨️  键盘快捷键")
         print("=" * 65)
         print("  ┌──────────┬──────────────────────────────────────┐")
-        print("  │ a/b/c/d  │ 切换实验模式 (固定/人工/自动/YOLO速度) │")
+        print("  │ a/b/c/d  │ 切换实验模式 (固定/人工/视觉/记录)     │")
         print("  │ s/m/h    │ 标记软/中/硬物体                      │")
         print("  │ r        │ 开始/停止录制 + 评分卡                │")
         print("  ├──────────┼──────────────────────────────────────┤")
@@ -1632,6 +1712,14 @@ class UnifiedTeleopExperiment:
         summary_path = self._trajectory_dir / "experiment_summary.json"
         with open(summary_path, "w", encoding="utf-8") as f:
             json.dump({
+                "method": "视觉语义驱动的多参数阻抗辅助遥操作方法",
+                "strategy_library": SEMANTIC_IMPEDANCE_STRATEGY_LIBRARY,
+                "modes": {
+                    "a": "固定阻抗基线",
+                    "b": "人工选择软/中/硬多参数阻抗策略",
+                    "c": "视觉自动调用多参数阻抗策略库（本文方法）",
+                    "d": "仅视觉显示/记录，不改变控制参数",
+                },
                 "total_trials": len(self._results),
                 "trial_counter": self._trial_counter,
                 "timestamp": datetime.now().isoformat(),

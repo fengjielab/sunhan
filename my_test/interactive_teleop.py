@@ -233,6 +233,11 @@ SAVE_FILE_PATH = os.path.expanduser("~/teleop_params.json")
 YOLO_MODEL_PATH = "/home/mfj/sunhan/yolo/ultralytics-8.3.163/yolo11n.pt"
 YOLO_CONF_THRESHOLD = 0.25
 VISION_DETECTION_HOLD_TIMEOUT = 5.0  # 检测丢失后保持参数的最大时间 (s)
+VISION_START_DELAY = 2.0             # 控制循环先稳定运行，再启动相机/YOLO (s)
+VISION_USB_RECOVERY_PAUSE = 1.5      # Omega 连续读取失败时，暂停 RealSense 的时长 (s)
+OMEGA_READ_RETRY_DELAY = 0.001       # Omega 读取失败后的快速重试间隔 (s)
+OMEGA_FAIL_WARN_INTERVAL = 2.0       # Omega 读取失败状态打印最小间隔 (s)
+OMEGA_FAIL_RECOVERY_THRESHOLD = 120  # 连续失败多少次后触发相机暂停恢复
 
 # ═══════════════════════════════════════════
 # YOLO 独立进程（拥有独立 GIL，不受控制循环争用）
@@ -353,6 +358,8 @@ class InteractiveTeleop:
         self._vision_thread = None
         self._vision_yolo_proc = None       # YOLO 子进程句柄
         self._vision_enable_display = True  # 是否显示 RealSense 摄像头预览窗口
+        self._vision_pause_until = 0.0       # USB 恢复时临时暂停 RealSense
+        self._vision_restarts = 0            # RealSense pipeline 重启次数
         # 直接在视觉线程内调用 cv2.imshow (而非独立显示进程)，参考 shared_control_node.py
         # 使用 cv2.startWindowThread() 确保 OpenCV GUI 线程安全
 
@@ -365,6 +372,10 @@ class InteractiveTeleop:
         #   缓存最后有效位置，读取失败时复用缓存值，避免机械臂跳回原点或剧烈抖动。
         self._omega_pos_last_valid = np.zeros(3)   # 最后成功读取的 Omega 位置
         self._omega_grip_last_valid = 0.0           # 最后成功读取的夹钳角度
+        self._omega_read_fail_count = 0             # 连续位置读取失败次数
+        self._omega_read_fail_total = 0             # 累计位置读取失败次数
+        self._omega_last_fail_warn = 0.0            # 上次失败提示时间
+        self._omega_usb_recovery_requested = False  # 是否已请求视觉线程让出 USB
 
         # ── 当前参数（含过渡目标） ──
         self._K_trans_cur = DEFAULT_K_TRANS
@@ -662,6 +673,63 @@ class InteractiveTeleop:
         }
         return mapping.get(profile.label, "medium_obj")
 
+    def _start_vision_thread(self):
+        """启动视觉线程。由主控制循环延迟调用，避免启动阶段抢占 USB/CPU。"""
+        if not self._vision_enabled or self._vision_active:
+            return
+        self._vision_active = True
+        self._vision_thread = threading.Thread(
+            target=self._vision_loop, daemon=True, name="VisionThread"
+        )
+        self._vision_thread.start()
+        print("    ✅ 视觉线程已启动（控制循环已稳定）")
+
+    def _read_omega_position(self) -> np.ndarray:
+        """读取 Omega.7 位置；失败时快速重试并最终复用最后有效值。"""
+        raw_pos = np.zeros(3)
+        pos_ret = dhd.getPosition(raw_pos)
+        if pos_ret < 0:
+            time.sleep(OMEGA_READ_RETRY_DELAY)
+            pos_ret = dhd.getPosition(raw_pos)
+
+        if pos_ret < 0:
+            self._omega_read_fail_count += 1
+            self._omega_read_fail_total += 1
+            self._handle_omega_read_failure()
+            return self._omega_pos_last_valid.copy()
+
+        if self._omega_read_fail_count > 0:
+            print(
+                f"\n  ✅ Omega.7 位置读取恢复 "
+                f"(连续失败 {self._omega_read_fail_count} 次, "
+                f"累计 {self._omega_read_fail_total} 次)"
+            )
+        self._omega_read_fail_count = 0
+        self._omega_usb_recovery_requested = False
+        self._omega_pos_last_valid = raw_pos.copy()
+        return raw_pos
+
+    def _handle_omega_read_failure(self):
+        """Omega 读取失败时给出可见提示，并在 vision 模式下短暂停相机恢复 USB。"""
+        now = time.time()
+        if now - self._omega_last_fail_warn >= OMEGA_FAIL_WARN_INTERVAL:
+            print(
+                f"\n  ⚠️  Omega.7 位置读取失败 "
+                f"(连续 {self._omega_read_fail_count}, 累计 {self._omega_read_fail_total})，"
+                "暂用最后有效位置"
+            )
+            self._omega_last_fail_warn = now
+
+        if (self._vision_enabled and self._vision_active
+                and self._omega_read_fail_count >= OMEGA_FAIL_RECOVERY_THRESHOLD
+                and not self._omega_usb_recovery_requested):
+            self._omega_usb_recovery_requested = True
+            self._vision_pause_until = now + VISION_USB_RECOVERY_PAUSE
+            print(
+                f"\n  🔧 Omega.7 连续读取失败，暂停 RealSense "
+                f"{VISION_USB_RECOVERY_PAUSE:.1f}s 释放 USB 带宽"
+            )
+
     # ═══════════════════════════════════════════
     # Vision 模式 — 视觉线程 (RealSense + YOLO)
     # ═══════════════════════════════════════════
@@ -690,6 +758,7 @@ class InteractiveTeleop:
         config = rs.config()
         config.enable_stream(rs.stream.color, 424, 240, rs.format.bgr8, 15)
         pipeline.start(config)
+        pipeline_running = True
         align = rs.align(rs.stream.color)
         print("[视觉线程] RealSense D435i 已启动")
 
@@ -725,6 +794,31 @@ class InteractiveTeleop:
         while self._vision_active:
             _cycle += 1
             try:
+                # Omega.7 连续读取失败时，主控制线程会要求视觉线程短暂停止
+                # RealSense pipeline，让 USB 带宽归还给 Omega.7。
+                pause_until = self._vision_pause_until
+                if pause_until > time.time():
+                    if pipeline_running:
+                        try:
+                            pipeline.stop()
+                            pipeline_running = False
+                            print("[视觉线程] ⏸️  RealSense 暂停，等待 Omega.7 USB 恢复")
+                        except Exception as e:
+                            print(f"[视觉线程] ⚠️ 暂停 RealSense 失败: {e}")
+                    time.sleep(0.05)
+                    continue
+                elif not pipeline_running:
+                    try:
+                        pipeline.start(config)
+                        align = rs.align(rs.stream.color)
+                        pipeline_running = True
+                        self._vision_restarts += 1
+                        print(f"[视觉线程] ▶️  RealSense 已恢复 (#{self._vision_restarts})")
+                    except Exception as e:
+                        print(f"[视觉线程] ⚠️ 恢复 RealSense 失败: {e}")
+                        time.sleep(0.2)
+                        continue
+
                 frames = pipeline.wait_for_frames(timeout_ms=5000)
                 aligned = align.process(frames)
                 color_frame = aligned.get_color_frame()
@@ -793,7 +887,8 @@ class InteractiveTeleop:
                 if self._vision_active:
                     print(f"[视觉] ⚠️ 异常: {e}")
 
-        pipeline.stop()
+        if pipeline_running:
+            pipeline.stop()
         print("[视觉线程] 已停止")
 
     def _print_param_change(self, name: str, before: float, after: float):
@@ -1117,6 +1212,8 @@ class InteractiveTeleop:
         )
         if self._transition_active:
             status += " [🌀 过渡中]"
+        if self._omega_read_fail_count > 0:
+            status += f" ⚠️OmegaFail={self._omega_read_fail_count}"
 
         # Vision 模式下附加检测信息
         if self._vision_enabled:
@@ -1154,17 +1251,6 @@ class InteractiveTeleop:
         kb_thread = threading.Thread(target=self._keyboard_loop, daemon=True)
         kb_thread.start()
 
-        # ⚡ Vision 模式：在控制循环稳定后启动视觉线程（参考 shared_control_node.py:605-608）
-        #   先启动 200Hz 控制循环，再 fork YOLO 进程 + 加载 PyTorch 模型，
-        #   避免 CPU 峰值触发 Franka communication_constraints_violation
-        if self._vision_enabled:
-            self._vision_active = True
-            self._vision_thread = threading.Thread(
-                target=self._vision_loop, daemon=True, name="VisionThread"
-            )
-            self._vision_thread.start()
-            print("    ✅ 视觉线程已启动（控制循环稳定后）")
-
         # 显示初始帮助
         self._print_help()
 
@@ -1188,24 +1274,29 @@ class InteractiveTeleop:
         last_status_time = 0.0
         last_gripper_time = 0.0
         last_kb_time = 0.0
+        vision_start_time = time.time() + VISION_START_DELAY
+        vision_start_announced = False
 
         try:
             while self.running:
                 t_start = time.perf_counter()
                 now = time.time()
 
+                # ⚡ Vision 模式：控制循环先稳定运行，再启动相机/YOLO。
+                # 这样避免 RealSense/PyTorch 启动峰值把 Omega.7 或 Franka 通信挤掉。
+                if self._vision_enabled and not self._vision_active:
+                    if now >= vision_start_time:
+                        self._start_vision_thread()
+                    elif not vision_start_announced:
+                        print(f"    ⏳ 控制循环先运行 {VISION_START_DELAY:.1f}s 后再启动视觉线程")
+                        vision_start_announced = True
+
                 # ── 1. 读 Omega.7 位置 + 夹爪 + 按钮 ──
                 # ⚡ dhd.getPosition() 返回 -1 表示失败（不抛 Python 异常），
                 #    失败时 raw_pos 不会被修改。Vision 模式下 RealSense D435i
                 #    可能抢占 Omega.7 USB 等时传输带宽，导致读取失败。
                 #    解决方案：检查返回值，失败时复用最后有效位置缓存。
-                raw_pos = np.zeros(3)
-                pos_ret = dhd.getPosition(raw_pos)
-                if pos_ret < 0:
-                    # USB 带宽争用/Omega 读取失败 → 使用最后有效位置
-                    raw_pos = self._omega_pos_last_valid.copy()
-                else:
-                    self._omega_pos_last_valid = raw_pos.copy()
+                raw_pos = self._read_omega_position()
 
                 # ── 1b. 累加主端 Omega.7 轨迹长度 ──
                 # ⚡ 仅计算帧间位移用于轨迹累加，不更新 _omega_prev_pos。
@@ -1536,6 +1627,10 @@ class InteractiveTeleop:
         print(f"     运行时长:     {elapsed_total:.1f} s")
         if elapsed_total > 0:
             print(f"     平均速度:     {self._omega_traj_length / elapsed_total:.3f} m/s")
+        if self._omega_read_fail_total > 0:
+            print(f"     Omega读取失败: {self._omega_read_fail_total} 次")
+        if self._vision_restarts > 0:
+            print(f"     视觉USB恢复:   {self._vision_restarts} 次")
 
         # 保存轨迹 + 汇总统计（共用同一时间戳）
         if self._trajectory_record:
