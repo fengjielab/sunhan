@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-将 Franka 机械臂移动到初始位置（JOINT_POSITION_START）。
+将 Franka 机械臂快速移动到初始位置（JOINT_POSITION_START）。
 
 ⚠️ 关键要点：
   1. 放大碰撞阈值 → 避免 cartesian_reflex 打断运动
   2. 降低关节刚度 → 力矩柔和，不触发安全反射
-  3. 分段路点 + 慢速 → 平稳到达目标
+  3. 路点精简 + 适当提速 → 快速到位
 """
 
 import time
@@ -14,11 +14,16 @@ import panda_py
 from panda_py.constants import JOINT_POSITION_START
 
 
+def _build_waypoints(start_q: np.ndarray, end_q: np.ndarray, n: int):
+    """生成 n 个线性插值路点（不含起点）。"""
+    return [start_q + (i / n) * (end_q - start_q) for i in range(1, n + 1)]
+
+
 def main():
     robot_ip = "192.168.1.51"
 
     print("=" * 50)
-    print("Franka 机械臂 → 初始位置（关节空间）")
+    print("Franka 机械臂 → 初始位置（关节空间）[快速版]")
     print("=" * 50)
 
     # 1. 连接机器人
@@ -56,33 +61,26 @@ def main():
         print("   ℹ️  机器人已经在初始位置附近，无需移动")
         return
 
-    # 6. 生成分段插值路点（平滑运动）
     current_q = panda.q.copy()
     target_q = JOINT_POSITION_START.copy()
-
-    steps = 100
-    waypoints = []
-    for i in range(1, steps + 1):
-        alpha = i / steps
-        q_wp = current_q + alpha * (target_q - current_q)
-        waypoints.append(q_wp)
 
     # 极低刚度 + 高阻尼，避免触发 cartesian_reflex
     soft_stiffness = np.array([30.0, 30.0, 30.0, 30.0, 15.0, 10.0, 5.0])
     soft_damping = np.array([15.0, 15.0, 15.0, 10.0, 10.0, 5.0, 3.0])
 
-    # 7. 安全提示
+    # 6. 安全提示（缩短等待）
     print()
-    print(f"   ▶ 将经过 {steps} 个中间路点缓慢运动到目标位置")
-    print(f"   ⚠️  请确保机器人周围安全！")
-    print("   3 秒后开始运动 ...")
-    time.sleep(3.0)
+    print("   ⚠️  请确保机器人周围安全！")
+    print("   1 秒后开始快速运动 ...")
+    time.sleep(1.0)
 
-    # 8. 第一阶段：粗略到位
-    print("   ▶ 第一阶段：粗略到位（放松精度）...")
+    # ========== 第一阶段：快速粗略到位 ==========
+    steps1 = 30                     # 原 100 → 30
+    waypoints1 = _build_waypoints(current_q, target_q, steps1)
+    print(f"\n   ▶ 第一阶段：粗略到位（{steps1} 路点, speed=0.08）...")
     success = panda.move_to_joint_position(
-        waypoints,
-        speed_factor=0.02,
+        waypoints1,
+        speed_factor=0.08,          # 原 0.02 → 0.08
         stiffness=soft_stiffness,
         damping=soft_damping,
         dq_threshold=0.005,
@@ -90,30 +88,42 @@ def main():
     )
     print(f"     返回: {success}，当前q: {np.round(panda.q, 4)}")
 
-    # 9. 第二阶段：精细修正
-    print("   ▶ 第二阶段：精细修正（收紧精度）...")
+    # ========== 第二阶段：精细修正 ==========
     current_q = panda.q.copy()
-    steps2 = 50
-    waypoints2 = []
-    for i in range(1, steps2 + 1):
-        alpha = i / steps2
-        q_wp = current_q + alpha * (target_q - current_q)
-        waypoints2.append(q_wp)
-
+    steps2 = 20                     # 原 50 → 20
+    waypoints2 = _build_waypoints(current_q, target_q, steps2)
+    print(f"   ▶ 第二阶段：精细修正（{steps2} 路点, speed=0.05）...")
     success = panda.move_to_joint_position(
         waypoints2,
-        speed_factor=0.02,
+        speed_factor=0.05,          # 原 0.02 → 0.05
         stiffness=soft_stiffness,
         damping=soft_damping,
         dq_threshold=0.002,
         success_threshold=0.02,
     )
-    print(f"     返回: {success}")
+    print(f"     返回: {success}，当前q: {np.round(panda.q, 4)}")
 
-    # 10. 验证最终位置
+    # ========== 第三阶段（按需）：偏差仍大时快速精修 ==========
     final_q = panda.q
-    print(f"[4] 最终关节角度: {np.round(final_q, 4)}")
-    final_diff = np.max(np.abs(final_q - JOINT_POSITION_START))
+    final_diff = np.max(np.abs(final_q - target_q))
+    if final_diff > 0.05:
+        steps3 = 15
+        waypoints3 = _build_waypoints(panda.q.copy(), target_q, steps3)
+        print(f"   ▶ 第三阶段：偏差 {final_diff:.4f}，再次精修（{steps3} 路点, speed=0.04）...")
+        success = panda.move_to_joint_position(
+            waypoints3,
+            speed_factor=0.04,
+            stiffness=soft_stiffness,
+            damping=soft_damping,
+            dq_threshold=0.001,
+            success_threshold=0.015,
+        )
+        print(f"     返回: {success}，当前q: {np.round(panda.q, 4)}")
+        final_q = panda.q
+        final_diff = np.max(np.abs(final_q - target_q))
+
+    # 7. 验证最终位置
+    print(f"\n[4] 最终关节角度: {np.round(final_q, 4)}")
     print(f"   最大关节偏差: {final_diff:.6f} rad")
     current_pose = panda.get_pose()
     current_pos = current_pose[:3, 3]

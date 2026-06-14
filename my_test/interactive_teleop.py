@@ -16,7 +16,7 @@ interactive_teleop.py — 交互式遥操作：实时调节阻尼/刚度/力反�
     3. Vision 模式: YOLO 识别物体 → 自动映射软/中/硬物体手感
        - RealSense D435i 相机 + YOLO 子进程 (独立 GIL)
        - PhysicsProfile.label → PRESETS: soft→软物体, medium→中物体, hard→硬物体
-       - 检测丢失 5s 后自动回退到 standard 预设
+       - 🔒 第一次检测到物体后参数即被锁定，不再跟随后续检测变化
        - Vision 模式下键盘手动参数调节被禁用
     4. 预设手感场景切换（一键切换多组参数）
     5. Omega.7 力反馈实时渲染（从端外力 → 主端力觉）
@@ -99,6 +99,7 @@ import json
 import os
 import argparse
 import multiprocessing as mp
+from enum import Enum
 from pathlib import Path
 from typing import List, Optional
 import numpy as np
@@ -118,7 +119,6 @@ ROBOT_IP = "192.168.1.51"
 
 # 控制频率
 CTRL_FREQ = 200.0          # 主控制循环 (Hz)
-GRIPPER_FREQ = 10.0        # 夹爪控制 (Hz)
 STATUS_FREQ = 10.0          # 状态打印 (Hz)
 KEYBOARD_FREQ = 30.0        # 键盘轮询 (Hz)
 
@@ -139,12 +139,32 @@ DEFAULT_DEADBAND = 0.3      # 死区 (N)
 DEFAULT_SCALE = 3.0
 
 # 夹爪
-GRIPPER_SPEED = 0.1
-GRIPPER_FORCE = 20.0
-GRIPPER_MAX = 0.08
-GRIPPER_HYSTERESIS = 0.01
-GRIPPER_EPS_INNER = 0.005
-GRIPPER_EPS_OUTER = 0.005
+GRIPPER_SPEED = 0.1         # 夹爪运动速度 (m/s)
+GRIPPER_FORCE = 20.0        # 夹爪夹持力 (N)
+GRIPPER_MAX = 0.08          # 夹爪最大开度 (m)
+GRIPPER_MIN_WIDTH = 0.0     # 夹爪最小开度 (m)
+GRIPPER_HYSTERESIS = 0.003  # 夹爪命令死区 (m)
+GRIPPER_EPS_INNER = 0.005   # grasp 内容差
+GRIPPER_EPS_OUTER = 0.005   # grasp 外容差
+
+# 夹钳角度自适应归一化初始值
+GRIP_ANGLE_INIT_MIN = -30.0  # 完全张开 (度)
+GRIP_ANGLE_INIT_MAX = 0.0   # 完全捏合 (度)
+
+# 夹爪力反馈
+FORCE_FB_GAIN = 0.3         # 力反馈增益 (N/比例)
+FORCE_FB_MAX = 1.0          # 力反馈最大值 (N)
+# 夹爪控制频率
+GRIPPER_CTRL_FREQ = 30.0    # 夹爪主控制频率 (Hz)
+
+# 阈值驱动参数 (状态机用)
+GRASP_THRESHOLD = 0.20      # 归一化开度 < 此值 → 力控抓取 grasp()
+MOVE_THRESHOLD = 0.80       # 归一化开度 > 此值 → 位置张开 move()
+# 注意: 0.20 ~ 0.80 之间为过渡区，不发送命令
+
+# stop 后等待夹爪状态切换的时间 (秒)
+STOP_SETTLE_TIME = 0.1
+
 
 # 轨迹记录
 TRAJECTORY_DIR = "data"          # 轨迹 CSV 输出目录
@@ -163,6 +183,18 @@ DAMPING_MIN, DAMPING_MAX = 0.1, 5.0
 K_FB_MIN, K_FB_MAX = 0.0, 2.0
 DEADBAND_MIN, DEADBAND_MAX = 0.0, 2.0
 SCALE_MIN, SCALE_MAX = 0.5, 15.0
+
+# ═══════════════════════════════════════════
+# GripperState 夹爪状态机
+# ═══════════════════════════════════════════
+
+class GripperState(Enum):
+    """夹爪状态机状态"""
+    IDLE = "IDLE"           # 空闲：跟随用户夹钳角度 (move)
+    GRASPING = "GRASPING"   # 力控抓取中（grasp 阻塞执行）
+    HOLDING = "HOLDING"     # 力保持状态：夹住物体
+    RELEASING = "RELEASING" # 松开中（stop + move）
+
 
 # ═══════════════════════════════════════════
 # 预设手感场景
@@ -217,8 +249,8 @@ PRESETS = {
     "hard_obj": {
         "name": "🪨 硬物体手感",
         "desc": "强力反馈 + 高刚度 — 模拟触碰金属/岩石",
-        "K_trans": 250.0, "K_rot": 13.0,
-        "damping_ratio": 1.2, "K_fb": 1.0, "deadband": 0.5,
+        "K_trans": 200.0, "K_rot": 13.0,
+        "damping_ratio": 1.2, "K_fb": 0.7, "deadband": 0.5,
         "scale": 3.0,
     },
 }
@@ -354,6 +386,7 @@ class InteractiveTeleop:
         self._vision_profile = None         # 最新 PhysicsProfile
         self._vision_last_time = 0.0        # 最后检测成功时间戳
         self._vision_current_preset = "standard"  # 当前应用的 PRESET key
+        self._vision_locked = False         # 参数是否已锁定（第一次检测后固定不变）
         self._vision_active = False         # 视觉线程是否已启动
         self._vision_thread = None
         self._vision_yolo_proc = None       # YOLO 子进程句柄
@@ -397,10 +430,18 @@ class InteractiveTeleop:
         self._button_prev = 0
 
         # ── 夹爪 ──
-        self._last_gripper_cmd = GRIPPER_MAX
-        self._last_gripper_time = 0.0
-        self._grip_min = -30.0
-        self._grip_max = 0.0
+        # 跟踪已执行命令的最新宽度
+        self._last_cmd_width = GRIPPER_MAX
+        self._cmd_busy = False
+        self._grip_min = GRIP_ANGLE_INIT_MIN
+        self._grip_max = GRIP_ANGLE_INIT_MAX
+        self._max_width = GRIPPER_MAX
+        self._calibration_samples = 0   # 自适应学习样本数
+        self._cmd_count = 0             # 夹爪命令计数
+        self._pending_width: Optional[float] = None  # 追赶模式：待执行的目标宽度
+        self._gripper_state = GripperState.IDLE      # 当前状态机状态
+        self._btn0_prev = 0  # 灰色按钮 (上一帧)
+        self._gripper_force_feedback = 0.0  # 夹爪力反馈值
 
         # ── Franka 状态 ──
         self._init_pos = np.zeros(3)
@@ -485,13 +526,25 @@ class InteractiveTeleop:
         )
         print("    ✅ 碰撞阈值已设置 (关节 20Nm / 笛卡尔 25N)")
 
-        self.panda.move_to_start()
-        print("    ✅ 已回到起始位置")
+        # ⚡ 遥操作场景下不调用 move_to_start()。
+        # move_to_start() 是 panda_py/libfranka 的关节位置运动方法，
+        # 会将机械臂移动到出厂 home 位置，这在遥操作中会导致:
+        #   1. 控制器启动前机械臂位置被改变，造成不期望的运动
+        #   2. 后续 _init_pos / _virtual_ref 基于 home 而非当前姿态
+        #   3. Omega 映射与机械臂实际状态不匹配
+        # 直接使用当前状态启动控制器，实现无缝接管。
+        print("    ✅ 保持当前位置，控制器将从此处无缝接管")
 
         # ── 夹爪 ──
         print("[3] 初始化 Franka Hand 夹爪 ...")
         self.gripper = libfranka.Gripper(ROBOT_IP)
+        try:
+            self.gripper.homing()
+            print("    ✅ Homing 完成")
+        except Exception as e:
+            print(f"    ⚠️  Homing 失败: {e}")
         self.gripper.move(GRIPPER_MAX, GRIPPER_SPEED)
+        self._last_cmd_width = GRIPPER_MAX
         print(f"    ✅ 夹爪已打开 ({GRIPPER_MAX*1000:.0f} mm)")
 
         # ── 状态读取 ──
@@ -1105,39 +1158,218 @@ class InteractiveTeleop:
             print(f"     {key}: {val}")
 
     # ═══════════════════════════════════════════
-    # 夹爪控制
+    # 夹爪控制 — 有限状态机
     # ═══════════════════════════════════════════
 
-    def _update_gripper(self):
-        """根据 Omega.7 夹钳角度控制 Franka 夹爪"""
-        # 读 Omega.7 夹钳角度
-        angle = ctypes.c_double()
-        dhd.getGripperAngleDeg(angle)
-        grip_deg = angle.value
+    # ── 夹钳角度自适应归一化 ──
 
-        # Omega.7 夹钳范围约 [-30°, 0°]，映射到 [0, GRIPPER_MAX] m
-        if grip_deg < self._grip_min:
-            grip_deg = self._grip_min
-        if grip_deg > self._grip_max:
-            grip_deg = self._grip_max
+    def _update_grip_calibration(self, angle_deg: float):
+        """运行时自适应更新夹钳角度范围 (只向外扩展)"""
+        if angle_deg < self._grip_min:
+            self._grip_min = angle_deg
+        if angle_deg > self._grip_max:
+            self._grip_max = angle_deg
+        self._calibration_samples += 1
 
-        width = GRIPPER_MAX * (1.0 - (grip_deg - self._grip_min) / (self._grip_max - self._grip_min))
+    def _angle_to_norm(self, angle_deg: float) -> float:
+        """夹钳角度 → 归一化开度 [0,1] (0=闭合, 1=全开)"""
+        grip_range = self._grip_max - self._grip_min
+        if grip_range < 1.0:
+            grip_range = GRIP_ANGLE_INIT_MAX - GRIP_ANGLE_INIT_MIN
+            norm = (GRIP_ANGLE_INIT_MAX - angle_deg) / grip_range
+        else:
+            norm = (self._grip_max - angle_deg) / grip_range
+        return float(np.clip(norm, 0.0, 1.0))
 
-        # 防抖：变化超过死区才发送命令
-        if abs(width - self._last_gripper_cmd) > GRIPPER_HYSTERESIS:
-            self._last_gripper_cmd = width
-            threading.Thread(target=self._gripper_cmd_thread, args=(width,), daemon=True).start()
+    def _norm_to_width(self, norm: float) -> float:
+        """归一化开度 [0,1] → 夹爪宽度 (m)"""
+        return float(np.clip(norm * self._max_width, GRIPPER_MIN_WIDTH, self._max_width))
 
-    def _gripper_cmd_thread(self, width: float):
-        """线程内执行 stop+move，不阻塞主循环"""
+    def _angle_to_width(self, angle_deg: float) -> float:
+        """保留的兼容接口：夹钳角度 → 夹爪宽度 (m)"""
+        return self._norm_to_width(self._angle_to_norm(angle_deg))
+
+    # ── 夹爪命令执行 (独立线程) ──
+
+    def _gripper_stop(self) -> bool:
+        """停止夹爪并释放力保持状态"""
         if self.gripper is None:
-            return
+            return False
         try:
             self.gripper.stop()
-            time.sleep(0.02)
+            time.sleep(STOP_SETTLE_TIME)
+            return True
+        except Exception as e:
+            print(f"\n  ⚠️ 夹爪 stop() 失败: {e}")
+            return False
+
+    def _execute_idle_move(self, width: float):
+        """IDLE 状态：move() 跟随用户角度"""
+        if self.gripper is None:
+            return
+        self._cmd_busy = True
+        try:
             self.gripper.move(width, GRIPPER_SPEED)
-        except Exception:
-            pass  # 夹爪命令失败不中断主循环
+            self._last_cmd_width = width
+            self._cmd_count += 1
+        except Exception as e:
+            print(f"\n  ⚠️ move 失败: {e}")
+        finally:
+            self._cmd_busy = False
+
+    def _execute_grasp(self, width: float):
+        """GRASPING 状态：grasp() 力控抓取"""
+        if self.gripper is None:
+            self._gripper_state = GripperState.IDLE
+            self._cmd_busy = False
+            return
+        self._cmd_busy = True
+        try:
+            success = self.gripper.grasp(
+                width, GRIPPER_SPEED, GRIPPER_FORCE,
+                GRIPPER_EPS_INNER, GRIPPER_EPS_OUTER,
+            )
+            self._last_cmd_width = width
+            self._cmd_count += 1
+            if success:
+                print(f"\n  🤖 已抓取物体! (宽度={width*1000:.1f}mm, 力={GRIPPER_FORCE:.0f}N)")
+                self._gripper_state = GripperState.HOLDING
+            else:
+                print(f"\n  🤖 未检测到物体 (宽度={width*1000:.1f}mm)")
+                self._gripper_state = GripperState.IDLE
+        except Exception as e:
+            print(f"\n  ⚠️ grasp 失败: {e}")
+            self._gripper_state = GripperState.IDLE
+        finally:
+            self._cmd_busy = False
+
+    def _execute_release(self, width: float):
+        """RELEASING 状态：先 stop 释放力保持，再 move 张开"""
+        if self.gripper is None:
+            self._gripper_state = GripperState.IDLE
+            self._cmd_busy = False
+            return
+        self._cmd_busy = True
+        try:
+            # 第一步：stop 释放力保持
+            print(f"\n  🛑 释放力保持...")
+            self._gripper_stop()
+            # 第二步：move 到目标开度
+            self.gripper.move(width, GRIPPER_SPEED)
+            self._last_cmd_width = width
+            self._cmd_count += 1
+            print(f"  ✅ 夹爪已张开到 {width*1000:.1f}mm")
+            self._gripper_state = GripperState.IDLE
+        except Exception as e:
+            print(f"\n  ⚠️ release 失败: {e}")
+            self._gripper_state = GripperState.IDLE
+        finally:
+            self._cmd_busy = False
+
+    def _trigger_idle_move(self, width: float):
+        """触发 IDLE 状态下的 move（跟随）"""
+        if self._cmd_busy:
+            self._pending_width = width
+            return
+        self._pending_width = None
+        t = threading.Thread(target=self._execute_idle_move, args=(width,),
+                             daemon=True)
+        t.start()
+
+    def _trigger_grasp(self, width: float):
+        """触发 GRASPING 状态的 grasp"""
+        self._gripper_state = GripperState.GRASPING
+        t = threading.Thread(target=self._execute_grasp, args=(width,),
+                             daemon=True)
+        t.start()
+
+    def _trigger_release(self, width: float):
+        """触发 RELEASING 状态的 stop+move"""
+        self._gripper_state = GripperState.RELEASING
+        t = threading.Thread(target=self._execute_release, args=(width,),
+                             daemon=True)
+        t.start()
+
+    # ── 有限状态机 (核心逻辑) ──
+
+    def _update_state_machine(self, target_norm: float, target_width: float):
+        """
+        有限状态机控制夹爪
+
+        状态图:
+          IDLE:
+            - norm < GRASP_THRESHOLD (0.20):  → GRASPING (grasp)
+            - norm > MOVE_THRESHOLD (0.80):    → move() 跟随
+            - 过渡区 (0.20~0.80): 不发送命令
+
+          GRASPING:
+            - 等待 grasp 线程完成
+            - 成功: → HOLDING; 失败: → IDLE
+
+          HOLDING:
+            - norm > MOVE_THRESHOLD (0.80): → RELEASING (stop + move)
+            - 灰色按钮: → RELEASING (由按钮事件处理)
+
+          RELEASING:
+            - 等待 release 线程完成 → 自动 → IDLE
+        """
+        # ── 追赶模式：如果命令执行完但还有 pending ──
+        if not self._cmd_busy and self._pending_width is not None:
+            pw = self._pending_width
+            self._pending_width = None
+            pn = pw / self._max_width
+            if pn > MOVE_THRESHOLD or self._gripper_state == GripperState.IDLE:
+                self._execute_idle_move(pw)
+            return
+
+        # ── IDLE: 跟随用户 ──
+        if self._gripper_state == GripperState.IDLE:
+            if target_norm > MOVE_THRESHOLD:
+                # 张开 → move
+                if not self._cmd_busy:
+                    if abs(target_width - self._last_cmd_width) > GRIPPER_HYSTERESIS:
+                        self._trigger_idle_move(target_width)
+            elif target_norm < GRASP_THRESHOLD:
+                # 捏合 → grasp
+                if not self._cmd_busy:
+                    self._trigger_grasp(target_width)
+            # else: 过渡区，不操作
+            return
+
+        # ── GRASPING: 等待 grasp 完成 ──
+        if self._gripper_state == GripperState.GRASPING:
+            return
+
+        # ── HOLDING: 力保持中，检测释放意图 ──
+        if self._gripper_state == GripperState.HOLDING:
+            if target_norm > MOVE_THRESHOLD:
+                if not self._cmd_busy:
+                    self._trigger_release(target_width)
+                else:
+                    self._pending_width = target_width
+            return
+
+        # ── RELEASING: 等待 release 完成 ──
+        if self._gripper_state == GripperState.RELEASING:
+            return
+
+    # ── 夹爪控制主入口（由主循环降频调用）──
+
+    def _update_gripper(self):
+        """根据 Omega.7 夹钳角度 → 状态机控制 Franka 夹爪"""
+        grip_deg = getattr(self, '_omega_grip_current', None)
+        if grip_deg is None:
+            return
+
+        # 自适应更新角度范围
+        self._update_grip_calibration(grip_deg)
+
+        # 计算归一化开度和目标宽度
+        target_norm = self._angle_to_norm(grip_deg)
+        target_width = self._norm_to_width(target_norm)
+
+        # 状态机更新
+        self._update_state_machine(target_norm, target_width)
 
     # ═══════════════════════════════════════════
     # 界面打印
@@ -1153,7 +1385,7 @@ class InteractiveTeleop:
             print("    soft   → 🫧 软物体手感 (低刚度 50N/m, 低增益 0.2)")
             print("    medium → 📦 中物体手感 (中刚度 150N/m, 中增益 0.5)")
             print("    hard   → 🪨 硬物体手感 (高刚度 250N/m, 高增益 1.0)")
-            print("  检测丢失 5s → 自动回退到 ⚙️ 标准模式")
+            print("  🔒 第一次检测到物体后参数即被锁定，不再跟随后续检测变化")
             print("  ┌──────────┬──────────────────────────────────────┐")
             print("  │ h        │ 打印此帮助                            │")
             print("  │ v        │ 保存参数到 ~/teleop_params.json       │")
@@ -1161,7 +1393,13 @@ class InteractiveTeleop:
             print("  │ q (画面) │ 关闭摄像头预览窗口                     │")
             print("  │ Ctrl+C   │ 安全退出                              │")
             print("  │ 其他按键 │ ⚠️  vision模式下参数调节已禁用         │")
-            print("  └──────────┴──────────────────────────────────────┘")
+            print("  ├──────────┴──────────────────────────────────────┤")
+            print("  │  🎮 Omega.7 按钮 — 夹爪控制                       │")
+            print("  │  灰色按钮 (Btn0) → 夹爪完全张开 (复位)             │")
+            print("  │  夹钳张开 (>80%) → 夹爪张开 (move)                 │")
+            print("  │  夹钳捏合 (<20%) → 力控抓取 (grasp)                │")
+            print("  │  过渡区 (20~80%) → 保持当前状态                    │")
+            print("  └──────────────────────────────────────────────────┘")
             print("=" * 65)
         else:
             print("\n" + "=" * 65)
@@ -1187,8 +1425,15 @@ class InteractiveTeleop:
             print("  │ v        │ 保存参数到 ~/teleop_params.json       │")
             print("  │ b        │ 从 ~/teleop_params.json 加载参数      │")
             print("  │ h        │ 打印此帮助                            │")
-            print("  │ Ctrl+C   │ 安全退出                              │")
-            print("  └──────────┴──────────────────────────────────────┘")
+            print("  ├──────────┴──────────────────────────────────────┤")
+            print("  │  🎮 Omega.7 按钮 — 夹爪控制                       │")
+            print("  │  灰色按钮 (Btn0) → 夹爪完全张开 (复位)             │")
+            print("  │  夹钳张开 (>80%) → 夹爪张开 (move)                 │")
+            print("  │  夹钳捏合 (<20%) → 力控抓取 (grasp)                │")
+            print("  │  过渡区 (20~80%) → 保持当前状态                    │")
+            print("  ├──────────────────────────────────────────────────┤")
+            print("  │ Ctrl+C → 安全退出                                │")
+            print("  └──────────────────────────────────────────────────┘")
             print("=" * 65)
 
     def _print_status(self):
@@ -1199,6 +1444,10 @@ class InteractiveTeleop:
         F_mag = np.linalg.norm(F_xyz)
         traj_len = self._omega_traj_length  # 主端 Omega.7 累计轨迹长度 (m)
 
+        # 夹爪状态（状态机）
+        grip_busy_str = " ⏳" if self._cmd_busy else "   "
+        last_grip_mm = self._last_cmd_width * 1000.0
+
         status = (
             f"[{self._loop_count // int(CTRL_FREQ)}s] "
             f"ζ={self._damping_ratio_cur:.2f} "
@@ -1208,7 +1457,9 @@ class InteractiveTeleop:
             f"db={deadband_disp:.2f} "
             f"s={self._scale_cur:.1f} "
             f"|Fext|={F_mag:.2f}N "
-            f"L={traj_len:.2f}m"
+            f"L={traj_len:.2f}m "
+            f"夹爪={last_grip_mm:.0f}mm "
+            f"|{self._gripper_state.value}{grip_busy_str}"
         )
         if self._transition_active:
             status += " [🌀 过渡中]"
@@ -1217,6 +1468,7 @@ class InteractiveTeleop:
 
         # Vision 模式下附加检测信息
         if self._vision_enabled:
+            lock_str = "🔒" if self._vision_locked else "🔓"
             with self._vision_lock:
                 det = self._vision_detection
                 profile = self._vision_profile
@@ -1224,9 +1476,11 @@ class InteractiveTeleop:
                 now_ts = time.time()
                 det_age = now_ts - self._vision_last_time
                 if det_age < VISION_DETECTION_HOLD_TIMEOUT:
-                    status += f" 👁️{det['class']}({profile.label})"
+                    status += f" {lock_str}{det['class']}({profile.label})"
                 else:
-                    status += f" ⚠️超时{det_age:.0f}s"
+                    status += f" {lock_str}⚠️超时{det_age:.0f}s"
+            else:
+                status += f" {lock_str}无检测"
 
         print(f"\r  {status}", end="", flush=True)
 
@@ -1239,7 +1493,7 @@ class InteractiveTeleop:
         self.running = True
 
         dt = 1.0 / CTRL_FREQ
-        dt_gripper = 1.0 / GRIPPER_FREQ
+        dt_gripper = 1.0 / GRIPPER_CTRL_FREQ
         dt_status = 1.0 / STATUS_FREQ
         dt_keyboard = 1.0 / KEYBOARD_FREQ
 
@@ -1273,6 +1527,7 @@ class InteractiveTeleop:
 
         last_status_time = 0.0
         last_gripper_time = 0.0
+        last_gripper_ctrl_time = 0.0
         last_kb_time = 0.0
         vision_start_time = time.time() + VISION_START_DELAY
         vision_start_announced = False
@@ -1313,11 +1568,28 @@ class InteractiveTeleop:
                 else:
                     omega_grip = gripper_angle.value
                     self._omega_grip_last_valid = omega_grip
-                button = 0
+                self._omega_grip_current = omega_grip   # ← 供 _update_gripper 使用（已验证的角度）
+
+                # ── 读取按钮 ──
+                btn0 = 0
                 try:
-                    button = dhd.getButton(0)
+                    btn0 = dhd.getButton(0)  # 灰色按钮
                 except Exception:
                     pass
+                button = btn0  # 轨迹记录沿用 btn0
+
+                # ── 按钮事件处理 (上升沿检测) ──
+                # 灰色按钮 (button 0) → 夹爪完全张开复位 (状态机路径)
+                if btn0 and not self._btn0_prev:
+                    print(f"\n  🔘 灰色按钮 → 夹爪完全张开")
+                    if self._gripper_state == GripperState.HOLDING:
+                        # 力保持中 → 走 release 路径 (stop + move)
+                        self._trigger_release(self._max_width)
+                    elif self._gripper_state == GripperState.IDLE and not self._cmd_busy:
+                        # 空闲中 → 直接 move 张开
+                        self._trigger_idle_move(self._max_width)
+                    # 其他状态忽略（GRASPING/RELEASING 不打断）
+                self._btn0_prev = btn0
 
                 # ── 1a. 记录轨迹（降采样） ──
                 if self._trajectory_record:
@@ -1342,6 +1614,15 @@ class InteractiveTeleop:
                     np.sign(F_scaled) * (np.abs(F_scaled) - self._deadband_cur),
                     0.0,
                 )
+
+                # ── 3a. 夹爪力反馈叠加 ──
+                # 夹爪闭合程度映射到 Omega.7 力反馈 (Z 方向)，模拟夹持力感
+                grip_norm = self._angle_to_norm(omega_grip)
+                grip_force_mag = grip_norm * FORCE_FB_GAIN * FORCE_FB_MAX
+                grip_force_mag = min(grip_force_mag, FORCE_FB_MAX)
+                F_haptic[2] += grip_force_mag
+                self._gripper_force_feedback = grip_force_mag
+
                 try:
                     dhd.setForce(F_haptic)
                 except Exception:
@@ -1363,7 +1644,7 @@ class InteractiveTeleop:
                 # 更新上一帧 Omega 位置（供下轮 section 1b 和 section 4 使用）
                 self._omega_prev_pos = raw_pos.copy()
 
-                # ── 4a. Vision 模式：从检测结果自动同步参数 ──
+                # ── 4a. Vision 模式：从检测结果自动同步参数（首次检测后锁定）──
                 if self._vision_enabled:
                     with self._vision_lock:
                         profile = self._vision_profile
@@ -1371,27 +1652,22 @@ class InteractiveTeleop:
                     now_ts = time.time()
 
                     if profile is not None and (now_ts - det_time) < VISION_DETECTION_HOLD_TIMEOUT:
-                        # 有有效检测 → 映射到 PRESET → 平滑过渡
-                        preset_key = self._profile_to_preset(profile)
-                        if preset_key != self._vision_current_preset:
+                        # 有有效检测
+                        if not self._vision_locked:
+                            # ── 第一次检测到物体 → 锁定参数 ──
+                            preset_key = self._profile_to_preset(profile)
                             self._vision_current_preset = preset_key
                             p = PRESETS.get(preset_key)
                             if p:
-                                print(f"\n  👁️ YOLO 检测 → {p['name']}")
+                                print(f"\n  👁️ 首次检测到物体 → {p['name']} (参数已锁定)")
                                 print(f"     {p['desc']}")
                                 self._smooth_transition(p["K_trans"], p["K_rot"], p["damping_ratio"])
                                 self._K_fb_cur = p["K_fb"]
                                 self._deadband_cur = p["deadband"]
                                 self._scale_cur = p["scale"]
-                    elif (now_ts - det_time) >= VISION_DETECTION_HOLD_TIMEOUT and self._vision_current_preset != "standard":
-                        # 检测超时 → 回退到 standard
-                        self._vision_current_preset = "standard"
-                        p = PRESETS["standard"]
-                        print(f"\n  ⚠️  检测超时 ({now_ts - det_time:.1f}s > {VISION_DETECTION_HOLD_TIMEOUT}s)，回退到 {p['name']}")
-                        self._smooth_transition(p["K_trans"], p["K_rot"], p["damping_ratio"])
-                        self._K_fb_cur = p["K_fb"]
-                        self._deadband_cur = p["deadband"]
-                        self._scale_cur = p["scale"]
+                            self._vision_locked = True
+                        # 锁定后不再更新参数，即使检测结果变化也不响应
+                    # 锁定后也不再执行超时回退
 
                 # ── 5. 发给 Franka ──
                 if self.ctrl is not None:
@@ -1631,6 +1907,13 @@ class InteractiveTeleop:
             print(f"     Omega读取失败: {self._omega_read_fail_total} 次")
         if self._vision_restarts > 0:
             print(f"     视觉USB恢复:   {self._vision_restarts} 次")
+
+        # 打印夹爪统计
+        print(f"\n  🤖 夹爪控制统计:")
+        print(f"     总计命令:   {self._cmd_count} 次")
+        print(f"     标定样本:   {self._calibration_samples} 次")
+        print(f"     夹钳角度范围: [{self._grip_min:.1f}°, {self._grip_max:.1f}°] (自适应学习)")
+        print(f"     最终状态:   {self._gripper_state.value}")
 
         # 保存轨迹 + 汇总统计（共用同一时间戳）
         if self._trajectory_record:
