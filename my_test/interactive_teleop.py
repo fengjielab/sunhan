@@ -18,9 +18,13 @@ interactive_teleop.py — 交互式遥操作：实时调节阻尼/刚度/力反�
        - PhysicsProfile.label → PRESETS: soft→软物体, medium→中物体, hard→硬物体
        - 🔒 第一次检测到物体后参数即被锁定，不再跟随后续检测变化
        - Vision 模式下键盘手动参数调节被禁用
-    4. 预设手感场景切换（一键切换多组参数）
-    5. Omega.7 力反馈实时渲染（从端外力 → 主端力觉）
-    6. Omega.7 夹钳 → Franka 夹爪控制
+    4. Vision-Observe 模式: YOLO 视觉识别并显示检测结果，但不改变阻抗参数
+       - RealSense D435i 相机 + YOLO 子进程 (独立 GIL)
+       - 视觉识别结果仅在屏幕上显示，不自动映射手感参数
+       -  键盘手动参数调节可用（与 default 模式相同）
+    5. 预设手感场景切换（一键切换多组参数）
+    6. Omega.7 力反馈实时渲染（从端外力 → 主端力觉）
+    7. Omega.7 夹钳 → Franka 夹爪控制
 
 手感维度:
     ┌──────────────┬──────────────────────────────────────┐
@@ -379,7 +383,8 @@ class InteractiveTeleop:
         self._trajectory: List[dict] = []
 
         # ── Vision 模式状态 ──
-        self._vision_enabled = (mode == "vision")
+        self._vision_enabled = (mode in ("vision", "vision_observe"))
+        self._vision_auto_map = (mode == "vision")
         self._init_preset = mode if mode in PRESETS else None  # 命令行指定的初始预设
         self._vision_lock = threading.Lock()
         self._vision_detection = None       # 最新 YOLO 检测结果 dict
@@ -1039,7 +1044,8 @@ class InteractiveTeleop:
     def _process_keyboard(self):
         """主循环中处理缓存的键盘输入"""
         # ── Vision 模式下：仅允许辅助按键，禁用所有手动参数调节 ──
-        if self._vision_enabled:
+        #    vision_observe 模式：视觉观察不改变手感，键盘完全可用
+        if self._vision_enabled and hasattr(self, '_vision_auto_map') and self._vision_auto_map:
             key = ""
             with self._key_lock:
                 if self._key_pressed and not self._key_held:
@@ -1377,7 +1383,7 @@ class InteractiveTeleop:
 
     def _print_help(self):
         """打印按键帮助"""
-        if self._vision_enabled:
+        if self._vision_enabled and hasattr(self, '_vision_auto_map') and self._vision_auto_map:
             print("\n" + "=" * 65)
             print("  👁️  Vision 模式 — YOLO 自动映射物体手感")
             print("=" * 65)
@@ -1399,6 +1405,41 @@ class InteractiveTeleop:
             print("  │  夹钳张开 (>80%) → 夹爪张开 (move)                 │")
             print("  │  夹钳捏合 (<20%) → 力控抓取 (grasp)                │")
             print("  │  过渡区 (20~80%) → 保持当前状态                    │")
+            print("  └──────────────────────────────────────────────────┘")
+            print("=" * 65)
+        elif self._vision_enabled and hasattr(self, '_vision_auto_map') and not self._vision_auto_map:
+            print("\n" + "=" * 65)
+            print("  👁️  Vision-Observe 模式 — 视觉仅观察，不改变手感")
+            print("=" * 65)
+            print("  YOLO 检测结果仅在屏幕上显示，参数调节保持手动控制:")
+            print("  ┌──────────┬──────────────────────────────────────┐")
+            print("  │ 1/2      │ 阻尼比 ζ -/+  (步长 0.1)             │")
+            print("  │ 3/4      │ 刚度 K -/+     (步长 10 N/m)          │")
+            print("  │ 5/6      │ 力反馈增益 -/+  (步长 0.05)           │")
+            print("  │ 7/8      │ 死区 -/+       (步长 0.05 N)          │")
+            print("  │ 9/0      │ 位置比例 -/+   (步长 0.5)             │")
+            print("  │ q/w      │ 旋转刚度 -/+   (步长 1 Nm/rad)        │")
+            print("  ├──────────┼──────────────────────────────────────┤")
+            print("  │ a        │ 灵动模式 (低阻尼+低刚度)              │")
+            print("  │ s        │ 标准模式 (临界阻尼+中刚度)            │")
+            print("  │ d        │ 沉稳模式 (高阻尼+高刚度)              │")
+            print("  │ f        │ 刚硬模式 (超高阻尼+超高刚度)          │")
+            print("  ├──────────┼──────────────────────────────────────┤")
+            print("  │ z        │ 软物体手感 (低增益+低刚度)            │")
+            print("  │ x        │ 中物体手感 (中增益+中刚度)            │")
+            print("  │ c        │ 硬物体手感 (高增益+高刚度)            │")
+            print("  ├──────────┼──────────────────────────────────────┤")
+            print("  │ v        │ 保存参数到 ~/teleop_params.json       │")
+            print("  │ b        │ 从 ~/teleop_params.json 加载参数      │")
+            print("  │ h        │ 打印此帮助                            │")
+            print("  ├──────────┴──────────────────────────────────────┤")
+            print("  │  🎮 Omega.7 按钮 — 夹爪控制                       │")
+            print("  │  灰色按钮 (Btn0) → 夹爪完全张开 (复位)             │")
+            print("  │  夹钳张开 (>80%) → 夹爪张开 (move)                 │")
+            print("  │  夹钳捏合 (<20%) → 力控抓取 (grasp)                │")
+            print("  │  过渡区 (20~80%) → 保持当前状态                    │")
+            print("  ├──────────────────────────────────────────────────┤")
+            print("  │ Ctrl+C → 安全退出                                │")
             print("  └──────────────────────────────────────────────────┘")
             print("=" * 65)
         else:
@@ -1468,6 +1509,9 @@ class InteractiveTeleop:
 
         # Vision 模式下附加检测信息
         if self._vision_enabled:
+            if hasattr(self, '_vision_auto_map') and not self._vision_auto_map:
+                status = status.replace('👁️', '👁️(Observe)')
+
             lock_str = "🔒" if self._vision_locked else "🔓"
             with self._vision_lock:
                 det = self._vision_detection
@@ -1515,7 +1559,10 @@ class InteractiveTeleop:
             self._set_preset("standard")
 
         if self._vision_enabled:
-            mode_str = "👁️ Vision 模式 — YOLO 自动映射物体手感"
+            if hasattr(self, '_vision_auto_map') and not self._vision_auto_map:
+                mode_str = "👁️ Vision-Observe 模式 — 视觉仅观察不改变手感"
+            else:
+                mode_str = "👁️ Vision 模式 — YOLO 自动映射物体手感"
         elif self._init_preset:
             p = PRESETS[self._init_preset]
             mode_str = f"🎯 {p['name']} — {p['desc']}"
@@ -1645,7 +1692,8 @@ class InteractiveTeleop:
                 self._omega_prev_pos = raw_pos.copy()
 
                 # ── 4a. Vision 模式：从检测结果自动同步参数（首次检测后锁定）──
-                if self._vision_enabled:
+                #    vision_observe 模式：视觉仅观察不改变手感，跳过此段
+                if self._vision_enabled and hasattr(self, '_vision_auto_map') and self._vision_auto_map:
                     with self._vision_lock:
                         profile = self._vision_profile
                         det_time = self._vision_last_time
@@ -1941,11 +1989,11 @@ class InteractiveTeleop:
 
 def main():
     # 动态从 PRESETS 生成 choices: default + vision + 所有 preset key
-    MODE_CHOICES = ["default", "vision"] + sorted(PRESETS.keys())
+    MODE_CHOICES = ["default", "vision", "vision_observe"] + sorted(PRESETS.keys())
     parser = argparse.ArgumentParser(description="交互式遥操作：实时调节阻尼/刚度/力反馈")
     parser.add_argument("--mode", "-m", type=str, default="default",
                         choices=MODE_CHOICES,
-                        help="运行模式: default=手动调节手感, vision=YOLO视觉自动映射, "
+                        help="运行模式: default=手动调节手感, vision=YOLO视觉自动映射, vision_observe=视觉仅观察不改变手感, "
                              "或直接指定预设: " + ", ".join(sorted(PRESETS.keys())))
     parser.add_argument("--load", "-l", type=str, default=None,
                         help="启动时加载参数文件路径")

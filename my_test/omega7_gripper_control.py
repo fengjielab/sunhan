@@ -170,6 +170,22 @@ class Omega7GripperController:
         print("  Omega.7 → Franka 夹爪控制 (状态机版)")
         print("=" * 60)
 
+        # ── 0. 诊断: 先尝试连 Panda 发 recover ──
+        print("\n[0/3] 诊断: 尝试连接 Panda (recover)...")
+        try:
+            import panda_py
+            panda_diag = panda_py.Panda(self.robot_ip)
+            state = panda_diag.get_state()
+            print(f"  📊 机器人模式: {state.robot_mode}")
+            print(f"  📊 机器人状态: {[hex(s) for s in state.current_errors]}")
+            panda_diag.recover()
+            print("  ✅ recover() 已发送")
+            panda_diag.set_default_behavior()
+            print("  ✅ set_default_behavior() 已发送")
+        except Exception as e:
+            print(f"  ⚠️  Panda 诊断连接失败: {e}")
+            print(f"  ⚠️  但这不影响夹爪直连，继续初始化...")
+
         # ── 1. 连接 Omega.7 ──
         print("\n[1/3] 连接 Omega.7 ...")
         ret = dhd.open()
@@ -185,6 +201,8 @@ class Omega7GripperController:
             self._drd_started = True
             print("  ✅ DRD 实时通道已启动")
         dhd.enableForce(True)
+        dhd.enableGripperForce(True)
+        print("  ✅ 夹钳力反馈已启用")
 
         # ── 2. 连接 Franka 夹爪 ──
         print(f"\n[2/3] 连接 Franka 夹爪 ({self.robot_ip}) ...")
@@ -198,12 +216,24 @@ class Omega7GripperController:
         # ── 3. Homing 标定 → 张开到最大 ──
         print(f"\n[3/3] 夹爪标定 (homing) ...")
         try:
+            # 诊断: 先读夹爪状态
+            try:
+                gripper_state = self.gripper.readOnce()
+                print(f"  📊 夹爪状态: width={gripper_state.width*1000:.1f}mm, "
+                      f"max_width={gripper_state.max_width*1000:.1f}mm, "
+                      f"temperature={gripper_state.temperature:.1f}°C")
+            except Exception as e:
+                print(f"  ⚠️  读夹爪状态失败: {e}")
+
             self.gripper.homing()
             print("  ✅ Homing 完成")
             self.gripper.move(GRIPPER_MAX_WIDTH, GRIPPER_SPEED)
             self._last_cmd_width = GRIPPER_MAX_WIDTH
         except Exception as e:
-            print(f"  ⚠️  Homing 失败: {e}")
+            print(f"  ❌ Homing 失败: {e}")
+            print(f"  ❌ 夹爪未初始化，夹爪控制不可用")
+            # 诊断: 不返回 False, 让 Omega 还能用
+            # return False  # ← 如果需要严格初始化失败，取消注释这行
 
         print("\n" + "=" * 60)
         print("  🎮 初始化完成！")
@@ -211,7 +241,7 @@ class Omega7GripperController:
         print("  夹钳捏合 (<20%)    → 力控抓取 (grasp)")
         print("  灰色按钮 → 夹爪完全张开复位")
         print("  Ctrl+C → 安全停止")
-        print("=" * 60)
+        print("=" + "=" * 60)
 
         return True
 
@@ -359,13 +389,29 @@ class Omega7GripperController:
     # ═══════════════════════════════════════════
 
     def _update_force_feedback(self, grip_norm: float):
-        """根据夹爪闭合程度更新 Omega.7 力反馈"""
-        force_mag = grip_norm * FORCE_FB_GAIN * FORCE_FB_MAX
-        force_mag = min(force_mag, FORCE_FB_MAX)
-        force = np.array([0.0, 0.0, force_mag])
+        """
+        根据夹爪闭合程度更新 Omega.7 力反馈
+
+        重要: 夹爪力反馈映射到 Omega.7 的独立夹钳通道 (gripper channel),
+        而不是 XYZ 平移轴。
+          - XYZ 轴: 永远置零, 保持手把零力透明
+          - Gripper 通道: grip_norm 越大 (夹爪越张开) → 力越小
+                          grip_norm 越小 (夹爪越闭合) → 力越大 (模拟夹持阻力)
+
+        使用 API:
+          - dhd.setForceAndGripperForce(force_xyz, gripper_force)
+          - 需提前调用 dhd.enableGripperForce(True)
+        """
+        # 夹钳力: 闭合度越高 (norm 小) → 力越大 (模拟抓握阻力)
+        # 转换: grip_norm=1(全开) → 0N, grip_norm=0(全闭) → MAX
+        grip_force = (1.0 - grip_norm) * FORCE_FB_GAIN * FORCE_FB_MAX
+        grip_force = min(grip_force, FORCE_FB_MAX)
+
+        # XYZ 轴保持零力透明，不干扰手柄平移运动
+        force_xyz = np.zeros(3)
         try:
-            dhd.setForce(force)
-            self._force_feedback = force_mag
+            dhd.setForceAndGripperForce(force_xyz, grip_force)
+            self._force_feedback = grip_force
         except Exception:
             pass
 
@@ -560,9 +606,9 @@ class Omega7GripperController:
         self._running = False
         print("\n   正在关闭 ...")
 
-        # 关闭 Omega.7 力输出
+        # 关闭 Omega.7 力输出 (XYZ + 夹钳通道)
         try:
-            dhd.setForce(np.zeros(3))
+            dhd.setForceAndGripperForce(np.zeros(3), 0.0)
         except Exception:
             pass
 
