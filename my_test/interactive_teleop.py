@@ -174,7 +174,8 @@ STOP_SETTLE_TIME = 0.1
 TRAJECTORY_DIR = "data"          # 轨迹 CSV 输出目录
 TRAJECTORY_DECIMATION = 1        # 降采样: 1=每周期记录(200Hz), 5=每5周期记录(40Hz)
 TRAJECTORY_CSV_HEADER = ["time", "x", "y", "z", "gripper_deg", "button",
-                          "K_trans", "K_rot", "damping_ratio", "K_fb", "deadband", "scale"]
+                          "K_trans", "K_rot", "damping_ratio", "K_fb", "deadband", "scale",
+                          "F_ext_mag", "fusion_delta_K", "fusion_active", "vision_label"]
 
 # 平滑过渡步长
 TRANSITION_STEPS = 30       # 刚度/阻尼过渡步数
@@ -274,6 +275,20 @@ VISION_USB_RECOVERY_PAUSE = 1.5      # Omega 连续读取失败时，暂停 Real
 OMEGA_READ_RETRY_DELAY = 0.001       # Omega 读取失败后的快速重试间隔 (s)
 OMEGA_FAIL_WARN_INTERVAL = 2.0       # Omega 读取失败状态打印最小间隔 (s)
 OMEGA_FAIL_RECOVERY_THRESHOLD = 120  # 连续失败多少次后触发相机暂停恢复
+
+# Vision + Force 融合模式配置（实验模式 F）
+FUSION_IMPD_UPDATE_INTERVAL = 0.05   # 力反馈微调阻抗更新频率: 20Hz
+FUSION_FORCE_DEADBAND = 1.0          # 小于该外力认为未稳定接触 (N)
+FUSION_FORCE_SAT = 8.0               # 力反馈微调饱和外力 (N)
+FUSION_SMOOTH_FACTOR = 0.25          # K_t 一阶平滑系数
+FUSION_K_MIN = 30.0                  # 融合模式刚度下限
+FUSION_K_MAX = 260.0                 # 融合模式刚度上限
+FUSION_LABEL_GAIN = {
+    "soft": -0.35,     # 软物体: 接触力越大，刚度越低，保护物体
+    "medium": -0.15,   # 中等物体: 小幅顺应
+    "hard": 0.10,      # 硬物体: 接触后略增刚度，提高稳定性
+    "unknown": -0.10,
+}
 
 # ═══════════════════════════════════════════
 # YOLO 独立进程（拥有独立 GIL，不受控制循环争用）
@@ -383,8 +398,9 @@ class InteractiveTeleop:
         self._trajectory: List[dict] = []
 
         # ── Vision 模式状态 ──
-        self._vision_enabled = (mode in ("vision", "vision_observe"))
-        self._vision_auto_map = (mode == "vision")
+        self._vision_enabled = (mode in ("vision", "vision_observe", "vision_force"))
+        self._vision_auto_map = (mode in ("vision", "vision_force"))
+        self._vision_force_fusion = (mode == "vision_force")
         self._init_preset = mode if mode in PRESETS else None  # 命令行指定的初始预设
         self._vision_lock = threading.Lock()
         self._vision_detection = None       # 最新 YOLO 检测结果 dict
@@ -392,6 +408,13 @@ class InteractiveTeleop:
         self._vision_last_time = 0.0        # 最后检测成功时间戳
         self._vision_current_preset = "standard"  # 当前应用的 PRESET key
         self._vision_locked = False         # 参数是否已锁定（第一次检测后固定不变）
+        self._vision_locked_label = "unknown"  # 融合模式中力反馈微调的语义类别
+        self._vision_base_K_trans = DEFAULT_K_TRANS
+        self._vision_base_K_rot = DEFAULT_K_ROT
+        self._vision_base_damping = DEFAULT_DAMPING_RATIO
+        self._fusion_last_update = 0.0
+        self._fusion_delta_K = 0.0
+        self._fusion_active = False
         self._vision_active = False         # 视觉线程是否已启动
         self._vision_thread = None
         self._vision_yolo_proc = None       # YOLO 子进程句柄
@@ -787,6 +810,44 @@ class InteractiveTeleop:
                 f"\n  🔧 Omega.7 连续读取失败，暂停 RealSense "
                 f"{VISION_USB_RECOVERY_PAUSE:.1f}s 释放 USB 带宽"
             )
+
+    def _update_vision_force_fusion(self, now: float):
+        """视觉前馈 + 力反馈微调。
+
+        视觉首次识别提供 K_base(c)，接触外力提供有界修正项 ΔK_f(t)：
+            K_t(t) = clip(K_base(c) + gain(c) * K_base(c) * s(F), K_min, K_max)
+        其中 s(F) 为 [0, 1] 的接触力归一化强度。
+        """
+        if not self._vision_force_fusion or not self._vision_locked:
+            return
+        if now - self._fusion_last_update < FUSION_IMPD_UPDATE_INTERVAL:
+            return
+        self._fusion_last_update = now
+
+        F_mag = float(np.linalg.norm(self._F_ext_current[:3]))
+        if F_mag <= FUSION_FORCE_DEADBAND:
+            force_ratio = 0.0
+        else:
+            force_ratio = min(
+                (F_mag - FUSION_FORCE_DEADBAND)
+                / max(FUSION_FORCE_SAT - FUSION_FORCE_DEADBAND, 1e-6),
+                1.0,
+            )
+
+        gain = FUSION_LABEL_GAIN.get(self._vision_locked_label, FUSION_LABEL_GAIN["unknown"])
+        target_K = self._vision_base_K_trans * (1.0 + gain * force_ratio)
+        target_K = float(np.clip(target_K, FUSION_K_MIN, FUSION_K_MAX))
+        target_K_rot = target_K * (self._vision_base_K_rot / max(self._vision_base_K_trans, 1e-6))
+
+        prev_K = self._K_trans_cur
+        self._K_trans_cur += FUSION_SMOOTH_FACTOR * (target_K - self._K_trans_cur)
+        self._K_rot_cur += FUSION_SMOOTH_FACTOR * (target_K_rot - self._K_rot_cur)
+        self._fusion_delta_K = self._K_trans_cur - self._vision_base_K_trans
+        self._fusion_active = force_ratio > 0.0
+
+        if self.ctrl is not None and abs(self._K_trans_cur - prev_K) > 0.5:
+            K_6x6 = self._build_stiffness(self._K_trans_cur, self._K_rot_cur)
+            self.ctrl.set_impedance(K_6x6)
 
     # ═══════════════════════════════════════════
     # Vision 模式 — 视觉线程 (RealSense + YOLO)
@@ -1385,13 +1446,18 @@ class InteractiveTeleop:
         """打印按键帮助"""
         if self._vision_enabled and hasattr(self, '_vision_auto_map') and self._vision_auto_map:
             print("\n" + "=" * 65)
-            print("  👁️  Vision 模式 — YOLO 自动映射物体手感")
+            if self._vision_force_fusion:
+                print("  👁️+F Vision-Force 模式 — 视觉前馈 + 力反馈微调")
+            else:
+                print("  👁️  Vision 模式 — YOLO 自动映射物体手感")
             print("=" * 65)
             print("  YOLO 检测物体 → PhysicsProfile.label → PRESETS:")
             print("    soft   → 🫧 软物体手感 (低刚度 50N/m, 低增益 0.2)")
             print("    medium → 📦 中物体手感 (中刚度 150N/m, 中增益 0.5)")
             print("    hard   → 🪨 硬物体手感 (高刚度 250N/m, 高增益 1.0)")
             print("  🔒 第一次检测到物体后参数即被锁定，不再跟随后续检测变化")
+            if self._vision_force_fusion:
+                print("  🔁 锁定后以视觉策略为前馈基线，接触外力只做有界刚度微调")
             print("  ┌──────────┬──────────────────────────────────────┐")
             print("  │ h        │ 打印此帮助                            │")
             print("  │ v        │ 保存参数到 ~/teleop_params.json       │")
@@ -1509,13 +1575,17 @@ class InteractiveTeleop:
 
         # Vision 模式下附加检测信息
         if self._vision_enabled:
-            if hasattr(self, '_vision_auto_map') and not self._vision_auto_map:
-                status = status.replace('👁️', '👁️(Observe)')
-
             lock_str = "🔒" if self._vision_locked else "🔓"
             with self._vision_lock:
                 det = self._vision_detection
                 profile = self._vision_profile
+            if self._vision_force_fusion and self._vision_locked:
+                active = "*" if self._fusion_active else ""
+                status += f" 👁️+F ΔKf={self._fusion_delta_K:+.1f}{active}"
+            elif hasattr(self, '_vision_auto_map') and not self._vision_auto_map:
+                status += " 👁️OBS"
+            else:
+                status += " 👁️"
             if det is not None and profile is not None:
                 now_ts = time.time()
                 det_age = now_ts - self._vision_last_time
@@ -1561,6 +1631,8 @@ class InteractiveTeleop:
         if self._vision_enabled:
             if hasattr(self, '_vision_auto_map') and not self._vision_auto_map:
                 mode_str = "👁️ Vision-Observe 模式 — 视觉仅观察不改变手感"
+            elif self._vision_force_fusion:
+                mode_str = "👁️+F Vision-Force 模式 — 视觉前馈 + 力反馈微调"
             else:
                 mode_str = "👁️ Vision 模式 — YOLO 自动映射物体手感"
         elif self._init_preset:
@@ -1713,9 +1785,23 @@ class InteractiveTeleop:
                                 self._K_fb_cur = p["K_fb"]
                                 self._deadband_cur = p["deadband"]
                                 self._scale_cur = p["scale"]
+                                self._vision_locked_label = getattr(profile, "label", "unknown")
+                                self._vision_base_K_trans = p["K_trans"]
+                                self._vision_base_K_rot = p["K_rot"]
+                                self._vision_base_damping = p["damping_ratio"]
+                                self._fusion_delta_K = 0.0
+                                self._fusion_active = False
+                                if self._vision_force_fusion:
+                                    print(
+                                        "     🔁 融合模式: 视觉参数作为前馈基线，"
+                                        "接触后按外力微调刚度"
+                                    )
                             self._vision_locked = True
                         # 锁定后不再更新参数，即使检测结果变化也不响应
                     # 锁定后也不再执行超时回退
+
+                # ── 4b. Fusion 模式：视觉前馈基线 + 力反馈微调 ──
+                self._update_vision_force_fusion(now)
 
                 # ── 5. 发给 Franka ──
                 if self.ctrl is not None:
@@ -1763,6 +1849,7 @@ class InteractiveTeleop:
 
     def _record_trajectory_sample(self, raw_pos, gripper_deg, button):
         """记录一个轨迹样本点（主循环每周期调用）"""
+        F_mag = float(np.linalg.norm(self._F_ext_current[:3]))
         self._trajectory.append({
             "time": time.time() - self._trajectory_start_time,
             "x": raw_pos[0], "y": raw_pos[1], "z": raw_pos[2],
@@ -1774,6 +1861,10 @@ class InteractiveTeleop:
             "K_fb": self._K_fb_cur,
             "deadband": self._deadband_cur,
             "scale": self._scale_cur,
+            "F_ext_mag": F_mag,
+            "fusion_delta_K": self._fusion_delta_K,
+            "fusion_active": int(self._fusion_active),
+            "vision_label": self._vision_locked_label,
         })
 
     def _save_trajectory(self, timestamp: str = None):
@@ -1815,6 +1906,10 @@ class InteractiveTeleop:
                     f"{row['damping_ratio']:.2f}",
                     f"{row['K_fb']:.3f}", f"{row['deadband']:.3f}",
                     f"{row['scale']:.2f}",
+                    f"{row['F_ext_mag']:.3f}",
+                    f"{row['fusion_delta_K']:.3f}",
+                    row['fusion_active'],
+                    row['vision_label'],
                 ])
 
         print(f"\n  🎯 轨迹已保存: {fpath}")
@@ -1889,16 +1984,35 @@ class InteractiveTeleop:
             "K_fb": self._K_fb_cur,
             "deadband": self._deadband_cur,
             "scale": self._scale_cur,
+            "vision_base_K_trans": self._vision_base_K_trans,
+            "vision_base_K_rot": self._vision_base_K_rot,
+            "fusion_delta_K_final": self._fusion_delta_K,
         }
 
         # ── 模式信息 ──
         mode_info = {
             "mode": self.mode,
             "vision_enabled": self._vision_enabled,
+            "vision_auto_map": self._vision_auto_map,
+            "vision_force_fusion": self._vision_force_fusion,
+            "vision_locked": self._vision_locked,
+            "vision_label": self._vision_locked_label,
         }
         if self.mode in PRESETS:
             mode_info["preset_name"] = PRESETS[self.mode]["name"]
             mode_info["preset_desc"] = PRESETS[self.mode]["desc"]
+
+        fusion_config = None
+        if self._vision_force_fusion:
+            fusion_config = {
+                "update_interval_s": FUSION_IMPD_UPDATE_INTERVAL,
+                "force_deadband_N": FUSION_FORCE_DEADBAND,
+                "force_saturation_N": FUSION_FORCE_SAT,
+                "smooth_factor": FUSION_SMOOTH_FACTOR,
+                "K_min": FUSION_K_MIN,
+                "K_max": FUSION_K_MAX,
+                "label_gain": FUSION_LABEL_GAIN,
+            }
 
         summary = {
             "timestamp": timestamp,
@@ -1919,6 +2033,7 @@ class InteractiveTeleop:
                 "pos_z_range_m": [round(v, 4) for v in pos_z_range],
             },
             "final_params": final_params,
+            "fusion_config": fusion_config,
         }
 
         with open(fpath, "w") as f:
@@ -1989,11 +2104,12 @@ class InteractiveTeleop:
 
 def main():
     # 动态从 PRESETS 生成 choices: default + vision + 所有 preset key
-    MODE_CHOICES = ["default", "vision", "vision_observe"] + sorted(PRESETS.keys())
+    MODE_CHOICES = ["default", "vision", "vision_observe", "vision_force"] + sorted(PRESETS.keys())
     parser = argparse.ArgumentParser(description="交互式遥操作：实时调节阻尼/刚度/力反馈")
     parser.add_argument("--mode", "-m", type=str, default="default",
                         choices=MODE_CHOICES,
-                        help="运行模式: default=手动调节手感, vision=YOLO视觉自动映射, vision_observe=视觉仅观察不改变手感, "
+                        help="运行模式: default=手动调节手感, vision=YOLO视觉自动映射, "
+                             "vision_observe=视觉仅观察不改变手感, vision_force=视觉前馈+力反馈微调融合, "
                              "或直接指定预设: " + ", ".join(sorted(PRESETS.keys())))
     parser.add_argument("--load", "-l", type=str, default=None,
                         help="启动时加载参数文件路径")
