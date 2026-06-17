@@ -216,10 +216,10 @@ class Omega7GripperController:
         # ── 3. Homing 标定 → 张开到最大 ──
         print(f"\n[3/3] 夹爪标定 (homing) ...")
         try:
-            # 诊断: 先读夹爪状态
+            # 诊断: 先读夹爪状态（homing 前）
             try:
-                gripper_state = self.gripper.readOnce()
-                print(f"  📊 夹爪状态: width={gripper_state.width*1000:.1f}mm, "
+                gripper_state = self.gripper.read_once()
+                print(f"  📊 Homing 前: width={gripper_state.width*1000:.1f}mm, "
                       f"max_width={gripper_state.max_width*1000:.1f}mm, "
                       f"temperature={gripper_state.temperature:.1f}°C")
             except Exception as e:
@@ -227,6 +227,17 @@ class Omega7GripperController:
 
             self.gripper.homing()
             print("  ✅ Homing 完成")
+
+            # 标定后重读状态，确认 max_width 已更新
+            try:
+                gripper_state = self.gripper.read_once()
+                print(f"  📊 Homing 后: width={gripper_state.width*1000:.1f}mm, "
+                      f"max_width={gripper_state.max_width*1000:.1f}mm, "
+                      f"temperature={gripper_state.temperature:.1f}°C")
+                self._max_width = gripper_state.max_width
+            except Exception as e:
+                print(f"  ⚠️  重读夹爪状态失败: {e}")
+
             self.gripper.move(GRIPPER_MAX_WIDTH, GRIPPER_SPEED)
             self._last_cmd_width = GRIPPER_MAX_WIDTH
         except Exception as e:

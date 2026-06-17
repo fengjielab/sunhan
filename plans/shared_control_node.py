@@ -129,7 +129,7 @@ def _yolo_process_main(
     以 daemon 方式运行，主进程退出时自动终止。
     """
     _sys = __import__("sys")
-    _sys.path.insert(0, "/home/mfj/sunhan")
+    _sys.path.insert(0, "/home/mfj/sunh里的an")
 
     import queue as _q
     import numpy as _np
