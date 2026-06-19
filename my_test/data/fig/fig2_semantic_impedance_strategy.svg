@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="720" viewBox="0 0 1120 720">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L9,3 L0,6 Z" fill="#222"/>
+    </marker>
+    <style>
+      .title { font-family: "Noto Sans CJK SC", "Microsoft YaHei", "SimSun", sans-serif; font-size: 30px; font-weight: 700; fill: #111; }
+      .box-title { font-family: "Noto Sans CJK SC", "Microsoft YaHei", "SimSun", sans-serif; font-size: 22px; font-weight: 700; fill: #111; }
+      .label { font-family: "Noto Sans CJK SC", "Microsoft YaHei", "SimSun", sans-serif; font-size: 18px; fill: #111; }
+      .small { font-family: "Noto Sans CJK SC", "Microsoft YaHei", "SimSun", sans-serif; font-size: 15px; fill: #111; }
+      .tiny { font-family: "Noto Sans CJK SC", "Microsoft YaHei", "SimSun", sans-serif; font-size: 14px; fill: #111; }
+      .box { fill: #fff; stroke: #222; stroke-width: 2; rx: 8; ry: 8; }
+      .gray1 { fill: #e9f5ff; }
+      .gray2 { fill: #eef7e8; }
+      .gray3 { fill: #fff0c7; }
+      .line { stroke: #222; stroke-width: 2.2; fill: none; marker-end: url(#arrow); }
+      .dash { stroke-dasharray: 7 5; }
+      .thin { stroke: #222; stroke-width: 1.4; fill: none; }
+    </style>
+  </defs>
+
+  <rect x="12" y="12" width="1096" height="696" fill="#fff" stroke="#222" stroke-width="1.5"/>
+  <!-- Perception and semantic mapping -->
+  <rect x="64" y="112" width="210" height="92" class="box gray1"/>
+  <text x="169" y="146" text-anchor="middle" class="box-title">视觉输入</text>
+  <text x="169" y="176" text-anchor="middle" class="label">D435i RGB 图像</text>
+
+  <rect x="346" y="112" width="210" height="92" class="box gray1"/>
+  <text x="451" y="146" text-anchor="middle" class="box-title">目标检测</text>
+  <text x="451" y="176" text-anchor="middle" class="label">YOLO 识别类别</text>
+
+  <rect x="628" y="112" width="230" height="92" class="box gray1"/>
+  <text x="743" y="146" text-anchor="middle" class="box-title">语义映射</text>
+  <text x="743" y="176" text-anchor="middle" class="label">类别 → 操作属性 c</text>
+
+  <path d="M274 158 H346" class="line"/>
+  <path d="M556 158 H628" class="line"/>
+
+  <!-- Strategy library container -->
+  <rect x="58" y="258" width="1004" height="276" fill="#fbfdff" stroke="#222" stroke-width="2" rx="10" ry="10"/>
+
+  <!-- Branch arrows -->
+  <path d="M743 204 V236" class="line"/>
+  <circle cx="743" cy="244" r="5" fill="#222"/>
+  <path d="M743 244 H224 V314" class="line"/>
+  <path d="M743 244 H560 V314" class="line"/>
+  <path d="M743 244 H896 V314" class="line"/>
+
+  <rect x="246" y="268" width="628" height="34" fill="#fbfdff"/>
+  <text x="560" y="292" text-anchor="middle" class="box-title">多参数阻抗策略库  Θ(c)={Kt, Kr, ζ, Kf, d, vg, Fg}</text>
+
+  <!-- Soft card -->
+  <rect x="92" y="322" width="264" height="174" class="box gray1"/>
+  <text x="224" y="354" text-anchor="middle" class="box-title">soft 柔顺保护型</text>
+  <line x1="116" y1="368" x2="332" y2="368" class="thin"/>
+  <text x="118" y="397" class="small">Kt=50 N/m，Kr=5 N·m/rad</text>
+  <text x="118" y="425" class="small">ζ=0.8，Kf=0.2，d=0.3 N</text>
+  <text x="118" y="453" class="small">夹爪：低速、低力限制</text>
+  <text x="118" y="481" class="small">意图：减小形变与接触冲击</text>
+
+  <!-- Medium card -->
+  <rect x="428" y="322" width="264" height="174" class="box gray2"/>
+  <text x="560" y="354" text-anchor="middle" class="box-title">medium 平衡操作型</text>
+  <line x1="452" y1="368" x2="668" y2="368" class="thin"/>
+  <text x="454" y="397" class="small">Kt=150 N/m，Kr=10 N·m/rad</text>
+  <text x="454" y="425" class="small">ζ=1.0，Kf=0.5，d=0.4 N</text>
+  <text x="454" y="453" class="small">夹爪：中速、中等力限制</text>
+  <text x="454" y="481" class="small">意图：兼顾效率与顺应性</text>
+
+  <!-- Hard card -->
+  <rect x="764" y="322" width="264" height="174" class="box gray3"/>
+  <text x="896" y="354" text-anchor="middle" class="box-title">hard 稳定效率型</text>
+  <line x1="788" y1="368" x2="1004" y2="368" class="thin"/>
+  <text x="790" y="397" class="small">Kt=200 N/m，Kr=13 N·m/rad</text>
+  <text x="790" y="425" class="small">ζ=1.2，Kf=0.7，d=0.5 N</text>
+  <text x="790" y="453" class="small">夹爪：高速、较高力限制</text>
+  <text x="790" y="481" class="small">意图：增强定位与接触感知</text>
+
+  <!-- Output modules -->
+  <rect x="122" y="574" width="240" height="74" class="box"/>
+  <text x="242" y="604" text-anchor="middle" class="box-title">Panda 阻抗控制</text>
+  <text x="242" y="630" text-anchor="middle" class="tiny">Kt，Kr，ζ</text>
+
+  <rect x="440" y="574" width="240" height="74" class="box"/>
+  <text x="560" y="604" text-anchor="middle" class="box-title">Omega.7 力反馈</text>
+  <text x="560" y="630" text-anchor="middle" class="tiny">Kf，d</text>
+
+  <rect x="758" y="574" width="240" height="74" class="box"/>
+  <text x="878" y="604" text-anchor="middle" class="box-title">Franka Hand 夹爪</text>
+  <text x="878" y="630" text-anchor="middle" class="tiny">vg，Fg</text>
+
+  <path d="M224 496 C224 532, 242 538, 242 574" class="line"/>
+  <path d="M560 496 V574" class="line"/>
+  <path d="M896 496 C896 532, 878 538, 878 574" class="line"/>
+  <path d="M356 490 C414 528, 476 536, 520 574" class="line dash"/>
+  <path d="M764 490 C706 528, 644 536, 600 574" class="line dash"/>
+  <path d="M356 476 C540 540, 710 542, 816 574" class="line dash"/>
+
+  <line x1="110" y1="674" x2="1010" y2="674" class="thin"/>
+  <text x="560" y="694" text-anchor="middle" class="small">视觉语义结果同时作用于从端阻抗、主端力反馈和夹爪执行参数</text>
+</svg>

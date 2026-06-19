@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="720" viewBox="0 0 1180 720">
+  <defs>
+    <style>
+      .axis { stroke: #111; stroke-width: 2; fill: none; }
+      .grid { stroke: #d0d0d0; stroke-width: 1; fill: none; }
+      .bar { stroke: #111; stroke-width: 1.5; }
+      .text { font-family: "Noto Sans CJK SC", "Microsoft YaHei", "SimSun", sans-serif; font-size: 18px; fill: #111; }
+      .small { font-family: "Noto Sans CJK SC", "Microsoft YaHei", "SimSun", sans-serif; font-size: 15px; fill: #111; }
+      .label { font-family: "Noto Sans CJK SC", "Microsoft YaHei", "SimSun", sans-serif; font-size: 20px; font-weight: 700; fill: #111; }
+      .num { font-family: "Times New Roman", serif; font-size: 14px; fill: #111; }
+    </style>
+  </defs>
+
+  <rect x="12" y="12" width="1156" height="696" fill="#fff" stroke="#222" stroke-width="1.5"/>
+
+  <!-- Plot area: x 100-1040, y 80-560; y scale 0-5 -->
+  <line x1="100" y1="560" x2="1040" y2="560" class="axis"/>
+  <line x1="100" y1="80" x2="100" y2="560" class="axis"/>
+
+  <!-- y-axis grid -->
+  <line x1="100" y1="560" x2="1040" y2="560" class="grid"/>
+  <text x="78" y="566" text-anchor="end" class="num">0</text>
+  <line x1="100" y1="464" x2="1040" y2="464" class="grid"/>
+  <text x="78" y="470" text-anchor="end" class="num">1</text>
+  <line x1="100" y1="368" x2="1040" y2="368" class="grid"/>
+  <text x="78" y="374" text-anchor="end" class="num">2</text>
+  <line x1="100" y1="272" x2="1040" y2="272" class="grid"/>
+  <text x="78" y="278" text-anchor="end" class="num">3</text>
+  <line x1="100" y1="176" x2="1040" y2="176" class="grid"/>
+  <text x="78" y="182" text-anchor="end" class="num">4</text>
+  <line x1="100" y1="80" x2="1040" y2="80" class="grid"/>
+  <text x="78" y="86" text-anchor="end" class="num">5</text>
+
+  <text x="38" y="320" transform="rotate(-90 38 320)" text-anchor="middle" class="label">主观评分/分</text>
+
+  <!-- colors: A blue, B amber, C green, D purple -->
+  <!-- efficiency group -->
+  <rect x="152" y="261.4" width="42" height="298.6" fill="#8ecae6" class="bar"/>
+  <rect x="204" y="250.9" width="42" height="309.1" fill="#ffb703" class="bar"/>
+  <rect x="256" y="154.9" width="42" height="405.1" fill="#80c27a" class="bar"/>
+  <rect x="308" y="192.3" width="42" height="367.7" fill="#cdb4db" class="bar"/>
+  <text x="251" y="595" text-anchor="middle" class="text">效率评分 ↑</text>
+  <text x="277" y="148" text-anchor="middle" class="num">4.22</text>
+
+  <!-- workload group -->
+  <rect x="455" y="192.3" width="42" height="367.7" fill="#8ecae6" class="bar"/>
+  <rect x="507" y="218.2" width="42" height="341.8" fill="#ffb703" class="bar"/>
+  <rect x="559" y="298.9" width="42" height="261.1" fill="#80c27a" class="bar"/>
+  <rect x="611" y="282.6" width="42" height="277.4" fill="#cdb4db" class="bar"/>
+  <text x="554" y="595" text-anchor="middle" class="text">操作负荷 ↓</text>
+  <text x="580" y="292" text-anchor="middle" class="num">2.72</text>
+
+  <!-- grasp quality group -->
+  <rect x="758" y="255.7" width="42" height="304.3" fill="#8ecae6" class="bar"/>
+  <rect x="810" y="255.7" width="42" height="304.3" fill="#ffb703" class="bar"/>
+  <rect x="862" y="159.7" width="42" height="400.3" fill="#80c27a" class="bar"/>
+  <rect x="914" y="266.2" width="42" height="293.8" fill="#cdb4db" class="bar"/>
+  <text x="857" y="595" text-anchor="middle" class="text">抓取品质 ↑</text>
+  <text x="883" y="153" text-anchor="middle" class="num">4.17</text>
+
+  <!-- Legend -->
+  <rect x="210" y="632" width="36" height="20" fill="#8ecae6" class="bar"/>
+  <text x="256" y="648" class="small">A 固定参数</text>
+  <rect x="405" y="632" width="36" height="20" fill="#ffb703" class="bar"/>
+  <text x="451" y="648" class="small">B 人工选择</text>
+  <rect x="600" y="632" width="36" height="20" fill="#80c27a" class="bar"/>
+  <text x="646" y="648" class="small">C 视觉自动</text>
+  <rect x="795" y="632" width="36" height="20" fill="#cdb4db" class="bar"/>
+  <text x="841" y="648" class="small">D 视觉消融</text>
+
+  <text x="570" y="690" text-anchor="middle" class="small">注：效率评分和抓取品质越高越好，操作负荷越低越好；C 视觉自动模式整体表现最佳。</text>
+</svg>
