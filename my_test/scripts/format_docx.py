@@ -291,6 +291,14 @@ def main():
             refs_content_idx = idx
             # Don't format yet — will be split
 
+        # ── 3i. Individual reference item ───────────────
+        elif is_reference_item(text):
+            print(f"  P{idx}: Reference item")
+            format_all_runs(p, east_asian='宋体', size=SIZE_WU)
+            set_paragraph_format(p, line_spacing=1.5,
+                                 alignment=WD_ALIGN_PARAGRAPH.JUSTIFY,
+                                 first_line_indent=Pt(0))
+
         # ── 3i. Figure captions ─────────────────────────
         elif is_figure_caption(text):
             print(f"  P{idx}: Figure caption")
