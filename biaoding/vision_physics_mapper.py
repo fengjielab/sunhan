@@ -161,6 +161,14 @@ class VisionPhysicsMapper:
             "label": "soft",
             "description": "软-橙子: 低刚度 50N/m, 略小死区",
         },
+        "lemon": {
+            "K_trans": 50, "K_rot": 5, "D_trans": 14.1, "D_rot": 4.5, "M": 0.5,
+            "K_fb": 0.3, "deadband": 0.25,
+            "gripper_speed": 0.02, "gripper_force_limit": 8.0,
+            "admittance_K": 60.0, "approach_speed": 0.02,
+            "label": "soft",
+            "description": "软-柠檬: 低刚度 50N/m, 略小死区",
+        },
         "teddy bear": {
             "K_trans": 50, "K_rot": 5, "D_trans": 14.1, "D_rot": 4.5, "M": 0.5,
             "K_fb": 0.2, "deadband": 0.5,
