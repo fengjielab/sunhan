@@ -298,7 +298,7 @@ FUSION_POSTERIOR_POLICY = {
         "force_sat": 5.0,
         "smooth_factor": 0.30,
         "K_min": 55.0,
-        "K_max": 100.0,
+        "K_max": 85.0,
     },
     "medium": {
         "gain": -0.18,          # 中等物体小幅顺应
@@ -306,7 +306,7 @@ FUSION_POSTERIOR_POLICY = {
         "force_sat": 8.0,
         "smooth_factor": 0.25,
         "K_min": 90.0,
-        "K_max": 150.0,
+        "K_max": 135.0,
     },
     "hard": {
         "gain": 0.0,            # 硬物体保持视觉前验刚度，统一整理为 200 N/m
@@ -322,7 +322,7 @@ FUSION_POSTERIOR_POLICY = {
         "force_sat": 8.0,
         "smooth_factor": 0.25,
         "K_min": 60.0,
-        "K_max": 150.0,
+        "K_max": 135.0,
     },
 }
 
