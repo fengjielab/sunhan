@@ -248,8 +248,8 @@ PRESETS = {
     # ── 模拟物体手感（用于测试力觉反馈） ──
     "soft_obj": {
         "name": "🫧 软物体手感",
-        "desc": "低力反馈 + 低刚度 — 模拟触碰海绵/泡沫",
-        "K_trans": 50.0, "K_rot": 5.0,
+        "desc": "低力反馈 + 中低刚度 — 模拟触碰海绵/泡沫",
+        "K_trans": 100.0, "K_rot": 5.0,
         "damping_ratio": 0.8, "K_fb": 0.2, "deadband": 0.3,
         "scale": 3.0,
     },
@@ -287,16 +287,43 @@ OMEGA_FAIL_RECOVERY_THRESHOLD = 120  # 连续失败多少次后触发相机暂�
 
 # Vision + Force 融合模式配置（实验模式 F）
 FUSION_IMPD_UPDATE_INTERVAL = 0.05   # 力反馈微调阻抗更新频率: 20Hz
-FUSION_FORCE_DEADBAND = 1.0          # 小于该外力认为未稳定接触 (N)
-FUSION_FORCE_SAT = 8.0               # 力反馈微调饱和外力 (N)
-FUSION_SMOOTH_FACTOR = 0.25          # K_t 一阶平滑系数
-FUSION_K_MIN = 30.0                  # 融合模式刚度下限
-FUSION_K_MAX = 260.0                 # 融合模式刚度上限
-FUSION_LABEL_GAIN = {
-    "soft": -0.35,     # 软物体: 接触力越大，刚度越低，保护物体
-    "medium": -0.15,   # 中等物体: 小幅顺应
-    "hard": 0.10,      # 硬物体: 接触后略增刚度，提高稳定性
-    "unknown": -0.10,
+
+# 视觉后验微调策略:
+#   视觉前验由 PRESETS 给出 K_base(c)、K_rot(c)、K_fb(c)、deadband(c)。
+#   接触后再按下表为不同类别使用不同的力阈值、饱和值、修正方向和刚度边界。
+FUSION_POSTERIOR_POLICY = {
+    "soft": {
+        "gain": -0.45,          # 接触力越大，刚度越低，优先保护物体
+        "force_deadband": 0.6,  # 软物体更早进入微调
+        "force_sat": 5.0,
+        "smooth_factor": 0.30,
+        "K_min": 55.0,
+        "K_max": 100.0,
+    },
+    "medium": {
+        "gain": -0.18,          # 中等物体小幅顺应
+        "force_deadband": 1.0,
+        "force_sat": 8.0,
+        "smooth_factor": 0.25,
+        "K_min": 90.0,
+        "K_max": 180.0,
+    },
+    "hard": {
+        "gain": 0.0,            # 硬物体保持视觉前验刚度，统一整理为 200 N/m
+        "force_deadband": 1.5,
+        "force_sat": 10.0,
+        "smooth_factor": 0.20,
+        "K_min": 200.0,
+        "K_max": 200.0,
+    },
+    "unknown": {
+        "gain": -0.10,
+        "force_deadband": 1.0,
+        "force_sat": 8.0,
+        "smooth_factor": 0.25,
+        "K_min": 60.0,
+        "K_max": 180.0,
+    },
 }
 
 # ═══════════════════════════════════════════
@@ -823,7 +850,7 @@ class InteractiveTeleop:
     def _update_vision_force_fusion(self, now: float):
         """视觉前馈 + 力反馈微调。
 
-        视觉首次识别提供 K_base(c)，接触外力提供有界修正项 ΔK_f(t)：
+        视觉首次识别提供 K_base(c)，接触外力按类别后验策略提供有界修正项 ΔK_f(t)：
             K_t(t) = clip(K_base(c) + gain(c) * K_base(c) * s(F), K_min, K_max)
         其中 s(F) 为 [0, 1] 的接触力归一化强度。
         """
@@ -833,24 +860,30 @@ class InteractiveTeleop:
             return
         self._fusion_last_update = now
 
+        label = self._vision_locked_label
+        policy = FUSION_POSTERIOR_POLICY.get(label, FUSION_POSTERIOR_POLICY["unknown"])
+        force_deadband = policy["force_deadband"]
+        force_sat = policy["force_sat"]
+
         F_mag = float(np.linalg.norm(self._F_ext_current[:3]))
-        if F_mag <= FUSION_FORCE_DEADBAND:
+        if F_mag <= force_deadband:
             force_ratio = 0.0
         else:
             force_ratio = min(
-                (F_mag - FUSION_FORCE_DEADBAND)
-                / max(FUSION_FORCE_SAT - FUSION_FORCE_DEADBAND, 1e-6),
+                (F_mag - force_deadband)
+                / max(force_sat - force_deadband, 1e-6),
                 1.0,
             )
 
-        gain = FUSION_LABEL_GAIN.get(self._vision_locked_label, FUSION_LABEL_GAIN["unknown"])
+        gain = policy["gain"]
         target_K = self._vision_base_K_trans * (1.0 + gain * force_ratio)
-        target_K = float(np.clip(target_K, FUSION_K_MIN, FUSION_K_MAX))
+        target_K = float(np.clip(target_K, policy["K_min"], policy["K_max"]))
         target_K_rot = target_K * (self._vision_base_K_rot / max(self._vision_base_K_trans, 1e-6))
 
         prev_K = self._K_trans_cur
-        self._K_trans_cur += FUSION_SMOOTH_FACTOR * (target_K - self._K_trans_cur)
-        self._K_rot_cur += FUSION_SMOOTH_FACTOR * (target_K_rot - self._K_rot_cur)
+        smooth_factor = policy["smooth_factor"]
+        self._K_trans_cur += smooth_factor * (target_K - self._K_trans_cur)
+        self._K_rot_cur += smooth_factor * (target_K_rot - self._K_rot_cur)
         self._fusion_delta_K = self._K_trans_cur - self._vision_base_K_trans
         self._fusion_active = force_ratio > 0.0
 
@@ -2015,12 +2048,7 @@ class InteractiveTeleop:
         if self._vision_force_fusion:
             fusion_config = {
                 "update_interval_s": FUSION_IMPD_UPDATE_INTERVAL,
-                "force_deadband_N": FUSION_FORCE_DEADBAND,
-                "force_saturation_N": FUSION_FORCE_SAT,
-                "smooth_factor": FUSION_SMOOTH_FACTOR,
-                "K_min": FUSION_K_MIN,
-                "K_max": FUSION_K_MAX,
-                "label_gain": FUSION_LABEL_GAIN,
+                "posterior_policy": FUSION_POSTERIOR_POLICY,
             }
 
         summary = {
