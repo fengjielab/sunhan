@@ -293,9 +293,9 @@ FUSION_IMPD_UPDATE_INTERVAL = 0.05   # 力反馈微调阻抗更新频率: 20Hz
 #   接触后再按下表为不同类别使用不同的力阈值、饱和值、修正方向和刚度边界。
 FUSION_POSTERIOR_POLICY = {
     "soft": {
-        "gain": -0.45,          # 接触力越大，刚度越低，优先保护物体
+        "gain": -0.55,          # 接触力越大，刚度越低，优先保护物体
         "force_deadband": 0.6,  # 软物体更早进入微调
-        "force_sat": 5.0,
+        "force_sat": 4.0,
         "smooth_factor": 0.30,
         "K_min": 55.0,
         "K_max": 85.0,
