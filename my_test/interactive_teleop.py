@@ -22,9 +22,13 @@ interactive_teleop.py — 交互式遥操作：实时调节阻尼/刚度/力反�
        - RealSense D435i 相机 + YOLO 子进程 (独立 GIL)
        - 视觉识别结果仅在屏幕上显示，不自动映射手感参数
        -  键盘手动参数调节可用（与 default 模式相同）
-    5. 预设手感场景切换（一键切换多组参数）
-    6. Omega.7 力反馈实时渲染（从端外力 → 主端力觉）
-    7. Omega.7 夹钳 → Franka 夹爪控制
+    5. F 模式 / Vision-Force 模式: 视觉语义前馈 + 接触力反馈微调
+       - 接触前: YOLO → soft/medium/hard → 多参数策略库
+       - 接触后: Panda 外力估计 → 有界修正 K_trans/K_rot
+       - 运行入口: --mode f 或 --mode vision_force
+    6. 预设手感场景切换（一键切换多组参数）
+    7. Omega.7 力反馈实时渲染（从端外力 → 主端力觉）
+    8. Omega.7 夹钳 → Franka 夹爪控制
 
 手感维度:
     ┌──────────────┬──────────────────────────────────────┐
@@ -79,6 +83,11 @@ interactive_teleop.py — 交互式遥操作：实时调节阻尼/刚度/力反�
 
     # vision 模式 — YOLO 视觉自动映射物体手感
     python3 my_test/interactive_teleop.py --mode vision
+
+    # F 模式 — 视觉前馈 + 力反馈微调融合
+    python3 my_test/interactive_teleop.py --mode f
+    # 等价写法:
+    python3 my_test/interactive_teleop.py --mode vision_force
 
     # 指定轨迹输出目录
     python3 my_test/interactive_teleop.py --trajectory-dir data/
@@ -2104,12 +2113,13 @@ class InteractiveTeleop:
 
 def main():
     # 动态从 PRESETS 生成 choices: default + vision + 所有 preset key
-    MODE_CHOICES = ["default", "vision", "vision_observe", "vision_force"] + sorted(PRESETS.keys())
+    MODE_CHOICES = ["default", "vision", "vision_observe", "vision_force", "f", "F"] + sorted(PRESETS.keys())
     parser = argparse.ArgumentParser(description="交互式遥操作：实时调节阻尼/刚度/力反馈")
     parser.add_argument("--mode", "-m", type=str, default="default",
                         choices=MODE_CHOICES,
                         help="运行模式: default=手动调节手感, vision=YOLO视觉自动映射, "
-                             "vision_observe=视觉仅观察不改变手感, vision_force=视觉前馈+力反馈微调融合, "
+                             "vision_observe=视觉仅观察不改变手感, "
+                             "f/vision_force=实验F模式(视觉前馈+力反馈微调融合), "
                              "或直接指定预设: " + ", ".join(sorted(PRESETS.keys())))
     parser.add_argument("--load", "-l", type=str, default=None,
                         help="启动时加载参数文件路径")
@@ -2118,9 +2128,10 @@ def main():
     parser.add_argument("--trajectory-dir", type=str, default=TRAJECTORY_DIR,
                         help=f"轨迹 CSV 输出目录 (默认: {TRAJECTORY_DIR}/)")
     args = parser.parse_args()
+    canonical_mode = "vision_force" if args.mode in ("f", "F") else args.mode
 
     teleop = InteractiveTeleop(
-        mode=args.mode,
+        mode=canonical_mode,
         record_trajectory=not args.no_trajectory,
         trajectory_dir=args.trajectory_dir,
     )
