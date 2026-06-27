@@ -184,7 +184,8 @@ TRAJECTORY_DIR = "data"          # 轨迹 CSV 输出目录
 TRAJECTORY_DECIMATION = 1        # 降采样: 1=每周期记录(200Hz), 5=每5周期记录(40Hz)
 TRAJECTORY_CSV_HEADER = ["time", "x", "y", "z", "gripper_deg", "button",
                           "K_trans", "K_rot", "damping_ratio", "K_fb", "deadband", "scale",
-                          "F_ext_mag", "fusion_delta_K", "fusion_active", "vision_label"]
+                          "F_ext_mag", "fusion_delta_K", "fusion_active", "vision_label",
+                          "gripper_state", "gripper_cmd_speed", "gripper_cmd_force"]
 
 # 平滑过渡步长
 TRANSITION_STEPS = 30       # 刚度/阻尼过渡步数
@@ -251,21 +252,21 @@ PRESETS = {
         "desc": "人工正确选择 soft 策略，与视觉 soft 前馈参数一致",
         "K_trans": 90.0, "K_rot": 5.0,
         "damping_ratio": 0.9, "K_fb": 0.25, "deadband": 0.3,
-        "scale": 3.0,
+        "scale": 3.0, "gripper_speed": 0.02, "gripper_force": 5.0,
     },
     "medium_obj": {
         "name": "📦 中物体手感",
         "desc": "中力反馈 + 中刚度 — 模拟触碰纸盒/塑料瓶",
-        "K_trans": 150.0, "K_rot": 10.0,
-        "damping_ratio": 1.0, "K_fb": 0.5, "deadband": 0.4,
-        "scale": 3.0,
+        "K_trans": 130.0, "K_rot": 9.0,
+        "damping_ratio": 1.0, "K_fb": 0.45, "deadband": 0.4,
+        "scale": 3.0, "gripper_speed": 0.04, "gripper_force": 10.0,
     },
     "hard_obj": {
         "name": "🪨 硬物体手感",
         "desc": "强力反馈 + 高刚度 — 模拟触碰金属/岩石",
-        "K_trans": 200.0, "K_rot": 13.0,
-        "damping_ratio": 1.2, "K_fb": 0.7, "deadband": 0.5,
-        "scale": 3.0,
+        "K_trans": 170.0, "K_rot": 12.0,
+        "damping_ratio": 1.15, "K_fb": 0.65, "deadband": 0.5,
+        "scale": 3.0, "gripper_speed": 0.06, "gripper_force": 20.0,
     },
     # ── 六模式预实验专用参数 ──
     "experiment_fixed_a": {
@@ -273,35 +274,35 @@ PRESETS = {
         "desc": "实验 A — 高刚度固定基线",
         "K_trans": 200.0, "K_rot": 13.0,
         "damping_ratio": 1.2, "K_fb": 0.5, "deadband": 0.3,
-        "scale": 3.0,
+        "scale": 3.0, "gripper_speed": 0.10, "gripper_force": 20.0,
     },
     "experiment_observe_d": {
         "name": "🇩 视觉观察模式",
         "desc": "实验 D — 视觉仅提示，与 A 使用相同固定参数",
         "K_trans": 200.0, "K_rot": 13.0,
         "damping_ratio": 1.2, "K_fb": 0.5, "deadband": 0.3,
-        "scale": 3.0,
+        "scale": 3.0, "gripper_speed": 0.10, "gripper_force": 20.0,
     },
     "vision_soft": {
         "name": "👁️ 视觉软物体",
         "desc": "实验 C/F 的 soft 视觉前馈基线",
         "K_trans": 90.0, "K_rot": 5.0,
         "damping_ratio": 0.9, "K_fb": 0.25, "deadband": 0.3,
-        "scale": 3.0,
+        "scale": 3.0, "gripper_speed": 0.02, "gripper_force": 5.0,
     },
     "vision_medium": {
         "name": "👁️ 视觉中等物体",
         "desc": "实验 C/F 的 medium 视觉前馈基线",
         "K_trans": 130.0, "K_rot": 9.0,
         "damping_ratio": 1.0, "K_fb": 0.45, "deadband": 0.4,
-        "scale": 3.0,
+        "scale": 3.0, "gripper_speed": 0.04, "gripper_force": 10.0,
     },
     "vision_hard": {
         "name": "👁️ 视觉硬物体",
         "desc": "实验 C/F 的 hard 视觉前馈基线",
         "K_trans": 170.0, "K_rot": 12.0,
         "damping_ratio": 1.15, "K_fb": 0.65, "deadband": 0.5,
-        "scale": 3.0,
+        "scale": 3.0, "gripper_speed": 0.06, "gripper_force": 20.0,
     },
 }
 
@@ -541,6 +542,8 @@ class InteractiveTeleop:
         self._pending_width: Optional[float] = None  # 追赶模式：待执行的目标宽度
         self._gripper_state = GripperState.IDLE      # 当前状态机状态
         self._grasp_armed = True                     # 必须先张开，才允许下一次抓取
+        self._gripper_speed_cur = GRIPPER_SPEED      # 当前模式的闭合速度
+        self._gripper_force_cur = GRIPPER_FORCE      # 当前模式的夹持力
         self._btn0_prev = 0  # 灰色按钮 (上一帧)
         self._gripper_force_feedback = 0.0  # 夹爪力反馈值
 
@@ -812,6 +815,8 @@ class InteractiveTeleop:
         self._K_fb_cur = p["K_fb"]
         self._deadband_cur = p["deadband"]
         self._scale_cur = p["scale"]
+        self._gripper_speed_cur = p.get("gripper_speed", GRIPPER_SPEED)
+        self._gripper_force_cur = p.get("gripper_force", GRIPPER_FORCE)
 
     # ═══════════════════════════════════════════
     # Vision 模式 — profile → PRESETS 映射
@@ -1372,22 +1377,30 @@ class InteractiveTeleop:
         self._cmd_busy = True
         try:
             success = self.gripper.grasp(
-                width, GRIPPER_SPEED, GRIPPER_FORCE,
+                width, self._gripper_speed_cur, self._gripper_force_cur,
                 GRIPPER_EPS_INNER, GRIPPER_EPS_OUTER,
             )
             self._last_cmd_width = width
             self._cmd_count += 1
             if success:
-                print(f"\n  🤖 已抓取物体! (宽度={width*1000:.1f}mm, 力={GRIPPER_FORCE:.0f}N)")
-                self._gripper_state = GripperState.HOLDING
+                print(
+                    f"\n  🤖 已抓取物体! (宽度={width*1000:.1f}mm, "
+                    f"速度={self._gripper_speed_cur:.2f}m/s, 力={self._gripper_force_cur:.0f}N)"
+                )
+                if self._gripper_state == GripperState.GRASPING:
+                    self._gripper_state = GripperState.HOLDING
             else:
                 print(f"\n  🤖 未检测到物体 (宽度={width*1000:.1f}mm)")
-                self._gripper_state = GripperState.IDLE
+                if self._gripper_state == GripperState.GRASPING:
+                    self._gripper_state = GripperState.IDLE
         except Exception as e:
             print(f"\n  ⚠️ grasp 失败: {e}")
-            self._gripper_state = GripperState.IDLE
+            if self._gripper_state == GripperState.GRASPING:
+                self._gripper_state = GripperState.IDLE
         finally:
-            self._cmd_busy = False
+            # release 可能已在另一线程中中断 grasp，不要提前清掉它的 busy 状态。
+            if self._gripper_state != GripperState.RELEASING:
+                self._cmd_busy = False
 
     def _execute_release(self, width: float):
         """RELEASING 状态：先 stop 释放力保持，再 move 张开"""
@@ -1468,8 +1481,11 @@ class InteractiveTeleop:
                     self._trigger_grasp(target_width)
             return
 
-        # ── GRASPING: 等待 grasp 完成 ──
+        # ── GRASPING: 允许张开手势中断阻塞中的 grasp ──
         if self._gripper_state == GripperState.GRASPING:
+            if target_norm > MOVE_THRESHOLD:
+                self._grasp_armed = False
+                self._trigger_release(self._max_width)
             return
 
         # ── HOLDING: 力保持中，检测释放意图 ──
@@ -1769,13 +1785,13 @@ class InteractiveTeleop:
                 if btn0 and not self._btn0_prev:
                     print(f"\n  🔘 灰色按钮 → 夹爪完全张开")
                     self._grasp_armed = False  # 若主端仍闭合，防止松开后立即重抓
-                    if self._gripper_state == GripperState.HOLDING:
-                        # 力保持中 → 走 release 路径 (stop + move)
+                    if self._gripper_state in (GripperState.GRASPING, GripperState.HOLDING):
+                        # 抓取阻塞或力保持中 → 强制 stop + 完全张开
                         self._trigger_release(self._max_width)
                     elif self._gripper_state == GripperState.IDLE and not self._cmd_busy:
                         # 空闲中 → 直接 move 张开
                         self._trigger_idle_move(self._max_width)
-                    # 其他状态忽略（GRASPING/RELEASING 不打断）
+                    # RELEASING 中不重复发送命令
                 self._btn0_prev = btn0
 
                 # ── 1a. 记录轨迹（降采样） ──
@@ -1853,6 +1869,8 @@ class InteractiveTeleop:
                                 self._K_fb_cur = p["K_fb"]
                                 self._deadband_cur = p["deadband"]
                                 self._scale_cur = p["scale"]
+                                self._gripper_speed_cur = p.get("gripper_speed", GRIPPER_SPEED)
+                                self._gripper_force_cur = p.get("gripper_force", GRIPPER_FORCE)
                                 self._vision_locked_label = getattr(profile, "label", "unknown")
                                 self._vision_base_K_trans = p["K_trans"]
                                 self._vision_base_K_rot = p["K_rot"]
@@ -1933,6 +1951,9 @@ class InteractiveTeleop:
             "fusion_delta_K": self._fusion_delta_K,
             "fusion_active": int(self._fusion_active),
             "vision_label": self._vision_locked_label,
+            "gripper_state": self._gripper_state.value,
+            "gripper_cmd_speed": self._gripper_speed_cur,
+            "gripper_cmd_force": self._gripper_force_cur,
         })
 
     def _save_trajectory(self, timestamp: str = None):
@@ -1978,6 +1999,9 @@ class InteractiveTeleop:
                     f"{row['fusion_delta_K']:.3f}",
                     row['fusion_active'],
                     row['vision_label'],
+                    row['gripper_state'],
+                    f"{row['gripper_cmd_speed']:.3f}",
+                    f"{row['gripper_cmd_force']:.1f}",
                 ])
 
         print(f"\n  🎯 轨迹已保存: {fpath}")
@@ -2020,13 +2044,16 @@ class InteractiveTeleop:
         force_peak = 0.0
         force_peak_time = 0.0
         force_mean = 0.0
+        force_peak_gripper_state = "UNKNOWN"
         force_samples = [
-            (float(row["time"]), float(row["F_ext_mag"]))
+            (float(row["time"]), float(row["F_ext_mag"]), row.get("gripper_state", "UNKNOWN"))
             for row in self._trajectory
             if np.isfinite(row.get("F_ext_mag", np.nan))
         ]
         if force_samples:
-            force_peak_time, force_peak = max(force_samples, key=lambda item: item[1])
+            force_peak_time, force_peak, force_peak_gripper_state = max(
+                force_samples, key=lambda item: item[1]
+            )
             force_mean = float(np.mean([item[1] for item in force_samples]))
 
         if n_samples >= 2:
@@ -2065,6 +2092,8 @@ class InteractiveTeleop:
             "K_fb": self._K_fb_cur,
             "deadband": self._deadband_cur,
             "scale": self._scale_cur,
+            "gripper_cmd_speed": self._gripper_speed_cur,
+            "gripper_cmd_force": self._gripper_force_cur,
             "vision_base_K_trans": self._vision_base_K_trans,
             "vision_base_K_rot": self._vision_base_K_rot,
             "fusion_delta_K_final": self._fusion_delta_K,
@@ -2113,6 +2142,7 @@ class InteractiveTeleop:
                 "metric": "norm(Fx, Fy, Fz)",
                 "F_ext_peak_N": round(force_peak, 3),
                 "F_ext_peak_time_s": round(force_peak_time, 4),
+                "F_ext_peak_gripper_state": force_peak_gripper_state,
                 "F_ext_mean_N": round(force_mean, 3),
                 "n_samples": len(force_samples),
             },

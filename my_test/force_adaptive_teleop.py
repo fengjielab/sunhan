@@ -131,7 +131,7 @@ TRAJECTORY_DECIMATION = 1
 TRAJECTORY_CSV_HEADER = [
     "time", "x", "y", "z", "gripper_deg", "button",
     "K_trans", "K_rot", "damping_ratio", "K_fb", "deadband", "scale",
-    "F_ext_mag", "alpha", "F_sat",
+    "F_ext_mag", "alpha", "F_sat", "gripper_state", "gripper_cmd_speed", "gripper_cmd_force",
 ]
 
 # 参数范围
@@ -436,15 +436,19 @@ class ForceAdaptiveTeleop:
             self._cmd_count += 1
             if success:
                 print(f"\n  🤖 已抓取物体! (宽度={width*1000:.1f}mm, 力={GRIPPER_FORCE:.0f}N)")
-                self._gripper_state = GripperState.HOLDING
+                if self._gripper_state == GripperState.GRASPING:
+                    self._gripper_state = GripperState.HOLDING
             else:
                 print(f"\n  🤖 未检测到物体 (宽度={width*1000:.1f}mm)")
-                self._gripper_state = GripperState.IDLE
+                if self._gripper_state == GripperState.GRASPING:
+                    self._gripper_state = GripperState.IDLE
         except Exception as e:
             print(f"\n  ⚠️ grasp 失败: {e}")
-            self._gripper_state = GripperState.IDLE
+            if self._gripper_state == GripperState.GRASPING:
+                self._gripper_state = GripperState.IDLE
         finally:
-            self._cmd_busy = False
+            if self._gripper_state != GripperState.RELEASING:
+                self._cmd_busy = False
 
     def _execute_release(self, width: float):
         if self.gripper is None:
@@ -494,6 +498,9 @@ class ForceAdaptiveTeleop:
             return
 
         if self._gripper_state == GripperState.GRASPING:
+            if target_norm > MOVE_THRESHOLD:
+                self._grasp_armed = False
+                self._trigger_release(GRIPPER_MAX)
             return
 
         if self._gripper_state == GripperState.HOLDING:
@@ -652,6 +659,9 @@ class ForceAdaptiveTeleop:
             "K_base": self._K_base_cur,
             "alpha": self._alpha_cur,
             "F_sat": self._F_sat_cur,
+            "gripper_state": self._gripper_state.value,
+            "gripper_cmd_speed": GRIPPER_SPEED,
+            "gripper_cmd_force": GRIPPER_FORCE,
             "K_rot_ratio": self._K_rot_ratio_cur,
             "damping_ratio": self._damping_ratio_cur,
             "K_fb": self._K_fb_cur,
@@ -711,6 +721,9 @@ class ForceAdaptiveTeleop:
                     f"{row['scale']:.2f}",
                     f"{row['F_ext_mag']:.3f}",
                     f"{row['alpha']:.3f}", f"{row['F_sat']:.2f}",
+                    row['gripper_state'],
+                    f"{row['gripper_cmd_speed']:.3f}",
+                    f"{row['gripper_cmd_force']:.1f}",
                 ])
         duration = self._trajectory[-1]["time"] - self._trajectory[0]["time"]
         actual_freq = len(self._trajectory) / duration if duration > 0 else 0
@@ -730,14 +743,17 @@ class ForceAdaptiveTeleop:
         n_samples = len(self._trajectory)
         speed_mean = speed_std = speed_max = 0.0
         force_peak = force_peak_time = force_mean = 0.0
+        force_peak_gripper_state = "UNKNOWN"
 
         force_samples = [
-            (float(row["time"]), float(row["F_ext_mag"]))
+            (float(row["time"]), float(row["F_ext_mag"]), row.get("gripper_state", "UNKNOWN"))
             for row in self._trajectory
             if np.isfinite(row.get("F_ext_mag", np.nan))
         ]
         if force_samples:
-            force_peak_time, force_peak = max(force_samples, key=lambda item: item[1])
+            force_peak_time, force_peak, force_peak_gripper_state = max(
+                force_samples, key=lambda item: item[1]
+            )
             force_mean = float(np.mean([item[1] for item in force_samples]))
 
         if n_samples >= 2:
@@ -779,6 +795,7 @@ class ForceAdaptiveTeleop:
                 "metric": "norm(Fx, Fy, Fz)",
                 "F_ext_peak_N": round(force_peak, 3),
                 "F_ext_peak_time_s": round(force_peak_time, 4),
+                "F_ext_peak_gripper_state": force_peak_gripper_state,
                 "F_ext_mean_N": round(force_mean, 3),
                 "n_samples": len(force_samples),
             },
@@ -893,7 +910,7 @@ class ForceAdaptiveTeleop:
                 if btn0 and not self._btn0_prev:
                     print(f"\n  🔘 灰色按钮 → 夹爪完全张开")
                     self._grasp_armed = False
-                    if self._gripper_state == GripperState.HOLDING:
+                    if self._gripper_state in (GripperState.GRASPING, GripperState.HOLDING):
                         self._trigger_release(GRIPPER_MAX)
                     elif self._gripper_state == GripperState.IDLE and not self._cmd_busy:
                         self._trigger_idle_move(GRIPPER_MAX)
