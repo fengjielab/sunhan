@@ -647,9 +647,15 @@ class InteractiveTeleop:
             print("    ✅ Homing 完成")
         except Exception as e:
             print(f"    ⚠️  Homing 失败: {e}")
-        self.gripper.move(GRIPPER_MAX, GRIPPER_SPEED)
-        self._last_cmd_width = GRIPPER_MAX
-        print(f"    ✅ 夹爪已打开 ({GRIPPER_MAX*1000:.0f} mm)")
+        try:
+            gripper_state = self.gripper.read_once()
+            self._max_width = float(gripper_state.max_width)
+        except Exception as e:
+            self._max_width = GRIPPER_MAX
+            print(f"    ⚠️  读取夹爪最大开度失败，使用 {GRIPPER_MAX*1000:.0f} mm: {e}")
+        self.gripper.move(self._max_width, GRIPPER_SPEED)
+        self._last_cmd_width = self._max_width
+        print(f"    ✅ 夹爪已打开 ({self._max_width*1000:.1f} mm)")
 
         # ── 状态读取 ──
         state = self.panda.get_state()
@@ -1412,9 +1418,17 @@ class InteractiveTeleop:
         try:
             # 第一步：stop 释放力保持
             print(f"\n  🛑 释放力保持...")
-            self._gripper_stop()
+            if not self._gripper_stop():
+                raise RuntimeError("stop() 未能释放夹爪力控")
             # 第二步：move 到目标开度
-            self.gripper.move(width, GRIPPER_SPEED)
+            moved = self.gripper.move(width, GRIPPER_SPEED)
+            if moved is False:
+                print("  ⚠️ 首次张开被拒绝，再次 stop 后重试...")
+                if not self._gripper_stop():
+                    raise RuntimeError("重试前 stop() 失败")
+                moved = self.gripper.move(width, GRIPPER_SPEED)
+            if moved is False:
+                raise RuntimeError("move() 两次均未能张开夹爪")
             self._last_cmd_width = width
             self._cmd_count += 1
             print(f"  ✅ 夹爪已张开到 {width*1000:.1f}mm")
@@ -1474,7 +1488,12 @@ class InteractiveTeleop:
         # ── IDLE: 只识别张开/闭合边沿，不再连续跟随宽度 ──
         if self._gripper_state == GripperState.IDLE:
             if target_norm > MOVE_THRESHOLD:
-                self._grasp_armed = True
+                if not self._grasp_armed and not self._cmd_busy:
+                    # grasp 可能返回 False 但物理上仍在力保持：仍必须 stop + move。
+                    self._grasp_armed = True
+                    self._trigger_release(self._max_width)
+                else:
+                    self._grasp_armed = True
             elif target_norm < GRASP_THRESHOLD and self._grasp_armed:
                 if not self._cmd_busy:
                     self._grasp_armed = False
@@ -1484,7 +1503,7 @@ class InteractiveTeleop:
         # ── GRASPING: 允许张开手势中断阻塞中的 grasp ──
         if self._gripper_state == GripperState.GRASPING:
             if target_norm > MOVE_THRESHOLD:
-                self._grasp_armed = False
+                self._grasp_armed = True
                 self._trigger_release(self._max_width)
             return
 
@@ -1492,6 +1511,7 @@ class InteractiveTeleop:
         if self._gripper_state == GripperState.HOLDING:
             if target_norm > MOVE_THRESHOLD:
                 if not self._cmd_busy:
+                    self._grasp_armed = True
                     self._trigger_release(self._max_width)
             return
 
@@ -1785,12 +1805,9 @@ class InteractiveTeleop:
                 if btn0 and not self._btn0_prev:
                     print(f"\n  🔘 灰色按钮 → 夹爪完全张开")
                     self._grasp_armed = False  # 若主端仍闭合，防止松开后立即重抓
-                    if self._gripper_state in (GripperState.GRASPING, GripperState.HOLDING):
-                        # 抓取阻塞或力保持中 → 强制 stop + 完全张开
+                    if self._gripper_state != GripperState.RELEASING:
+                        # 不信任逻辑状态：总是先 stop 力控，再完全张开。
                         self._trigger_release(self._max_width)
-                    elif self._gripper_state == GripperState.IDLE and not self._cmd_busy:
-                        # 空闲中 → 直接 move 张开
-                        self._trigger_idle_move(self._max_width)
                     # RELEASING 中不重复发送命令
                 self._btn0_prev = btn0
 

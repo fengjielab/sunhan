@@ -214,6 +214,7 @@ class ForceAdaptiveTeleop:
 
         # ── 夹爪 ──
         self._last_cmd_width = GRIPPER_MAX
+        self._max_width = GRIPPER_MAX
         self._cmd_busy = False
         self._grip_min = GRIP_ANGLE_INIT_MIN
         self._grip_max = GRIP_ANGLE_INIT_MAX
@@ -304,9 +305,15 @@ class ForceAdaptiveTeleop:
             print("    ✅ Homing 完成")
         except Exception as e:
             print(f"    ⚠️  Homing 失败: {e}")
-        self.gripper.move(GRIPPER_MAX, GRIPPER_SPEED)
-        self._last_cmd_width = GRIPPER_MAX
-        print(f"    ✅ 夹爪已打开 ({GRIPPER_MAX*1000:.0f} mm)")
+        try:
+            gripper_state = self.gripper.read_once()
+            self._max_width = float(gripper_state.max_width)
+        except Exception as e:
+            self._max_width = GRIPPER_MAX
+            print(f"    ⚠️  读取夹爪最大开度失败，使用 {GRIPPER_MAX*1000:.0f} mm: {e}")
+        self.gripper.move(self._max_width, GRIPPER_SPEED)
+        self._last_cmd_width = self._max_width
+        print(f"    ✅ 夹爪已打开 ({self._max_width*1000:.1f} mm)")
 
         # ── 状态读取 ──
         state = self.panda.get_state()
@@ -395,7 +402,7 @@ class ForceAdaptiveTeleop:
         return float(np.clip(norm, 0.0, 1.0))
 
     def _norm_to_width(self, norm: float) -> float:
-        return float(np.clip(norm * GRIPPER_MAX, GRIPPER_MIN_WIDTH, GRIPPER_MAX))
+        return float(np.clip(norm * self._max_width, GRIPPER_MIN_WIDTH, self._max_width))
 
     def _gripper_stop(self) -> bool:
         if self.gripper is None:
@@ -457,8 +464,16 @@ class ForceAdaptiveTeleop:
             return
         self._cmd_busy = True
         try:
-            self._gripper_stop()
-            self.gripper.move(width, GRIPPER_SPEED)
+            if not self._gripper_stop():
+                raise RuntimeError("stop() 未能释放夹爪力控")
+            moved = self.gripper.move(width, GRIPPER_SPEED)
+            if moved is False:
+                print("  ⚠️ 首次张开被拒绝，再次 stop 后重试...")
+                if not self._gripper_stop():
+                    raise RuntimeError("重试前 stop() 失败")
+                moved = self.gripper.move(width, GRIPPER_SPEED)
+            if moved is False:
+                raise RuntimeError("move() 两次均未能张开夹爪")
             self._last_cmd_width = width
             self._cmd_count += 1
             self._gripper_state = GripperState.IDLE
@@ -490,7 +505,11 @@ class ForceAdaptiveTeleop:
         # 二值锁存：IDLE 不再跟随夹钳宽度，只在闭合边沿抓取一次。
         if self._gripper_state == GripperState.IDLE:
             if target_norm > MOVE_THRESHOLD:
-                self._grasp_armed = True
+                if not self._grasp_armed and not self._cmd_busy:
+                    self._grasp_armed = True
+                    self._trigger_release(self._max_width)
+                else:
+                    self._grasp_armed = True
             elif target_norm < GRASP_THRESHOLD and self._grasp_armed:
                 if not self._cmd_busy:
                     self._grasp_armed = False
@@ -499,14 +518,15 @@ class ForceAdaptiveTeleop:
 
         if self._gripper_state == GripperState.GRASPING:
             if target_norm > MOVE_THRESHOLD:
-                self._grasp_armed = False
-                self._trigger_release(GRIPPER_MAX)
+                self._grasp_armed = True
+                self._trigger_release(self._max_width)
             return
 
         if self._gripper_state == GripperState.HOLDING:
             if target_norm > MOVE_THRESHOLD:
                 if not self._cmd_busy:
-                    self._trigger_release(GRIPPER_MAX)
+                    self._grasp_armed = True
+                    self._trigger_release(self._max_width)
             return
 
         if self._gripper_state == GripperState.RELEASING:
@@ -910,10 +930,8 @@ class ForceAdaptiveTeleop:
                 if btn0 and not self._btn0_prev:
                     print(f"\n  🔘 灰色按钮 → 夹爪完全张开")
                     self._grasp_armed = False
-                    if self._gripper_state in (GripperState.GRASPING, GripperState.HOLDING):
-                        self._trigger_release(GRIPPER_MAX)
-                    elif self._gripper_state == GripperState.IDLE and not self._cmd_busy:
-                        self._trigger_idle_move(GRIPPER_MAX)
+                    if self._gripper_state != GripperState.RELEASING:
+                        self._trigger_release(self._max_width)
                 self._btn0_prev = btn0
 
                 # ── 1a. 轨迹记录 ──
