@@ -1,0 +1,94 @@
+{
+  "timestamp": "20260627_155933",
+  "saved_at": "2026-06-27T15:59:33.594796",
+  "mode": {
+    "mode": "vision_force",
+    "vision_enabled": true,
+    "vision_auto_map": true,
+    "vision_force_fusion": true,
+    "vision_locked": true,
+    "vision_label": "unknown"
+  },
+  "runtime": {
+    "duration_s": 31.13,
+    "traj_length_m": 0.5731,
+    "mean_speed_ms": 0.0186,
+    "speed_variance": 0.000538,
+    "speed_std_ms": 0.0232,
+    "max_speed_ms": 1.143
+  },
+  "trajectory": {
+    "n_samples": 6055,
+    "pos_x_range_m": [
+      -0.0444,
+      0.0112
+    ],
+    "pos_y_range_m": [
+      -0.0198,
+      0.0608
+    ],
+    "pos_z_range_m": [
+      -0.0189,
+      0.0995
+    ]
+  },
+  "external_force": {
+    "source": "Franka estimated external wrench",
+    "metric": "norm(Fx, Fy, Fz)",
+    "F_ext_peak_N": 6.107,
+    "F_ext_peak_time_s": 30.9791,
+    "F_ext_peak_gripper_state": "IDLE",
+    "F_ext_mean_N": 2.439,
+    "n_samples": 6055
+  },
+  "final_params": {
+    "K_trans": 121.21537369789732,
+    "K_rot": 8.391833563700583,
+    "damping_ratio": 1.0,
+    "K_fb": 0.45,
+    "deadband": 0.4,
+    "scale": 3.0,
+    "gripper_cmd_speed": 0.04,
+    "gripper_cmd_force": 10.0,
+    "vision_base_K_trans": 130.0,
+    "vision_base_K_rot": 9.0,
+    "fusion_delta_K_final": -8.78462630210268
+  },
+  "fusion_config": {
+    "update_interval_s": 0.05,
+    "posterior_policy": {
+      "soft": {
+        "gain": -0.4,
+        "force_deadband": 0.5,
+        "force_sat": 4.0,
+        "smooth_factor": 0.3,
+        "K_min": 55.0,
+        "K_max": 90.0
+      },
+      "medium": {
+        "gain": -0.25,
+        "force_deadband": 0.8,
+        "force_sat": 6.0,
+        "smooth_factor": 0.25,
+        "K_min": 90.0,
+        "K_max": 130.0
+      },
+      "hard": {
+        "gain": -0.15,
+        "force_deadband": 1.2,
+        "force_sat": 8.0,
+        "smooth_factor": 0.2,
+        "K_min": 140.0,
+        "K_max": 170.0
+      },
+      "unknown": {
+        "gain": -0.1,
+        "force_deadband": 1.0,
+        "force_sat": 8.0,
+        "smooth_factor": 0.25,
+        "K_min": 60.0,
+        "K_max": 135.0
+      }
+    }
+  }
+}
