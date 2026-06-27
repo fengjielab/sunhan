@@ -221,6 +221,7 @@ class ForceAdaptiveTeleop:
         self._cmd_count = 0
         self._pending_width: Optional[float] = None
         self._gripper_state = GripperState.IDLE
+        self._grasp_armed = True  # 张开后才允许下一次抓取，防止反复夹放
         self._btn0_prev = 0
         self._gripper_force_feedback = 0.0
 
@@ -482,22 +483,13 @@ class ForceAdaptiveTeleop:
         t.start()
 
     def _update_state_machine(self, target_norm: float, target_width: float):
-        # 追赶模式
-        if not self._cmd_busy and self._pending_width is not None:
-            pw = self._pending_width
-            self._pending_width = None
-            pn = pw / GRIPPER_MAX
-            if pn > MOVE_THRESHOLD or self._gripper_state == GripperState.IDLE:
-                self._execute_idle_move(pw)
-            return
-
+        # 二值锁存：IDLE 不再跟随夹钳宽度，只在闭合边沿抓取一次。
         if self._gripper_state == GripperState.IDLE:
             if target_norm > MOVE_THRESHOLD:
+                self._grasp_armed = True
+            elif target_norm < GRASP_THRESHOLD and self._grasp_armed:
                 if not self._cmd_busy:
-                    if abs(target_width - self._last_cmd_width) > GRIPPER_HYSTERESIS:
-                        self._trigger_idle_move(target_width)
-            elif target_norm < GRASP_THRESHOLD:
-                if not self._cmd_busy:
+                    self._grasp_armed = False
                     self._trigger_grasp(target_width)
             return
 
@@ -507,9 +499,7 @@ class ForceAdaptiveTeleop:
         if self._gripper_state == GripperState.HOLDING:
             if target_norm > MOVE_THRESHOLD:
                 if not self._cmd_busy:
-                    self._trigger_release(target_width)
-                else:
-                    self._pending_width = target_width
+                    self._trigger_release(GRIPPER_MAX)
             return
 
         if self._gripper_state == GripperState.RELEASING:
@@ -902,6 +892,7 @@ class ForceAdaptiveTeleop:
 
                 if btn0 and not self._btn0_prev:
                     print(f"\n  🔘 灰色按钮 → 夹爪完全张开")
+                    self._grasp_armed = False
                     if self._gripper_state == GripperState.HOLDING:
                         self._trigger_release(GRIPPER_MAX)
                     elif self._gripper_state == GripperState.IDLE and not self._cmd_busy:
