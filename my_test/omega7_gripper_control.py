@@ -200,6 +200,19 @@ class Omega7GripperController:
         else:
             self._drd_started = True
             print("  ✅ DRD 实时通道已启动")
+
+            # ── 关键修复: Omega.7 自动校准机械零位 ──
+            # 不调用 autoInit() 会导致编码器零点偏移，
+            # 夹钳角度读数不准，自适应归一化收敛变慢。
+            if not drd.isInitialized():
+                if drd.autoInit() < 0:
+                    print(f"  ⚠️  Omega.7 自动校准失败: {dhd.errorGetLastStr()}")
+                else:
+                    print("  ✅ Omega.7 自动校准完成（机械零位已校正）")
+                    # 校准后重设归一化范围，以校准后的零点为基准
+                    self._grip_angle_min = GRIP_ANGLE_INIT_MIN
+                    self._grip_angle_max = GRIP_ANGLE_INIT_MAX
+
         dhd.enableForce(True)
         dhd.enableGripperForce(True)
         print("  ✅ 夹钳力反馈已启用")
