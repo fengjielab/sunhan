@@ -158,7 +158,7 @@ GRIPPER_MAX = 0.08          # 夹爪最大开度 (m)
 GRIPPER_MIN_WIDTH = 0.0     # 夹爪最小开度 (m)
 GRIPPER_HYSTERESIS = 0.003  # 夹爪命令死区 (m)
 GRIPPER_EPS_INNER = 0.005   # grasp 内容差
-GRIPPER_EPS_OUTER = 0.005   # grasp 外容差
+GRIPPER_EPS_OUTER = GRIPPER_MAX  # 未知物体宽度：允许在全行程内判定抓取成功
 
 # 夹钳角度自适应归一化初始值
 GRIP_ANGLE_INIT_MIN = -30.0  # 完全张开 (度)
@@ -540,6 +540,7 @@ class InteractiveTeleop:
         self._cmd_count = 0             # 夹爪命令计数
         self._pending_width: Optional[float] = None  # 追赶模式：待执行的目标宽度
         self._gripper_state = GripperState.IDLE      # 当前状态机状态
+        self._grasp_armed = True                     # 必须先张开，才允许下一次抓取
         self._btn0_prev = 0  # 灰色按钮 (上一帧)
         self._gripper_force_feedback = 0.0  # 夹爪力反馈值
 
@@ -1378,15 +1379,20 @@ class InteractiveTeleop:
             self._cmd_count += 1
             if success:
                 print(f"\n  🤖 已抓取物体! (宽度={width*1000:.1f}mm, 力={GRIPPER_FORCE:.0f}N)")
-                self._gripper_state = GripperState.HOLDING
+                if self._gripper_state == GripperState.GRASPING:
+                    self._gripper_state = GripperState.HOLDING
             else:
                 print(f"\n  🤖 未检测到物体 (宽度={width*1000:.1f}mm)")
-                self._gripper_state = GripperState.IDLE
+                if self._gripper_state == GripperState.GRASPING:
+                    self._gripper_state = GripperState.IDLE
         except Exception as e:
             print(f"\n  ⚠️ grasp 失败: {e}")
-            self._gripper_state = GripperState.IDLE
+            if self._gripper_state == GripperState.GRASPING:
+                self._gripper_state = GripperState.IDLE
         finally:
-            self._cmd_busy = False
+            # release 可能已中断 grasp，不要提前清掉 release 线程的 busy 状态。
+            if self._gripper_state != GripperState.RELEASING:
+                self._cmd_busy = False
 
     def _execute_release(self, width: float):
         """RELEASING 状态：先 stop 释放力保持，再 move 张开"""
@@ -1398,9 +1404,17 @@ class InteractiveTeleop:
         try:
             # 第一步：stop 释放力保持
             print(f"\n  🛑 释放力保持...")
-            self._gripper_stop()
+            if not self._gripper_stop():
+                raise RuntimeError("stop() 未能释放夹爪力控")
             # 第二步：move 到目标开度
-            self.gripper.move(width, GRIPPER_SPEED)
+            moved = self.gripper.move(width, GRIPPER_SPEED)
+            if moved is False:
+                print("  ⚠️ 首次张开被拒绝，再次 stop 后重试...")
+                if not self._gripper_stop():
+                    raise RuntimeError("重试前 stop() 失败")
+                moved = self.gripper.move(width, GRIPPER_SPEED)
+            if moved is False:
+                raise RuntimeError("move() 两次均未能张开夹爪")
             self._last_cmd_width = width
             self._cmd_count += 1
             print(f"  ✅ 夹爪已张开到 {width*1000:.1f}mm")
@@ -1439,7 +1453,7 @@ class InteractiveTeleop:
 
     def _update_state_machine(self, target_norm: float, target_width: float):
         """
-        有限状态机控制夹爪
+        二值锁存夹爪：闭合只执行一次力控 grasp，张开执行 stop + 完全打开。
 
         状态图:
           IDLE:
@@ -1458,40 +1472,35 @@ class InteractiveTeleop:
           RELEASING:
             - 等待 release 线程完成 → 自动 → IDLE
         """
-        # ── 追赶模式：如果命令执行完但还有 pending ──
-        if not self._cmd_busy and self._pending_width is not None:
-            pw = self._pending_width
-            self._pending_width = None
-            pn = pw / self._max_width
-            if pn > MOVE_THRESHOLD or self._gripper_state == GripperState.IDLE:
-                self._execute_idle_move(pw)
-            return
-
-        # ── IDLE: 跟随用户 ──
+        # ── IDLE: 只响应张开/闭合边沿，不再连续 move 干扰力保持 ──
         if self._gripper_state == GripperState.IDLE:
             if target_norm > MOVE_THRESHOLD:
-                # 张开 → move
+                if not self._grasp_armed and not self._cmd_busy:
+                    # grasp() 可能返回 False 但夹爪仍在施力，张开时仍强制 stop。
+                    self._grasp_armed = True
+                    self._trigger_release(self._max_width)
+                else:
+                    self._grasp_armed = True
+            elif target_norm < GRASP_THRESHOLD and self._grasp_armed:
                 if not self._cmd_busy:
-                    if abs(target_width - self._last_cmd_width) > GRIPPER_HYSTERESIS:
-                        self._trigger_idle_move(target_width)
-            elif target_norm < GRASP_THRESHOLD:
-                # 捏合 → grasp
-                if not self._cmd_busy:
-                    self._trigger_grasp(target_width)
-            # else: 过渡区，不操作
+                    self._grasp_armed = False
+                    # 目标设为 0 mm，由 20 N 力控在物体表面停止并持续保持。
+                    self._trigger_grasp(GRIPPER_MIN_WIDTH)
             return
 
-        # ── GRASPING: 等待 grasp 完成 ──
+        # ── GRASPING: 允许张开手势中断 ──
         if self._gripper_state == GripperState.GRASPING:
+            if target_norm > MOVE_THRESHOLD:
+                self._grasp_armed = True
+                self._trigger_release(self._max_width)
             return
 
         # ── HOLDING: 力保持中，检测释放意图 ──
         if self._gripper_state == GripperState.HOLDING:
             if target_norm > MOVE_THRESHOLD:
                 if not self._cmd_busy:
-                    self._trigger_release(target_width)
-                else:
-                    self._pending_width = target_width
+                    self._grasp_armed = True
+                    self._trigger_release(self._max_width)
             return
 
         # ── RELEASING: 等待 release 完成 ──
@@ -1783,13 +1792,10 @@ class InteractiveTeleop:
                 # 灰色按钮 (button 0) → 夹爪完全张开复位 (状态机路径)
                 if btn0 and not self._btn0_prev:
                     print(f"\n  🔘 灰色按钮 → 夹爪完全张开")
-                    if self._gripper_state == GripperState.HOLDING:
-                        # 力保持中 → 走 release 路径 (stop + move)
+                    self._grasp_armed = False  # 主端仍闭合时，避免张开后立即重抓
+                    if self._gripper_state != GripperState.RELEASING:
+                        # 不依赖逻辑状态，始终 stop 力控后完全张开。
                         self._trigger_release(self._max_width)
-                    elif self._gripper_state == GripperState.IDLE and not self._cmd_busy:
-                        # 空闲中 → 直接 move 张开
-                        self._trigger_idle_move(self._max_width)
-                    # 其他状态忽略（GRASPING/RELEASING 不打断）
                 self._btn0_prev = btn0
 
                 # ── 1a. 记录轨迹（降采样） ──
