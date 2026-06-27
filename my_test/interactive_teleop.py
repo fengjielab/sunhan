@@ -248,9 +248,9 @@ PRESETS = {
     # ── 模拟物体手感（用于测试力觉反馈） ──
     "soft_obj": {
         "name": "🫧 人工选择模式（实验 B）",
-        "desc": "人工选择的保守固定参数",
-        "K_trans": 180.0, "K_rot": 12.0,
-        "damping_ratio": 1.1, "K_fb": 0.5, "deadband": 0.3,
+        "desc": "人工正确选择 soft 策略，与视觉 soft 前馈参数一致",
+        "K_trans": 90.0, "K_rot": 5.0,
+        "damping_ratio": 0.9, "K_fb": 0.25, "deadband": 0.3,
         "scale": 3.0,
     },
     "medium_obj": {
@@ -277,9 +277,9 @@ PRESETS = {
     },
     "experiment_observe_d": {
         "name": "🇩 视觉观察模式",
-        "desc": "实验 D — 视觉仅提示，使用固定中等刚度",
-        "K_trans": 160.0, "K_rot": 10.0,
-        "damping_ratio": 1.0, "K_fb": 0.5, "deadband": 0.3,
+        "desc": "实验 D — 视觉仅提示，与 A 使用相同固定参数",
+        "K_trans": 200.0, "K_rot": 13.0,
+        "damping_ratio": 1.2, "K_fb": 0.5, "deadband": 0.3,
         "scale": 3.0,
     },
     "vision_soft": {

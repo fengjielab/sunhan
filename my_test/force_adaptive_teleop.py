@@ -82,8 +82,8 @@ KEYBOARD_FREQ = 30.0
 SIGN = np.array([-1.0, -1.0, 1.0])
 
 # ── 力自适应默认参数 ──
-DEFAULT_K_BASE = 180.0       # 基线平动刚度 (N/m)
-DEFAULT_ALPHA = 0.4          # 刚度缩放系数 [0, 1]
+DEFAULT_K_BASE = 200.0       # 与实验 A 相同的接触前基线刚度 (N/m)
+DEFAULT_ALPHA = 0.5          # 饱和时刚度降至基线的 50%
 DEFAULT_F_SAT = 5.0          # 饱和力阈值 (N)
 DEFAULT_K_ROT_RATIO = 0.065  # 旋转刚度 = K_t * ratio
 DEFAULT_DAMPING_RATIO = 1.0  # 阻尼比（固定）
