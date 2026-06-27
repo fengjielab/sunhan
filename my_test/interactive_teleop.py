@@ -247,10 +247,10 @@ PRESETS = {
     },
     # ── 模拟物体手感（用于测试力觉反馈） ──
     "soft_obj": {
-        "name": "🫧 软物体手感",
-        "desc": "低力反馈 + 中低刚度 — 模拟触碰海绵/泡沫",
-        "K_trans": 100.0, "K_rot": 5.0,
-        "damping_ratio": 0.8, "K_fb": 0.2, "deadband": 0.3,
+        "name": "🫧 人工选择模式（实验 B）",
+        "desc": "人工选择的保守固定参数",
+        "K_trans": 180.0, "K_rot": 12.0,
+        "damping_ratio": 1.1, "K_fb": 0.5, "deadband": 0.3,
         "scale": 3.0,
     },
     "medium_obj": {
@@ -265,6 +265,42 @@ PRESETS = {
         "desc": "强力反馈 + 高刚度 — 模拟触碰金属/岩石",
         "K_trans": 200.0, "K_rot": 13.0,
         "damping_ratio": 1.2, "K_fb": 0.7, "deadband": 0.5,
+        "scale": 3.0,
+    },
+    # ── 六模式预实验专用参数 ──
+    "experiment_fixed_a": {
+        "name": "🇦 固定参数模式",
+        "desc": "实验 A — 高刚度固定基线",
+        "K_trans": 200.0, "K_rot": 13.0,
+        "damping_ratio": 1.2, "K_fb": 0.5, "deadband": 0.3,
+        "scale": 3.0,
+    },
+    "experiment_observe_d": {
+        "name": "🇩 视觉观察模式",
+        "desc": "实验 D — 视觉仅提示，使用固定中等刚度",
+        "K_trans": 160.0, "K_rot": 10.0,
+        "damping_ratio": 1.0, "K_fb": 0.5, "deadband": 0.3,
+        "scale": 3.0,
+    },
+    "vision_soft": {
+        "name": "👁️ 视觉软物体",
+        "desc": "实验 C/F 的 soft 视觉前馈基线",
+        "K_trans": 90.0, "K_rot": 5.0,
+        "damping_ratio": 0.9, "K_fb": 0.25, "deadband": 0.3,
+        "scale": 3.0,
+    },
+    "vision_medium": {
+        "name": "👁️ 视觉中等物体",
+        "desc": "实验 C/F 的 medium 视觉前馈基线",
+        "K_trans": 130.0, "K_rot": 9.0,
+        "damping_ratio": 1.0, "K_fb": 0.45, "deadband": 0.4,
+        "scale": 3.0,
+    },
+    "vision_hard": {
+        "name": "👁️ 视觉硬物体",
+        "desc": "实验 C/F 的 hard 视觉前馈基线",
+        "K_trans": 170.0, "K_rot": 12.0,
+        "damping_ratio": 1.15, "K_fb": 0.65, "deadband": 0.5,
         "scale": 3.0,
     },
 }
@@ -293,28 +329,28 @@ FUSION_IMPD_UPDATE_INTERVAL = 0.05   # 力反馈微调阻抗更新频率: 20Hz
 #   接触后再按下表为不同类别使用不同的力阈值、饱和值、修正方向和刚度边界。
 FUSION_POSTERIOR_POLICY = {
     "soft": {
-        "gain": -0.55,          # 接触力越大，刚度越低，优先保护物体
-        "force_deadband": 0.6,  # 软物体更早进入微调
+        "gain": -0.40,          # 接触力越大，刚度越低，优先保护物体
+        "force_deadband": 0.5,  # 软物体更早进入微调
         "force_sat": 4.0,
         "smooth_factor": 0.30,
         "K_min": 55.0,
-        "K_max": 85.0,
+        "K_max": 90.0,
     },
     "medium": {
-        "gain": -0.18,          # 中等物体小幅顺应
-        "force_deadband": 1.0,
-        "force_sat": 8.0,
+        "gain": -0.25,          # 中等物体小幅顺应
+        "force_deadband": 0.8,
+        "force_sat": 6.0,
         "smooth_factor": 0.25,
         "K_min": 90.0,
-        "K_max": 135.0,
+        "K_max": 130.0,
     },
     "hard": {
-        "gain": 0.0,            # 硬物体保持视觉前验刚度，统一整理为 200 N/m
-        "force_deadband": 1.5,
-        "force_sat": 10.0,
+        "gain": -0.15,          # 硬物体仅做轻度顺应修正
+        "force_deadband": 1.2,
+        "force_sat": 8.0,
         "smooth_factor": 0.20,
-        "K_min": 200.0,
-        "K_max": 200.0,
+        "K_min": 140.0,
+        "K_max": 170.0,
     },
     "unknown": {
         "gain": -0.10,
@@ -783,12 +819,12 @@ class InteractiveTeleop:
     def _profile_to_preset(self, profile) -> str:
         """将 PhysicsProfile.label 映射到 PRESETS 字典的 key"""
         mapping = {
-            "soft": "soft_obj",
-            "medium": "medium_obj",
-            "hard": "hard_obj",
-            "unknown": "medium_obj",  # 默认回退到中物体
+            "soft": "vision_soft",
+            "medium": "vision_medium",
+            "hard": "vision_hard",
+            "unknown": "vision_medium",  # 默认回退到中物体
         }
-        return mapping.get(profile.label, "medium_obj")
+        return mapping.get(profile.label, "vision_medium")
 
     def _start_vision_thread(self):
         """启动视觉线程。由主控制循环延迟调用，避免启动阶段抢占 USB/CPU。"""
@@ -1664,9 +1700,13 @@ class InteractiveTeleop:
         # 显示初始帮助
         self._print_help()
 
-        # 确定启动预设：命令行 preset > standard
+        # 确定启动预设：命令行 preset > 实验模式基线
         if self._init_preset:
             self._set_preset(self._init_preset)
+        elif self.mode == "default":
+            self._set_preset("experiment_fixed_a")
+        elif self.mode == "vision_observe":
+            self._set_preset("experiment_observe_d")
         else:
             self._set_preset("standard")
 
