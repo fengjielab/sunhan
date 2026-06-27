@@ -185,7 +185,9 @@ TRAJECTORY_DECIMATION = 1        # 降采样: 1=每周期记录(200Hz), 5=每5�
 TRAJECTORY_CSV_HEADER = ["time", "x", "y", "z", "gripper_deg", "button",
                           "K_trans", "K_rot", "damping_ratio", "K_fb", "deadband", "scale",
                           "F_ext_mag", "fusion_delta_K", "fusion_active", "vision_label",
-                          "gripper_state", "gripper_cmd_speed", "gripper_cmd_force"]
+                          "gripper_state", "gripper_cmd_speed", "gripper_cmd_force",
+                          "F_ext_x", "F_ext_y", "F_ext_z",
+                          "contact_protection_active", "contact_motion_scale"]
 
 # 平滑过渡步长
 TRANSITION_STEPS = 30       # 刚度/阻尼过渡步数
@@ -324,6 +326,11 @@ OMEGA_FAIL_RECOVERY_THRESHOLD = 120  # 连续失败多少次后触发相机暂�
 
 # Vision + Force 融合模式配置（实验模式 F）
 FUSION_IMPD_UPDATE_INTERVAL = 0.05   # 力反馈微调阻抗更新频率: 20Hz
+
+# 释放后放置接触保护（仅 vision_force/F 模式）
+POST_RELEASE_GUARD_DURATION = 8.0    # 覆盖实测中释放后约 4.5s 的峰值时刻
+CONTACT_PROTECT_FORCE_START = 1.0   # 低于此力不限制运动 (N)
+CONTACT_PROTECT_FORCE_STOP = 4.0    # 达到此力时完全禁止继续压入 (N)
 
 # 视觉后验微调策略:
 #   视觉前验由 PRESETS 给出 K_base(c)、K_rot(c)、K_fb(c)、deadband(c)。
@@ -488,6 +495,9 @@ class InteractiveTeleop:
         self._fusion_last_update = 0.0
         self._fusion_delta_K = 0.0
         self._fusion_active = False
+        self._post_release_guard_until = 0.0
+        self._contact_protection_active = False
+        self._contact_motion_scale = 1.0
         self._vision_active = False         # 视觉线程是否已启动
         self._vision_thread = None
         self._vision_yolo_proc = None       # YOLO 子进程句柄
@@ -938,6 +948,36 @@ class InteractiveTeleop:
         if self.ctrl is not None and abs(self._K_trans_cur - prev_K) > 0.5:
             K_6x6 = self._build_stiffness(self._K_trans_cur, self._K_rot_cur)
             self.ctrl.set_impedance(K_6x6)
+
+    def _protect_post_release_motion(self, delta_cmd: np.ndarray, now: float) -> np.ndarray:
+        """释放后只抑制继续压向接触面的命令分量，保留撤离和切向运动。"""
+        self._contact_protection_active = False
+        self._contact_motion_scale = 1.0
+        if not self._vision_force_fusion or now >= self._post_release_guard_until:
+            return delta_cmd
+
+        F_ext_xyz = np.asarray(self._F_ext_current[:3], dtype=float)
+        F_mag = float(np.linalg.norm(F_ext_xyz))
+        if F_mag <= CONTACT_PROTECT_FORCE_START:
+            return delta_cmd
+
+        force_dir = F_ext_xyz / max(F_mag, 1e-9)
+        normal_step = float(np.dot(delta_cmd, force_dir))
+        if normal_step >= 0.0:
+            return delta_cmd  # 沿外力方向移动是撤离，不限制
+
+        ratio = np.clip(
+            (F_mag - CONTACT_PROTECT_FORCE_START)
+            / max(CONTACT_PROTECT_FORCE_STOP - CONTACT_PROTECT_FORCE_START, 1e-9),
+            0.0,
+            1.0,
+        )
+        inward_scale = float(1.0 - ratio)
+        inward_component = normal_step * force_dir
+        tangential_component = delta_cmd - inward_component
+        self._contact_protection_active = True
+        self._contact_motion_scale = inward_scale
+        return tangential_component + inward_scale * inward_component
 
     # ═══════════════════════════════════════════
     # Vision 模式 — 视觉线程 (RealSense + YOLO)
@@ -1432,6 +1472,9 @@ class InteractiveTeleop:
             self._last_cmd_width = width
             self._cmd_count += 1
             print(f"  ✅ 夹爪已张开到 {width*1000:.1f}mm")
+            if self._vision_force_fusion:
+                self._post_release_guard_until = time.time() + POST_RELEASE_GUARD_DURATION
+                print(f"  🛡️ 释放后接触保护已启用 {POST_RELEASE_GUARD_DURATION:.1f}s")
             self._gripper_state = GripperState.IDLE
         except Exception as e:
             print(f"\n  ⚠️ release 失败: {e}")
@@ -1681,6 +1724,8 @@ class InteractiveTeleop:
             if self._vision_force_fusion and self._vision_locked:
                 active = "*" if self._fusion_active else ""
                 status += f" 👁️+F ΔKf={self._fusion_delta_K:+.1f}{active}"
+                if self._contact_protection_active:
+                    status += f" 🛡️压入×{self._contact_motion_scale:.2f}"
             elif hasattr(self, '_vision_auto_map') and not self._vision_auto_map:
                 status += " 👁️OBS"
             else:
@@ -1856,7 +1901,9 @@ class InteractiveTeleop:
                 #   _virtual_ref += delta_raw * scale（累积位移）
                 #   target_pos = _virtual_ref
                 delta_raw = raw_pos - self._omega_prev_pos
-                self._virtual_ref += delta_raw * self._scale_cur * SIGN
+                delta_cmd = delta_raw * self._scale_cur * SIGN
+                delta_cmd = self._protect_post_release_motion(delta_cmd, now)
+                self._virtual_ref += delta_cmd
                 target_pos = self._virtual_ref.copy()
                 # 防止数值爆炸
                 np.clip(target_pos, -10.0, 10.0, out=target_pos)
@@ -1971,6 +2018,11 @@ class InteractiveTeleop:
             "gripper_state": self._gripper_state.value,
             "gripper_cmd_speed": self._gripper_speed_cur,
             "gripper_cmd_force": self._gripper_force_cur,
+            "F_ext_x": float(self._F_ext_current[0]),
+            "F_ext_y": float(self._F_ext_current[1]),
+            "F_ext_z": float(self._F_ext_current[2]),
+            "contact_protection_active": int(self._contact_protection_active),
+            "contact_motion_scale": self._contact_motion_scale,
         })
 
     def _save_trajectory(self, timestamp: str = None):
@@ -2019,6 +2071,11 @@ class InteractiveTeleop:
                     row['gripper_state'],
                     f"{row['gripper_cmd_speed']:.3f}",
                     f"{row['gripper_cmd_force']:.1f}",
+                    f"{row['F_ext_x']:.3f}",
+                    f"{row['F_ext_y']:.3f}",
+                    f"{row['F_ext_z']:.3f}",
+                    row['contact_protection_active'],
+                    f"{row['contact_motion_scale']:.3f}",
                 ])
 
         print(f"\n  🎯 轨迹已保存: {fpath}")
@@ -2134,6 +2191,12 @@ class InteractiveTeleop:
             fusion_config = {
                 "update_interval_s": FUSION_IMPD_UPDATE_INTERVAL,
                 "posterior_policy": FUSION_POSTERIOR_POLICY,
+                "post_release_contact_protection": {
+                    "duration_s": POST_RELEASE_GUARD_DURATION,
+                    "force_start_N": CONTACT_PROTECT_FORCE_START,
+                    "force_stop_N": CONTACT_PROTECT_FORCE_STOP,
+                    "behavior": "suppress inward component; preserve retreat and tangential motion",
+                },
             }
 
         summary = {
