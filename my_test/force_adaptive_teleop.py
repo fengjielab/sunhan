@@ -739,6 +739,16 @@ class ForceAdaptiveTeleop:
         traj_len = self._omega_traj_length
         n_samples = len(self._trajectory)
         speed_mean = speed_std = speed_max = 0.0
+        force_peak = force_peak_time = force_mean = 0.0
+
+        force_samples = [
+            (float(row["time"]), float(row["F_ext_mag"]))
+            for row in self._trajectory
+            if np.isfinite(row.get("F_ext_mag", np.nan))
+        ]
+        if force_samples:
+            force_peak_time, force_peak = max(force_samples, key=lambda item: item[1])
+            force_mean = float(np.mean([item[1] for item in force_samples]))
 
         if n_samples >= 2:
             speeds = []
@@ -774,11 +784,23 @@ class ForceAdaptiveTeleop:
                 "max_speed_ms": round(speed_max, 4),
             },
             "trajectory": {"n_samples": n_samples},
+            "external_force": {
+                "source": "Franka estimated external wrench",
+                "metric": "norm(Fx, Fy, Fz)",
+                "F_ext_peak_N": round(force_peak, 3),
+                "F_ext_peak_time_s": round(force_peak_time, 4),
+                "F_ext_mean_N": round(force_mean, 3),
+                "n_samples": len(force_samples),
+            },
         }
         with open(fpath, "w") as f:
             _json.dump(summary, f, indent=2, ensure_ascii=False)
         print(f"  📊 汇总已保存: {fpath}")
         print(f"     轨迹={traj_len:.3f}m  速度均值={speed_mean:.3f}m/s  最大速度={speed_max:.3f}m/s")
+        print(
+            f"     末端外力峰值={force_peak:.3f} N "
+            f"(t={force_peak_time:.3f} s), 均值={force_mean:.3f} N"
+        )
         return str(fpath)
 
     # ═══════════════════════════════════════════

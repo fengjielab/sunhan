@@ -1990,6 +1990,19 @@ class InteractiveTeleop:
         pos_y_range = [0.0, 0.0]
         pos_z_range = [0.0, 0.0]
 
+        # 末端平动外力模长统计，数据来自每个轨迹采样点的 F_ext_mag。
+        force_peak = 0.0
+        force_peak_time = 0.0
+        force_mean = 0.0
+        force_samples = [
+            (float(row["time"]), float(row["F_ext_mag"]))
+            for row in self._trajectory
+            if np.isfinite(row.get("F_ext_mag", np.nan))
+        ]
+        if force_samples:
+            force_peak_time, force_peak = max(force_samples, key=lambda item: item[1])
+            force_mean = float(np.mean([item[1] for item in force_samples]))
+
         if n_samples >= 2:
             # 计算每帧瞬时速度 (m/s)
             speeds = []
@@ -2069,6 +2082,14 @@ class InteractiveTeleop:
                 "pos_y_range_m": [round(v, 4) for v in pos_y_range],
                 "pos_z_range_m": [round(v, 4) for v in pos_z_range],
             },
+            "external_force": {
+                "source": "Franka estimated external wrench",
+                "metric": "norm(Fx, Fy, Fz)",
+                "F_ext_peak_N": round(force_peak, 3),
+                "F_ext_peak_time_s": round(force_peak_time, 4),
+                "F_ext_mean_N": round(force_mean, 3),
+                "n_samples": len(force_samples),
+            },
             "final_params": final_params,
             "fusion_config": fusion_config,
         }
@@ -2079,6 +2100,10 @@ class InteractiveTeleop:
         print(f"  📊 汇总已保存: {fpath}")
         print(f"     时长={elapsed_total:.1f}s  轨迹={traj_len:.3f}m  "
               f"速度均值={speed_mean:.3f}m/s  速度方差={speed_var:.4f}")
+        print(
+            f"     末端外力峰值={force_peak:.3f} N "
+            f"(t={force_peak_time:.3f} s), 均值={force_mean:.3f} N"
+        )
 
         return str(fpath)
 
