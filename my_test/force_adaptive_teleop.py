@@ -7,7 +7,7 @@ force_adaptive_teleop.py — 力自适应阻抗遥操作（实验模式 E）
 作为论文对比实验的基线方法（力反馈反应式策略 vs 视觉语义前馈式策略）。
 
 核心机制:
-    K_t(F_ext) = K_base · (1 − α · min(|F_ext| / F_sat, 1))
+    K_t(F_ext) = K_base · (1 − α · clip((|F_ext|−F_db)/(F_sat−F_db), 0, 1))
     
     - 自由运动 (|F_ext| ≈ 0): K_t ≈ K_base（高刚度，跟踪精准）
     - 接触后 (|F_ext| → F_sat): K_t → K_base · (1 − α)（低刚度，顺应保护）
@@ -85,8 +85,9 @@ SIGN = np.array([-1.0, -1.0, 1.0])
 DEFAULT_K_BASE = 200.0       # 与实验 A 相同的接触前基线刚度 (N/m)
 DEFAULT_ALPHA = 0.5          # 饱和时刚度降至基线的 50%
 DEFAULT_F_SAT = 5.0          # 饱和力阈值 (N)
+DEFAULT_ADAPT_DEADBAND = 1.0 # 自适应死区：过滤约 1N 空载零偏 (N)
 DEFAULT_K_ROT_RATIO = 0.065  # 旋转刚度 = K_t * ratio
-DEFAULT_DAMPING_RATIO = 1.0  # 阻尼比（固定）
+DEFAULT_DAMPING_RATIO = 1.2  # 与实验 A 对齐，只比较是否启用力自适应
 
 # ── 力反馈固定参数 ──
 DEFAULT_K_FB = 0.5           # 力反馈增益
@@ -165,7 +166,7 @@ class ForceAdaptiveTeleop:
 
     核心设计:
         - 200Hz 主循环: 读Omega → 力自适应阻抗 → 力反馈 → 发Franka
-        - 接触外力驱动刚度在线缩放: K_t = K_base · (1 − α · min(|F_ext|/F_sat, 1))
+        - 外力超过 F_db 后驱动刚度在线缩放，过滤约 1N 的估计零偏
         - 键盘线程 30Hz: 异步调节 α、F_sat、K_base 等参数
         - 一阶低通平滑: 避免刚度突变引起机械臂抖动
     """
@@ -181,6 +182,7 @@ class ForceAdaptiveTeleop:
         self._K_base_cur = K_base
         self._alpha_cur = alpha
         self._F_sat_cur = F_sat
+        self._adapt_deadband = DEFAULT_ADAPT_DEADBAND
         self._K_rot_ratio_cur = DEFAULT_K_ROT_RATIO
 
         # ── 当前阻抗参数（力自适应动态更新） ──
@@ -335,7 +337,8 @@ class ForceAdaptiveTeleop:
         print("=" * 65)
         print("  初始化完成 — 力自适应遥操作 🦾")
         print(f"  K_base={self._K_base_cur:.0f}  α={self._alpha_cur:.2f}  "
-              f"F_sat={self._F_sat_cur:.1f}N")
+              f"F_db={self._adapt_deadband:.1f}N  F_sat={self._F_sat_cur:.1f}N  "
+              f"ζ={self._damping_ratio_cur:.1f}")
         print("=" * 65)
 
     def _build_stiffness(self, K_trans: float, K_rot: float) -> np.ndarray:
@@ -352,15 +355,17 @@ class ForceAdaptiveTeleop:
         """
         根据接触外力在线计算目标刚度并更新阻抗控制器。
 
-        公式: K_t = K_base · (1 − α · min(|F_ext[:3]| / F_sat, 1))
+        公式: K_t = K_base · (1 − α · clip((|F_ext|−F_db)/(F_sat−F_db), 0, 1))
 
         一阶低通平滑: 避免刚度突变导致机械臂抖动。
         """
         # 计算外力幅值（仅平动分量）
         f_mag = float(np.linalg.norm(F_ext[:3]))
 
-        # 力驱动的刚度缩放因子
-        ratio = min(f_mag / max(self._F_sat_cur, 0.1), 1.0)
+        # 过滤空载零偏：F_db 以下不降刚度，F_db~F_sat 线性缩放。
+        effective_force = max(f_mag - self._adapt_deadband, 0.0)
+        adaptive_span = max(self._F_sat_cur - self._adapt_deadband, 0.1)
+        ratio = min(effective_force / adaptive_span, 1.0)
         target_K_trans = self._K_base_cur * (1.0 - self._alpha_cur * ratio)
         target_K_trans = max(target_K_trans, 10.0)  # 兜底最小刚度
 
@@ -661,7 +666,7 @@ class ForceAdaptiveTeleop:
         print("  │ h        │ 打印帮助                               │")
         print("  │ Ctrl+C   │ 安全退出                               │")
         print("  ├──────────┴──────────────────────────────────────┤")
-        print("  │  刚度公式: K_t = K_base · (1 − α · |F_ext|/F_sat)│")
+        print("  │  刚度公式: 超过 F_db 后在 F_sat 处饱和          │")
         print("  │  范围: [K_base·(1-α), K_base]                    │")
         print("  └──────────────────────────────────────────────────┘")
         print("=" * 65)
@@ -783,7 +788,9 @@ class ForceAdaptiveTeleop:
                 "K_base": self._K_base_cur,
                 "alpha": self._alpha_cur,
                 "F_sat": self._F_sat_cur,
+                "F_adapt_deadband": self._adapt_deadband,
                 "K_rot_ratio": self._K_rot_ratio_cur,
+                "damping_ratio": self._damping_ratio_cur,
             },
             "runtime": {
                 "duration_s": round(time.time() - self._trajectory_start_time, 2),
@@ -840,8 +847,12 @@ class ForceAdaptiveTeleop:
             f"|{self._gripper_state.value}{grip_busy_str}"
         )
         # 接触状态指示
-        if F_mag > self._F_sat_cur * 0.1:
-            ratio = min(F_mag / self._F_sat_cur, 1.0)
+        if F_mag > self._adapt_deadband:
+            ratio = min(
+                (F_mag - self._adapt_deadband)
+                / max(self._F_sat_cur - self._adapt_deadband, 0.1),
+                1.0,
+            )
             bar_len = int(ratio * 10)
             status += f" 接触{'█'*bar_len}{'░'*(10-bar_len)}"
         else:
@@ -871,7 +882,11 @@ class ForceAdaptiveTeleop:
 
         print("\n" + "=" * 65)
         print("  🚀 力自适应遥操作已启动！")
-        print("  K_t = K_base · (1 − α · |F_ext| / F_sat)")
+        print(
+            "  K_t = K_base · [1 − α · "
+            "clip((|F_ext|−F_db)/(F_sat−F_db), 0, 1)]"
+        )
+        print(f"  F_db={self._adapt_deadband:.1f}N  F_sat={self._F_sat_cur:.1f}N")
         print(f"  刚度范围: [{self._K_base_cur*(1-self._alpha_cur):.0f} ~ {self._K_base_cur:.0f}] N/m")
         print("=" * 65 + "\n")
 
