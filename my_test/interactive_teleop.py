@@ -284,7 +284,7 @@ PRESETS = {
     },
     "vision_soft": {
         "name": "👁️ 视觉软物体",
-        "desc": "实验 C/F 的 soft 视觉前馈基线",
+        "desc": "实验 C/F 的 soft 视觉前馈基线 (保留跟踪刚度，接触刚度由 fusion 策略降低)",
         "K_trans": 90.0, "K_rot": 5.0,
         "damping_ratio": 0.9, "K_fb": 0.25, "deadband": 0.3,
         "scale": 3.0,
@@ -329,12 +329,12 @@ FUSION_IMPD_UPDATE_INTERVAL = 0.05   # 力反馈微调阻抗更新频率: 20Hz
 #   接触后再按下表为不同类别使用不同的力阈值、饱和值、修正方向和刚度边界。
 FUSION_POSTERIOR_POLICY = {
     "soft": {
-        "gain": -0.40,          # 接触力越大，刚度越低，优先保护物体
-        "force_deadband": 0.5,  # 软物体更早进入微调
-        "force_sat": 4.0,
+        "gain": -0.50,          # 更大幅度降低刚度
+        "force_deadband": 0.3,  # 更早进入微调，减轻接触冲击
+        "force_sat": 2.5,       # 更低饱和阈值，提升视觉柔顺效果
         "smooth_factor": 0.30,
-        "K_min": 55.0,
-        "K_max": 90.0,
+        "K_min": 30.0,          # 接触时允许降到更低刚度 (原来55)
+        "K_max": 90.0,          # 自由空间保持vision_soft基线刚度，不影响跟踪
     },
     "medium": {
         "gain": -0.25,          # 中等物体小幅顺应
