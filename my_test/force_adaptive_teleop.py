@@ -64,6 +64,8 @@ import forcedimension_core.drd as drd
 import panda_py
 from panda_py import controllers, libfranka
 
+from experiment_protocol import ExperimentTimeline, PHASE_PREP
+
 sys.path.insert(0, "/home/mfj/sunhan")
 from plans.force_estimator import ForceEstimator
 
@@ -130,9 +132,18 @@ MOVE_THRESHOLD = 0.80
 TRAJECTORY_DIR = "data"
 TRAJECTORY_DECIMATION = 1
 TRAJECTORY_CSV_HEADER = [
-    "time", "x", "y", "z", "gripper_deg", "button",
+    "schema_version", "system_time", "operation_time", "phase", "event",
+    "mode", "controller_mode", "subject_id", "object_id", "trial_id",
+    "omega_x", "omega_y", "omega_z", "omega_valid", "gripper_deg", "button",
+    "target_x", "target_y", "target_z", "robot_x", "robot_y", "robot_z",
+    "F_ext_x", "F_ext_y", "F_ext_z", "T_ext_x", "T_ext_y", "T_ext_z", "F_ext_mag",
     "K_trans", "K_rot", "damping_ratio", "K_fb", "deadband", "scale",
-    "F_ext_mag", "alpha", "F_sat",
+    "gripper_state", "gripper_cmd_width", "gripper_width", "gripper_width_valid",
+    "gripper_speed", "gripper_force", "grasp_success",
+    "vision_class", "vision_label", "vision_confidence", "vision_locked",
+    "fusion_delta_K", "fusion_active", "control_dt",
+    "force_baseline_mean", "force_baseline_std", "force_threshold",
+    "alpha", "F_sat",
 ]
 
 # 参数范围
@@ -177,7 +188,9 @@ class ForceAdaptiveTeleop:
                  alpha: float = DEFAULT_ALPHA,
                  F_sat: float = DEFAULT_F_SAT,
                  record_trajectory: bool = True,
-                 trajectory_dir: str = TRAJECTORY_DIR):
+                 trajectory_dir: str = TRAJECTORY_DIR,
+                 subject_id: str = "unknown", object_id: str = "unknown",
+                 trial_id: str = "unknown"):
         # ── 力自适应参数 ──
         self._K_base_cur = K_base
         self._alpha_cur = alpha
@@ -227,12 +240,23 @@ class ForceAdaptiveTeleop:
         self._grasp_armed = True
         self._btn0_prev = 0
         self._gripper_force_feedback = 0.0
+        self._gripper_width_actual = float("nan")
+        self._gripper_width_valid = False
+        self._grasp_success = False
 
         # ── Franka 状态 ──
         self._init_pos = np.zeros(3)
         self._init_ori = np.zeros(4)
         self._virtual_ref = np.zeros(3)
         self._F_ext_current = np.zeros(6)
+        self._robot_pos_current = np.full(3, np.nan)
+        self._target_pos_current = np.full(3, np.nan)
+        self._omega_read_valid = True
+        self._control_dt = float("nan")
+        self._timeline = ExperimentTimeline(
+            mode="E", subject_id=subject_id,
+            object_id=object_id, trial_id=trial_id,
+        )
 
         # ── 硬件句柄 ──
         self.panda = None
@@ -309,6 +333,8 @@ class ForceAdaptiveTeleop:
             print(f"    ⚠️  Homing 失败: {e}")
         self.gripper.move(GRIPPER_MAX, GRIPPER_SPEED)
         self._last_cmd_width = GRIPPER_MAX
+        self._gripper_width_actual = float("nan")
+        self._gripper_width_valid = False
         print(f"    ✅ 夹爪已打开 ({GRIPPER_MAX*1000:.0f} mm)")
 
         # ── 状态读取 ──
@@ -403,6 +429,22 @@ class ForceAdaptiveTeleop:
     def _norm_to_width(self, norm: float) -> float:
         return float(np.clip(norm * GRIPPER_MAX, GRIPPER_MIN_WIDTH, GRIPPER_MAX))
 
+    def _refresh_gripper_measurement(self):
+        """低频读取夹爪实测宽度；失败时不以命令宽度冒充实测值。"""
+        if self.gripper is None:
+            return
+        try:
+            state = self.gripper.read_once()
+            width = float(getattr(state, "width"))
+            if np.isfinite(width):
+                self._gripper_width_actual = width
+                self._gripper_width_valid = True
+                return
+        except Exception:
+            pass
+        self._gripper_width_actual = float("nan")
+        self._gripper_width_valid = False
+
     def _gripper_stop(self) -> bool:
         if self.gripper is None:
             return False
@@ -421,6 +463,8 @@ class ForceAdaptiveTeleop:
         try:
             self.gripper.move(width, GRIPPER_SPEED)
             self._last_cmd_width = width
+            self._gripper_width_actual = float("nan")
+            self._gripper_width_valid = False
             self._cmd_count += 1
         except Exception as e:
             print(f"\n  ⚠️ move 失败: {e}")
@@ -441,15 +485,20 @@ class ForceAdaptiveTeleop:
             self._last_cmd_width = width
             self._cmd_count += 1
             if success:
+                self._grasp_success = True
+                self._gripper_width_actual = float("nan")
+                self._gripper_width_valid = False
                 print(f"\n  🤖 已抓取物体! (宽度={width*1000:.1f}mm, 力={GRIPPER_FORCE:.0f}N)")
                 if self._gripper_state == GripperState.GRASPING:
                     self._gripper_state = GripperState.HOLDING
             else:
+                self._grasp_success = False
                 print(f"\n  🤖 未检测到物体 (宽度={width*1000:.1f}mm)")
                 if self._gripper_state == GripperState.GRASPING:
                     self._gripper_state = GripperState.IDLE
         except Exception as e:
             print(f"\n  ⚠️ grasp 失败: {e}")
+            self._grasp_success = False
             if self._gripper_state == GripperState.GRASPING:
                 self._gripper_state = GripperState.IDLE
         finally:
@@ -473,6 +522,8 @@ class ForceAdaptiveTeleop:
             if moved is False:
                 raise RuntimeError("move() 两次均未能张开夹爪")
             self._last_cmd_width = width
+            self._gripper_width_actual = float("nan")
+            self._gripper_width_valid = False
             self._cmd_count += 1
             self._gripper_state = GripperState.IDLE
         except Exception as e:
@@ -693,22 +744,48 @@ class ForceAdaptiveTeleop:
     # 轨迹
     # ═══════════════════════════════════════════
 
-    def _record_trajectory_sample(self, raw_pos, gripper_deg, button):
-        self._trajectory.append({
-            "time": time.time() - self._trajectory_start_time,
-            "x": raw_pos[0], "y": raw_pos[1], "z": raw_pos[2],
-            "gripper_deg": gripper_deg,
-            "button": button,
-            "K_trans": self._K_trans_cur,
-            "K_rot": self._K_rot_cur,
-            "damping_ratio": self._damping_ratio_cur,
-            "K_fb": self._K_fb_cur,
-            "deadband": self._deadband_cur,
-            "scale": self._scale_cur,
-            "F_ext_mag": float(np.linalg.norm(self._F_ext_current[:3])),
-            "alpha": self._alpha_cur,
-            "F_sat": self._F_sat_cur,
-        })
+    def _record_trajectory_sample(self, raw_pos, gripper_deg, button, now_perf=None):
+        now_perf = time.perf_counter() if now_perf is None else now_perf
+        snap = self._timeline.snapshot(now_perf)
+        F = np.asarray(self._F_ext_current, dtype=float)
+        if F.size < 6:
+            F = np.pad(F, (0, 6 - F.size), constant_values=np.nan)
+        row = {
+            "schema_version": 2, "system_time": snap["system_time"],
+            "operation_time": snap["operation_time"], "phase": snap["phase"],
+            "event": self._timeline.consume_events(), "mode": "E",
+            "controller_mode": "force_adaptive",
+            "subject_id": self._timeline.subject_id, "object_id": self._timeline.object_id,
+            "trial_id": self._timeline.trial_id,
+            "omega_x": raw_pos[0], "omega_y": raw_pos[1], "omega_z": raw_pos[2],
+            "omega_valid": int(self._omega_read_valid), "gripper_deg": gripper_deg,
+            "button": button, "target_x": self._target_pos_current[0],
+            "target_y": self._target_pos_current[1], "target_z": self._target_pos_current[2],
+            "robot_x": self._robot_pos_current[0], "robot_y": self._robot_pos_current[1],
+            "robot_z": self._robot_pos_current[2],
+            "F_ext_x": F[0], "F_ext_y": F[1], "F_ext_z": F[2],
+            "T_ext_x": F[3], "T_ext_y": F[4], "T_ext_z": F[5],
+            "F_ext_mag": float(np.linalg.norm(F[:3])),
+            "K_trans": self._K_trans_cur, "K_rot": self._K_rot_cur,
+            "damping_ratio": self._damping_ratio_cur, "K_fb": self._K_fb_cur,
+            "deadband": self._deadband_cur, "scale": self._scale_cur,
+            "gripper_state": self._gripper_state.value,
+            "gripper_cmd_width": self._last_cmd_width,
+            "gripper_width": self._gripper_width_actual,
+            "gripper_width_valid": int(self._gripper_width_valid),
+            "gripper_speed": GRIPPER_SPEED, "gripper_force": GRIPPER_FORCE,
+            "grasp_success": int(self._grasp_success), "vision_class": "",
+            "vision_label": "", "vision_confidence": float("nan"), "vision_locked": 0,
+            "fusion_delta_K": self._K_trans_cur - self._K_base_cur,
+            "fusion_active": int(abs(self._K_trans_cur - self._K_base_cur) > 0.5),
+            "control_dt": self._control_dt,
+            "force_baseline_mean": snap["force_baseline_mean"],
+            "force_baseline_std": snap["force_baseline_std"],
+            "force_threshold": snap["force_threshold"],
+            "alpha": self._alpha_cur, "F_sat": self._F_sat_cur,
+        }
+        row.update({"time": row["system_time"], "x": raw_pos[0], "y": raw_pos[1], "z": raw_pos[2]})
+        self._trajectory.append(row)
 
     def _save_trajectory(self, timestamp: str = None):
         if not self._trajectory or len(self._trajectory) < 10:
@@ -725,21 +802,14 @@ class ForceAdaptiveTeleop:
             writer = _csv.writer(f)
             writer.writerow(TRAJECTORY_CSV_HEADER)
             for row in self._trajectory:
-                writer.writerow([
-                    f"{row['time']:.4f}",
-                    f"{row['x']:.6f}", f"{row['y']:.6f}", f"{row['z']:.6f}",
-                    f"{row['gripper_deg']:.2f}", row['button'],
-                    f"{row['K_trans']:.1f}", f"{row['K_rot']:.1f}",
-                    f"{row['damping_ratio']:.2f}",
-                    f"{row['K_fb']:.3f}", f"{row['deadband']:.3f}",
-                    f"{row['scale']:.2f}",
-                    f"{row['F_ext_mag']:.3f}",
-                    f"{row['alpha']:.3f}", f"{row['F_sat']:.2f}",
-                ])
-        duration = self._trajectory[-1]["time"] - self._trajectory[0]["time"]
+                writer.writerow([row.get(key, "") for key in TRAJECTORY_CSV_HEADER])
+        duration = self._trajectory[-1]["system_time"] - self._trajectory[0]["system_time"]
         actual_freq = len(self._trajectory) / duration if duration > 0 else 0
         print(f"\n  🎯 轨迹已保存: {fpath}")
         print(f"     {len(self._trajectory)} 点, {duration:.1f}s, {actual_freq:.0f} Hz")
+        events_path = path / f"force_adaptive_{timestamp}_events.json"
+        self._timeline.save_events(events_path)
+        print(f"     事件时间轴: {events_path}")
         return str(fpath)
 
     def _save_summary(self, timestamp: str):
@@ -793,7 +863,8 @@ class ForceAdaptiveTeleop:
                 "damping_ratio": self._damping_ratio_cur,
             },
             "runtime": {
-                "duration_s": round(time.time() - self._trajectory_start_time, 2),
+                "duration_s": round(self._timeline.system_time(), 2),
+                "operation_time_s": self._timeline.to_dict()["operation_time_s"],
                 "traj_length_m": round(traj_len, 4),
                 "mean_speed_ms": round(speed_mean, 4),
                 "speed_std_ms": round(speed_std, 4),
@@ -808,6 +879,7 @@ class ForceAdaptiveTeleop:
                 "F_ext_mean_N": round(force_mean, 3),
                 "n_samples": len(force_samples),
             },
+            "experiment": self._timeline.to_dict(),
         }
         with open(fpath, "w") as f:
             _json.dump(summary, f, indent=2, ensure_ascii=False)
@@ -892,23 +964,31 @@ class ForceAdaptiveTeleop:
 
         last_status_time = 0.0
         last_gripper_time = 0.0
+        last_gripper_measure_time = 0.0
         last_kb_time = 0.0
         last_impd_update = 0.0
+        last_cycle_perf = time.perf_counter()
 
         try:
             while self.running:
                 t_start = time.perf_counter()
                 now = time.time()
+                now_perf = t_start
+                self._control_dt = now_perf - last_cycle_perf
+                last_cycle_perf = now_perf
 
                 # ── 1. 读 Omega.7 ──
                 raw_pos = np.zeros(3)
                 if dhd.getPosition(raw_pos) < 0:
+                    self._omega_read_valid = False
                     raw_pos = self._omega_pos_last_valid.copy()
                 else:
+                    self._omega_read_valid = True
                     self._omega_pos_last_valid = raw_pos.copy()
 
                 delta_pos = raw_pos - self._omega_prev_pos
-                self._omega_traj_length += np.linalg.norm(delta_pos)
+                if "task_start" in self._timeline.event_times:
+                    self._omega_traj_length += np.linalg.norm(delta_pos)
 
                 gripper_angle = ctypes.c_double()
                 if dhd.getGripperAngleDeg(gripper_angle) < 0:
@@ -931,20 +1011,34 @@ class ForceAdaptiveTeleop:
                         self._trigger_release(self._max_width)
                 self._btn0_prev = btn0
 
-                # ── 1a. 轨迹记录 ──
-                if self._trajectory_record:
-                    self._traj_cycle += 1
-                    if self._traj_cycle % TRAJECTORY_DECIMATION == 0:
-                        self._record_trajectory_sample(raw_pos, omega_grip, btn0)
-
                 # ── 2. 读 Franka 外力 ──
                 if self.panda is not None:
                     try:
                         state = self.panda.get_state()
+                        self._robot_pos_current = np.array(
+                            [state.O_T_EE[12], state.O_T_EE[13], state.O_T_EE[14]],
+                            dtype=float,
+                        )
                         if self.force_estimator is not None:
                             self._F_ext_current = self.force_estimator.update(state)
                     except Exception:
                         pass
+
+                # ── 2a. 自动实验生命周期 ──
+                F_mag_now = float(np.linalg.norm(self._F_ext_current[:3]))
+                self._timeline.add_force_baseline(F_mag_now, now_perf)
+                if self._timeline.phase == PHASE_PREP and self._timeline.baseline_ready:
+                    self._timeline.set_ready(now_perf)
+                    self._omega_prev_pos = raw_pos.copy()
+                    print("\n\a  ✅ READY — 首次有效操作将自动开始计时")
+                self._timeline.observe_motion(raw_pos, now_perf)
+                self._timeline.observe_contact(F_mag_now, now_perf)
+                self._timeline.observe_gripper(
+                    self._gripper_state.value,
+                    self._gripper_width_actual if self._gripper_width_valid else self._last_cmd_width,
+                    now_perf,
+                    grasp_success=self._grasp_success,
+                )
 
                 # ── 2a. 力自适应阻抗更新 (降频) ──
                 if (now - last_impd_update) >= IMPD_UPDATE_INTERVAL:
@@ -971,10 +1065,12 @@ class ForceAdaptiveTeleop:
 
                 # ── 4. 位置映射 ──
                 delta_raw = raw_pos - self._omega_prev_pos
-                self._virtual_ref += delta_raw * self._scale_cur * SIGN
+                if "task_start" in self._timeline.event_times:
+                    self._virtual_ref += delta_raw * self._scale_cur * SIGN
                 target_pos = self._virtual_ref.copy()
                 np.clip(target_pos, -10.0, 10.0, out=target_pos)
                 self._omega_prev_pos = raw_pos.copy()
+                self._target_pos_current = target_pos.copy()
 
                 # ── 5. 发给 Franka ──
                 if self.ctrl is not None:
@@ -984,6 +1080,19 @@ class ForceAdaptiveTeleop:
                 if (now - last_gripper_time) >= dt_gripper:
                     self._update_gripper()
                     last_gripper_time = now
+                if (now - last_gripper_measure_time) >= 0.1:
+                    self._refresh_gripper_measurement()
+                    last_gripper_measure_time = now
+
+                if self._trajectory_record:
+                    self._traj_cycle += 1
+                    if self._traj_cycle % TRAJECTORY_DECIMATION == 0:
+                        self._record_trajectory_sample(raw_pos, omega_grip, btn0, now_perf)
+
+                if self._timeline.completed:
+                    print("\n\a  ✅ 任务释放完成，自动结束并保存数据")
+                    self.running = False
+                    break
 
                 # ── 7. 键盘 ──
                 if (now - last_kb_time) >= dt_keyboard:
@@ -1004,8 +1113,10 @@ class ForceAdaptiveTeleop:
 
         except KeyboardInterrupt:
             print("\n\n⚠️  收到 Ctrl+C，安全停止...")
+            self._timeline.abort("keyboard_interrupt")
         except Exception as e:
             print(f"\n\n❌ 错误: {e}")
+            self._timeline.abort(f"exception:{type(e).__name__}")
             import traceback
             traceback.print_exc()
         finally:
@@ -1014,7 +1125,10 @@ class ForceAdaptiveTeleop:
     def _shutdown(self):
         self.running = False
 
-        elapsed_total = time.time() - self._trajectory_start_time
+        if not self._timeline.completed and not self._timeline.incomplete:
+            self._timeline.abort("shutdown_before_task_completion")
+
+        elapsed_total = self._timeline.system_time()
         print(f"\n  📏 主端 Omega.7 轨迹长度: {self._omega_traj_length:.3f} m")
         print(f"     运行时长: {elapsed_total:.1f} s")
         if elapsed_total > 0:
@@ -1024,8 +1138,15 @@ class ForceAdaptiveTeleop:
         if self._trajectory_record:
             from datetime import datetime as _dt
             timestamp = _dt.now().strftime('%Y%m%d_%H%M%S')
-            self._save_trajectory(timestamp)
+            csv_path = self._save_trajectory(timestamp)
             self._save_summary(timestamp)
+            if csv_path:
+                try:
+                    from force_metrics import analyze_csv
+                    result = analyze_csv(csv_path, save_plot=True)
+                    print(f"  📈 分阶段指标: {result.get('metrics_json')}")
+                except Exception as e:
+                    print(f"  ⚠️ 分阶段指标生成失败（原始CSV已保留）: {e}")
 
         print("\n  关闭 Omega.7 力输出...")
         try:
@@ -1057,6 +1178,9 @@ def main():
                         help="关闭轨迹自动录制")
     parser.add_argument("--trajectory-dir", type=str, default=TRAJECTORY_DIR,
                         help=f"轨迹 CSV 输出目录 (默认: {TRAJECTORY_DIR}/)")
+    parser.add_argument("--subject-id", default="unknown", help="被试编号")
+    parser.add_argument("--object-id", default="unknown", help="物体编号")
+    parser.add_argument("--trial-id", default="unknown", help="试次编号")
     args = parser.parse_args()
 
     teleop = ForceAdaptiveTeleop(
@@ -1065,6 +1189,9 @@ def main():
         F_sat=args.F_sat,
         record_trajectory=not args.no_trajectory,
         trajectory_dir=args.trajectory_dir,
+        subject_id=args.subject_id,
+        object_id=args.object_id,
+        trial_id=args.trial_id,
     )
     teleop.initialize()
     teleop.run()

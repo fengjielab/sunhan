@@ -121,6 +121,8 @@ import forcedimension_core.drd as drd
 import panda_py
 from panda_py import controllers, libfranka
 
+from experiment_protocol import ExperimentTimeline, PHASE_PREP
+
 sys.path.insert(0, "/home/mfj/sunhan")
 from plans.force_estimator import ForceEstimator
 
@@ -182,9 +184,19 @@ STOP_SETTLE_TIME = 0.1
 # 轨迹记录
 TRAJECTORY_DIR = "data"          # 轨迹 CSV 输出目录
 TRAJECTORY_DECIMATION = 1        # 降采样: 1=每周期记录(200Hz), 5=每5周期记录(40Hz)
-TRAJECTORY_CSV_HEADER = ["time", "x", "y", "z", "gripper_deg", "button",
-                          "K_trans", "K_rot", "damping_ratio", "K_fb", "deadband", "scale",
-                          "F_ext_mag", "fusion_delta_K", "fusion_active", "vision_label"]
+TRAJECTORY_CSV_HEADER = [
+    "schema_version", "system_time", "operation_time", "phase", "event",
+    "mode", "controller_mode", "subject_id", "object_id", "trial_id",
+    "omega_x", "omega_y", "omega_z", "omega_valid", "gripper_deg", "button",
+    "target_x", "target_y", "target_z", "robot_x", "robot_y", "robot_z",
+    "F_ext_x", "F_ext_y", "F_ext_z", "T_ext_x", "T_ext_y", "T_ext_z", "F_ext_mag",
+    "K_trans", "K_rot", "damping_ratio", "K_fb", "deadband", "scale",
+    "gripper_state", "gripper_cmd_width", "gripper_width", "gripper_width_valid",
+    "gripper_speed", "gripper_force", "grasp_success",
+    "vision_class", "vision_label", "vision_confidence", "vision_locked",
+    "fusion_delta_K", "fusion_active", "control_dt",
+    "force_baseline_mean", "force_baseline_std", "force_threshold",
+]
 
 # 平滑过渡步长
 TRANSITION_STEPS = 30       # 刚度/阻尼过渡步数
@@ -251,21 +263,21 @@ PRESETS = {
         "desc": "人工正确选择 soft 策略，与视觉 soft 前馈参数一致",
         "K_trans": 90.0, "K_rot": 5.0,
         "damping_ratio": 0.9, "K_fb": 0.25, "deadband": 0.3,
-        "scale": 3.0,
+        "scale": 3.0, "gripper_speed": 0.02, "gripper_force": 8.0,
     },
     "medium_obj": {
         "name": "📦 中物体手感",
-        "desc": "中力反馈 + 中刚度 — 模拟触碰纸盒/塑料瓶",
-        "K_trans": 150.0, "K_rot": 10.0,
-        "damping_ratio": 1.0, "K_fb": 0.5, "deadband": 0.4,
-        "scale": 3.0,
+        "desc": "人工正确选择 medium 策略，与视觉 medium 前馈参数一致",
+        "K_trans": 130.0, "K_rot": 9.0,
+        "damping_ratio": 1.0, "K_fb": 0.45, "deadband": 0.4,
+        "scale": 3.0, "gripper_speed": 0.05, "gripper_force": 15.0,
     },
     "hard_obj": {
         "name": "🪨 硬物体手感",
-        "desc": "强力反馈 + 高刚度 — 模拟触碰金属/岩石",
-        "K_trans": 200.0, "K_rot": 13.0,
-        "damping_ratio": 1.2, "K_fb": 0.7, "deadband": 0.5,
-        "scale": 3.0,
+        "desc": "人工正确选择 hard 策略，与视觉 hard 前馈参数一致",
+        "K_trans": 170.0, "K_rot": 12.0,
+        "damping_ratio": 1.15, "K_fb": 0.65, "deadband": 0.5,
+        "scale": 3.0, "gripper_speed": 0.10, "gripper_force": 20.0,
     },
     # ── 六模式预实验专用参数 ──
     "experiment_fixed_a": {
@@ -287,21 +299,21 @@ PRESETS = {
         "desc": "实验 C/F 的 soft 视觉前馈基线 (保留跟踪刚度，接触刚度由 fusion 策略降低)",
         "K_trans": 90.0, "K_rot": 5.0,
         "damping_ratio": 0.9, "K_fb": 0.25, "deadband": 0.3,
-        "scale": 3.0,
+        "scale": 3.0, "gripper_speed": 0.02, "gripper_force": 8.0,
     },
     "vision_medium": {
         "name": "👁️ 视觉中等物体",
         "desc": "实验 C/F 的 medium 视觉前馈基线",
         "K_trans": 130.0, "K_rot": 9.0,
         "damping_ratio": 1.0, "K_fb": 0.45, "deadband": 0.4,
-        "scale": 3.0,
+        "scale": 3.0, "gripper_speed": 0.05, "gripper_force": 15.0,
     },
     "vision_hard": {
         "name": "👁️ 视觉硬物体",
         "desc": "实验 C/F 的 hard 视觉前馈基线",
         "K_trans": 170.0, "K_rot": 12.0,
         "damping_ratio": 1.15, "K_fb": 0.65, "deadband": 0.5,
-        "scale": 3.0,
+        "scale": 3.0, "gripper_speed": 0.10, "gripper_force": 20.0,
     },
 }
 
@@ -458,9 +470,16 @@ class InteractiveTeleop:
     # 类级常量（self.SAVE_FILE / cls.SAVE_FILE 均可访问）
     SAVE_FILE = SAVE_FILE_PATH
 
-    def __init__(self, mode: str = "default", record_trajectory: bool = True, trajectory_dir: str = "data"):
+    def __init__(self, mode: str = "default", record_trajectory: bool = True,
+                 trajectory_dir: str = "data", subject_id: str = "unknown",
+                 object_id: str = "unknown", trial_id: str = "unknown"):
         # ── 运行模式 ──
         self.mode = mode  # "default" | "vision" | PRESETS key
+        self._experiment_condition = {
+            "default": "A", "experiment_fixed_a": "A",
+            "soft_obj": "B", "medium_obj": "B", "hard_obj": "B",
+            "vision": "C", "vision_stiffness": "D", "vision_force": "F",
+        }.get(mode, mode)
 
         # ── 运行状态 ──
         self.running = False
@@ -470,8 +489,9 @@ class InteractiveTeleop:
         self._trajectory: List[dict] = []
 
         # ── Vision 模式状态 ──
-        self._vision_enabled = (mode in ("vision", "vision_observe", "vision_force"))
-        self._vision_auto_map = (mode in ("vision", "vision_force"))
+        self._vision_enabled = (mode in ("vision", "vision_observe", "vision_stiffness", "vision_force"))
+        self._vision_auto_map = (mode in ("vision", "vision_stiffness", "vision_force"))
+        self._vision_stiffness_only = (mode == "vision_stiffness")
         self._vision_force_fusion = (mode == "vision_force")
         self._init_preset = mode if mode in PRESETS else None  # 命令行指定的初始预设
         self._vision_lock = threading.Lock()
@@ -493,6 +513,9 @@ class InteractiveTeleop:
         self._vision_enable_display = True  # 是否显示 RealSense 摄像头预览窗口
         self._vision_pause_until = 0.0       # USB 恢复时临时暂停 RealSense
         self._vision_restarts = 0            # RealSense pipeline 重启次数
+        self._vision_confidence = float("nan")
+        self._vision_class = "unknown"
+        self._first_frame_marked = False
         # 直接在视觉线程内调用 cv2.imshow (而非独立显示进程)，参考 shared_control_node.py
         # 使用 cv2.startWindowThread() 确保 OpenCV GUI 线程安全
 
@@ -543,12 +566,27 @@ class InteractiveTeleop:
         self._grasp_armed = True                     # 必须先张开，才允许下一次抓取
         self._btn0_prev = 0  # 灰色按钮 (上一帧)
         self._gripper_force_feedback = 0.0  # 夹爪力反馈值
+        self._gripper_speed_cur = GRIPPER_SPEED
+        self._gripper_force_cur = GRIPPER_FORCE
+        self._gripper_width_actual = float("nan")
+        self._gripper_width_valid = False
+        self._grasp_success = False
 
         # ── Franka 状态 ──
         self._init_pos = np.zeros(3)
         self._init_ori = np.zeros(4)
         self._virtual_ref = np.zeros(3)
         self._F_ext_current = np.zeros(6)
+        self._robot_pos_current = np.full(3, np.nan)
+        self._target_pos_current = np.full(3, np.nan)
+        self._omega_read_valid = True
+        self._control_dt = float("nan")
+
+        # ── 自动实验计时 / 阶段 ──
+        self._timeline = ExperimentTimeline(
+            mode=self._experiment_condition, subject_id=subject_id,
+            object_id=object_id, trial_id=trial_id,
+        )
 
         # ── 硬件句柄 ──
         self.panda = None
@@ -644,8 +682,10 @@ class InteractiveTeleop:
             print("    ✅ Homing 完成")
         except Exception as e:
             print(f"    ⚠️  Homing 失败: {e}")
-        self.gripper.move(GRIPPER_MAX, GRIPPER_SPEED)
+        self.gripper.move(GRIPPER_MAX, self._gripper_speed_cur)
         self._last_cmd_width = GRIPPER_MAX
+        self._gripper_width_actual = float("nan")
+        self._gripper_width_valid = False
         print(f"    ✅ 夹爪已打开 ({GRIPPER_MAX*1000:.0f} mm)")
 
         # ── 状态读取 ──
@@ -812,6 +852,8 @@ class InteractiveTeleop:
         self._K_fb_cur = p["K_fb"]
         self._deadband_cur = p["deadband"]
         self._scale_cur = p["scale"]
+        self._gripper_speed_cur = p.get("gripper_speed", GRIPPER_SPEED)
+        self._gripper_force_cur = p.get("gripper_force", GRIPPER_FORCE)
 
     # ═══════════════════════════════════════════
     # Vision 模式 — profile → PRESETS 映射
@@ -831,6 +873,7 @@ class InteractiveTeleop:
         """启动视觉线程。由主控制循环延迟调用，避免启动阶段抢占 USB/CPU。"""
         if not self._vision_enabled or self._vision_active:
             return
+        self._timeline.mark("vision_start")
         self._vision_active = True
         self._vision_thread = threading.Thread(
             target=self._vision_loop, daemon=True, name="VisionThread"
@@ -850,6 +893,7 @@ class InteractiveTeleop:
             self._omega_read_fail_count += 1
             self._omega_read_fail_total += 1
             self._handle_omega_read_failure()
+            self._omega_read_valid = False
             return self._omega_pos_last_valid.copy()
 
         if self._omega_read_fail_count > 0:
@@ -859,6 +903,7 @@ class InteractiveTeleop:
                 f"累计 {self._omega_read_fail_total} 次)"
             )
         self._omega_read_fail_count = 0
+        self._omega_read_valid = True
         self._omega_usb_recovery_requested = False
         self._omega_pos_last_valid = raw_pos.copy()
         return raw_pos
@@ -1023,6 +1068,10 @@ class InteractiveTeleop:
                 if not color_frame:
                     continue
 
+                if not self._first_frame_marked:
+                    self._timeline.mark("first_frame")
+                    self._first_frame_marked = True
+
                 rgb = np.asanyarray(color_frame.get_data())
 
                 # ── 送帧 → YOLO 进程 ──
@@ -1045,6 +1094,12 @@ class InteractiveTeleop:
                         self._vision_detection = det
                         self._vision_profile = det["profile"]
                         self._vision_last_time = time.time()
+                        self._vision_confidence = float(det.get("conf", float("nan")))
+                        self._vision_class = str(det.get("class", "unknown"))
+                    self._timeline.mark(
+                        "first_detection", confidence=self._vision_confidence,
+                        detected_class=self._vision_class,
+                    )
 
                 except _q.Empty:
                     pass
@@ -1331,6 +1386,22 @@ class InteractiveTeleop:
         """归一化开度 [0,1] → 夹爪宽度 (m)"""
         return float(np.clip(norm * self._max_width, GRIPPER_MIN_WIDTH, self._max_width))
 
+    def _refresh_gripper_measurement(self):
+        """低频读取夹爪实测宽度；失败时不以命令宽度冒充实测值。"""
+        if self.gripper is None:
+            return
+        try:
+            state = self.gripper.read_once()
+            width = float(getattr(state, "width"))
+            if np.isfinite(width):
+                self._gripper_width_actual = width
+                self._gripper_width_valid = True
+                return
+        except Exception:
+            pass
+        self._gripper_width_actual = float("nan")
+        self._gripper_width_valid = False
+
     def _angle_to_width(self, angle_deg: float) -> float:
         """保留的兼容接口：夹钳角度 → 夹爪宽度 (m)"""
         return self._norm_to_width(self._angle_to_norm(angle_deg))
@@ -1355,8 +1426,10 @@ class InteractiveTeleop:
             return
         self._cmd_busy = True
         try:
-            self.gripper.move(width, GRIPPER_SPEED)
+            self.gripper.move(width, self._gripper_speed_cur)
             self._last_cmd_width = width
+            self._gripper_width_actual = float("nan")
+            self._gripper_width_valid = False
             self._cmd_count += 1
         except Exception as e:
             print(f"\n  ⚠️ move 失败: {e}")
@@ -1372,21 +1445,26 @@ class InteractiveTeleop:
         self._cmd_busy = True
         try:
             success = self.gripper.grasp(
-                width, GRIPPER_SPEED, GRIPPER_FORCE,
+                width, self._gripper_speed_cur, self._gripper_force_cur,
                 GRIPPER_EPS_INNER, GRIPPER_EPS_OUTER,
             )
             self._last_cmd_width = width
             self._cmd_count += 1
             if success:
-                print(f"\n  🤖 已抓取物体! (宽度={width*1000:.1f}mm, 力={GRIPPER_FORCE:.0f}N)")
+                self._grasp_success = True
+                self._gripper_width_actual = float("nan")
+                self._gripper_width_valid = False
+                print(f"\n  🤖 已抓取物体! (宽度={width*1000:.1f}mm, 力={self._gripper_force_cur:.0f}N)")
                 if self._gripper_state == GripperState.GRASPING:
                     self._gripper_state = GripperState.HOLDING
             else:
+                self._grasp_success = False
                 print(f"\n  🤖 未检测到物体 (宽度={width*1000:.1f}mm)")
                 if self._gripper_state == GripperState.GRASPING:
                     self._gripper_state = GripperState.IDLE
         except Exception as e:
             print(f"\n  ⚠️ grasp 失败: {e}")
+            self._grasp_success = False
             if self._gripper_state == GripperState.GRASPING:
                 self._gripper_state = GripperState.IDLE
         finally:
@@ -1407,15 +1485,17 @@ class InteractiveTeleop:
             if not self._gripper_stop():
                 raise RuntimeError("stop() 未能释放夹爪力控")
             # 第二步：move 到目标开度
-            moved = self.gripper.move(width, GRIPPER_SPEED)
+            moved = self.gripper.move(width, self._gripper_speed_cur)
             if moved is False:
                 print("  ⚠️ 首次张开被拒绝，再次 stop 后重试...")
                 if not self._gripper_stop():
                     raise RuntimeError("重试前 stop() 失败")
-                moved = self.gripper.move(width, GRIPPER_SPEED)
+                moved = self.gripper.move(width, self._gripper_speed_cur)
             if moved is False:
                 raise RuntimeError("move() 两次均未能张开夹爪")
             self._last_cmd_width = width
+            self._gripper_width_actual = float("nan")
+            self._gripper_width_valid = False
             self._cmd_count += 1
             print(f"  ✅ 夹爪已张开到 {width*1000:.1f}mm")
             self._gripper_state = GripperState.IDLE
@@ -1712,7 +1792,7 @@ class InteractiveTeleop:
         # 确定启动预设：命令行 preset > 实验模式基线
         if self._init_preset:
             self._set_preset(self._init_preset)
-        elif self.mode == "default":
+        elif self.mode in ("default", "vision_stiffness"):
             self._set_preset("experiment_fixed_a")
         elif self.mode == "vision_observe":
             self._set_preset("experiment_observe_d")
@@ -1738,7 +1818,9 @@ class InteractiveTeleop:
         last_status_time = 0.0
         last_gripper_time = 0.0
         last_gripper_ctrl_time = 0.0
+        last_gripper_measure_time = 0.0
         last_kb_time = 0.0
+        last_cycle_perf = time.perf_counter()
         vision_start_time = time.time() + VISION_START_DELAY
         vision_start_announced = False
 
@@ -1746,6 +1828,9 @@ class InteractiveTeleop:
             while self.running:
                 t_start = time.perf_counter()
                 now = time.time()
+                now_perf = t_start
+                self._control_dt = now_perf - last_cycle_perf
+                last_cycle_perf = now_perf
 
                 # ⚡ Vision 模式：控制循环先稳定运行，再启动相机/YOLO。
                 # 这样避免 RealSense/PyTorch 启动峰值把 Omega.7 或 Franka 通信挤掉。
@@ -1768,7 +1853,8 @@ class InteractiveTeleop:
                 #    _omega_prev_pos 的更新推迟到 section 4（位置映射）末尾，
                 #    确保 section 4 也能用正确的帧间位移累积到 _virtual_ref。
                 delta_pos = raw_pos - self._omega_prev_pos
-                self._omega_traj_length += np.linalg.norm(delta_pos)
+                if "task_start" in self._timeline.event_times:
+                    self._omega_traj_length += np.linalg.norm(delta_pos)
 
                 gripper_angle = ctypes.c_double()
                 grip_ret = dhd.getGripperAngleDeg(gripper_angle)
@@ -1798,20 +1884,37 @@ class InteractiveTeleop:
                         self._trigger_release(self._max_width)
                 self._btn0_prev = btn0
 
-                # ── 1a. 记录轨迹（降采样） ──
-                if self._trajectory_record:
-                    self._traj_cycle += 1
-                    if self._traj_cycle % TRAJECTORY_DECIMATION == 0:
-                        self._record_trajectory_sample(raw_pos, omega_grip, button)
-
                 # ── 2. 读 Franka 状态 + 外力估计 ──
                 if self.panda is not None:
                     try:
                         state = self.panda.get_state()
+                        self._robot_pos_current = np.array(
+                            [state.O_T_EE[12], state.O_T_EE[13], state.O_T_EE[14]],
+                            dtype=float,
+                        )
                         if self.force_estimator is not None:
                             self._F_ext_current = self.force_estimator.update(state)
                     except Exception:
                         pass  # Franka 读取失败时继续
+
+                # ── 2b. 自动实验生命周期 ──
+                F_mag_now = float(np.linalg.norm(self._F_ext_current[:3]))
+                self._timeline.add_force_baseline(F_mag_now, now_perf)
+                vision_ready = (not self._vision_auto_map) or self._vision_locked
+                controller_ready = not self._transition_active
+                if (self._timeline.phase == PHASE_PREP and
+                        self._timeline.baseline_ready and vision_ready and controller_ready):
+                    self._timeline.set_ready(now_perf)
+                    self._omega_prev_pos = raw_pos.copy()
+                    print("\n\a  ✅ READY — 首次有效操作将自动开始计时")
+                self._timeline.observe_motion(raw_pos, now_perf)
+                self._timeline.observe_contact(F_mag_now, now_perf)
+                self._timeline.observe_gripper(
+                    self._gripper_state.value,
+                    self._gripper_width_actual if self._gripper_width_valid else self._last_cmd_width,
+                    now_perf,
+                    grasp_success=self._grasp_success,
+                )
 
                 # ── 3. 力反馈计算 ──
                 F_ext_xyz = self._F_ext_current[:3]
@@ -1843,13 +1946,16 @@ class InteractiveTeleop:
                 #   _virtual_ref += delta_raw * scale（累积位移）
                 #   target_pos = _virtual_ref
                 delta_raw = raw_pos - self._omega_prev_pos
-                self._virtual_ref += delta_raw * self._scale_cur * SIGN
+                # READY前冻结从端，并持续更新主端参考，解锁时不会产生位置跳变。
+                if "task_start" in self._timeline.event_times:
+                    self._virtual_ref += delta_raw * self._scale_cur * SIGN
                 target_pos = self._virtual_ref.copy()
                 # 防止数值爆炸
                 np.clip(target_pos, -10.0, 10.0, out=target_pos)
 
                 # 更新上一帧 Omega 位置（供下轮 section 1b 和 section 4 使用）
                 self._omega_prev_pos = raw_pos.copy()
+                self._target_pos_current = target_pos.copy()
 
                 # ── 4a. Vision 模式：从检测结果自动同步参数（首次检测后锁定）──
                 #    vision_observe 模式：视觉仅观察不改变手感，跳过此段
@@ -1869,10 +1975,18 @@ class InteractiveTeleop:
                             if p:
                                 print(f"\n  👁️ 首次检测到物体 → {p['name']} (参数已锁定)")
                                 print(f"     {p['desc']}")
-                                self._smooth_transition(p["K_trans"], p["K_rot"], p["damping_ratio"])
-                                self._K_fb_cur = p["K_fb"]
-                                self._deadband_cur = p["deadband"]
-                                self._scale_cur = p["scale"]
+                                # D模式严格只改变平动/旋转刚度；C/F应用完整参数组。
+                                target_damping = (
+                                    self._damping_ratio_cur if self._vision_stiffness_only
+                                    else p["damping_ratio"]
+                                )
+                                self._smooth_transition(p["K_trans"], p["K_rot"], target_damping)
+                                if not self._vision_stiffness_only:
+                                    self._K_fb_cur = p["K_fb"]
+                                    self._deadband_cur = p["deadband"]
+                                    self._scale_cur = p["scale"]
+                                    self._gripper_speed_cur = p.get("gripper_speed", GRIPPER_SPEED)
+                                    self._gripper_force_cur = p.get("gripper_force", GRIPPER_FORCE)
                                 self._vision_locked_label = getattr(profile, "label", "unknown")
                                 self._vision_base_K_trans = p["K_trans"]
                                 self._vision_base_K_rot = p["K_rot"]
@@ -1885,6 +1999,11 @@ class InteractiveTeleop:
                                         "接触后按外力微调刚度"
                                     )
                             self._vision_locked = True
+                            self._timeline.mark(
+                                "vision_lock", detected_class=self._vision_class,
+                                semantic_label=self._vision_locked_label,
+                                confidence=self._vision_confidence,
+                            )
                         # 锁定后不再更新参数，即使检测结果变化也不响应
                     # 锁定后也不再执行超时回退
 
@@ -1899,6 +2018,22 @@ class InteractiveTeleop:
                 if (now - last_gripper_time) >= dt_gripper:
                     self._update_gripper()
                     last_gripper_time = now
+                if (now - last_gripper_measure_time) >= 0.1:
+                    self._refresh_gripper_measurement()
+                    last_gripper_measure_time = now
+
+                # ── 6b. 统一原始数据记录（状态更新完成后） ──
+                if self._trajectory_record:
+                    self._traj_cycle += 1
+                    if self._traj_cycle % TRAJECTORY_DECIMATION == 0:
+                        self._record_trajectory_sample(
+                            raw_pos, omega_grip, button, now_perf
+                        )
+
+                if self._timeline.completed:
+                    print("\n\a  ✅ 任务释放完成，自动结束并保存数据")
+                    self.running = False
+                    break
 
                 # ── 7. 键盘处理 (降频) ──
                 if (now - last_kb_time) >= dt_keyboard:
@@ -1924,8 +2059,10 @@ class InteractiveTeleop:
 
         except KeyboardInterrupt:
             print("\n\n⚠️  收到 Ctrl+C，安全停止...")
+            self._timeline.abort("keyboard_interrupt")
         except Exception as e:
             print(f"\n\n❌ 错误: {e}")
+            self._timeline.abort(f"exception:{type(e).__name__}")
             import traceback
             traceback.print_exc()
         finally:
@@ -1935,14 +2072,39 @@ class InteractiveTeleop:
     # 轨迹录制
     # ═══════════════════════════════════════════
 
-    def _record_trajectory_sample(self, raw_pos, gripper_deg, button):
+    def _record_trajectory_sample(self, raw_pos, gripper_deg, button, now_perf=None):
         """记录一个轨迹样本点（主循环每周期调用）"""
+        now_perf = time.perf_counter() if now_perf is None else now_perf
         F_mag = float(np.linalg.norm(self._F_ext_current[:3]))
+        timeline = self._timeline.snapshot(now_perf)
+        event = self._timeline.consume_events()
+        F = np.asarray(self._F_ext_current, dtype=float)
+        if F.size < 6:
+            F = np.pad(F, (0, 6 - F.size), constant_values=np.nan)
         self._trajectory.append({
-            "time": time.time() - self._trajectory_start_time,
+            "schema_version": 2,
+            "system_time": timeline["system_time"],
+            "time": timeline["system_time"],  # 内部兼容旧汇总逻辑
+            "operation_time": timeline["operation_time"],
+            "phase": timeline["phase"], "event": event,
+            "mode": self._experiment_condition,
+            "controller_mode": self.mode,
+            "subject_id": self._timeline.subject_id,
+            "object_id": self._timeline.object_id,
+            "trial_id": self._timeline.trial_id,
+            "omega_x": raw_pos[0], "omega_y": raw_pos[1], "omega_z": raw_pos[2],
             "x": raw_pos[0], "y": raw_pos[1], "z": raw_pos[2],
+            "omega_valid": int(self._omega_read_valid),
             "gripper_deg": gripper_deg,
             "button": button,
+            "target_x": self._target_pos_current[0],
+            "target_y": self._target_pos_current[1],
+            "target_z": self._target_pos_current[2],
+            "robot_x": self._robot_pos_current[0],
+            "robot_y": self._robot_pos_current[1],
+            "robot_z": self._robot_pos_current[2],
+            "F_ext_x": F[0], "F_ext_y": F[1], "F_ext_z": F[2],
+            "T_ext_x": F[3], "T_ext_y": F[4], "T_ext_z": F[5],
             "K_trans": self._K_trans_cur,
             "K_rot": self._K_rot_cur,
             "damping_ratio": self._damping_ratio_cur,
@@ -1950,9 +2112,23 @@ class InteractiveTeleop:
             "deadband": self._deadband_cur,
             "scale": self._scale_cur,
             "F_ext_mag": F_mag,
+            "gripper_state": self._gripper_state.value,
+            "gripper_cmd_width": self._last_cmd_width,
+            "gripper_width": self._gripper_width_actual,
+            "gripper_width_valid": int(self._gripper_width_valid),
+            "gripper_speed": self._gripper_speed_cur,
+            "gripper_force": self._gripper_force_cur,
+            "grasp_success": int(self._grasp_success),
+            "vision_class": self._vision_class,
             "fusion_delta_K": self._fusion_delta_K,
             "fusion_active": int(self._fusion_active),
             "vision_label": self._vision_locked_label,
+            "vision_confidence": self._vision_confidence,
+            "vision_locked": int(self._vision_locked),
+            "control_dt": self._control_dt,
+            "force_baseline_mean": timeline["force_baseline_mean"],
+            "force_baseline_std": timeline["force_baseline_std"],
+            "force_threshold": timeline["force_threshold"],
         })
 
     def _save_trajectory(self, timestamp: str = None):
@@ -1978,7 +2154,7 @@ class InteractiveTeleop:
         fpath = path / fname
 
         # 计算采样率
-        times = [row["time"] for row in self._trajectory]
+        times = [row["system_time"] for row in self._trajectory]
         duration = times[-1] - times[0] if len(times) > 1 else 0
         actual_freq = len(times) / duration if duration > 0 else 0
 
@@ -1986,24 +2162,15 @@ class InteractiveTeleop:
             writer = _csv.writer(f)
             writer.writerow(TRAJECTORY_CSV_HEADER)
             for row in self._trajectory:
-                writer.writerow([
-                    f"{row['time']:.4f}",
-                    f"{row['x']:.6f}", f"{row['y']:.6f}", f"{row['z']:.6f}",
-                    f"{row['gripper_deg']:.2f}", row['button'],
-                    f"{row['K_trans']:.1f}", f"{row['K_rot']:.1f}",
-                    f"{row['damping_ratio']:.2f}",
-                    f"{row['K_fb']:.3f}", f"{row['deadband']:.3f}",
-                    f"{row['scale']:.2f}",
-                    f"{row['F_ext_mag']:.3f}",
-                    f"{row['fusion_delta_K']:.3f}",
-                    row['fusion_active'],
-                    row['vision_label'],
-                ])
+                writer.writerow([row.get(key, "") for key in TRAJECTORY_CSV_HEADER])
 
         print(f"\n  🎯 轨迹已保存: {fpath}")
         print(f"     {len(self._trajectory)} 点, {duration:.1f}s, {actual_freq:.0f} Hz")
         print(f"     使用离线分析工具评估疲劳度:")
         print(f"     python3 my_test/omega7_trajectory_analyzer.py --load {fpath} --save-plot")
+        events_path = path / f"{self.mode}_{timestamp}_events.json"
+        self._timeline.save_events(events_path)
+        print(f"     事件时间轴: {events_path}")
         return str(fpath), timestamp
 
     def _save_summary(self, timestamp: str):
@@ -2021,7 +2188,7 @@ class InteractiveTeleop:
         fpath = path / fname
 
         # ── 基本时间统计 ──
-        elapsed_total = time.time() - self._trajectory_start_time if hasattr(self, '_trajectory_start_time') else 0
+        elapsed_total = self._timeline.system_time()
 
         # ── 轨迹统计 ──
         traj_len = self._omega_traj_length
@@ -2138,6 +2305,7 @@ class InteractiveTeleop:
             },
             "final_params": final_params,
             "fusion_config": fusion_config,
+            "experiment": self._timeline.to_dict(),
         }
 
         with open(fpath, "w") as f:
@@ -2161,6 +2329,8 @@ class InteractiveTeleop:
         """安全关闭所有硬件"""
         self.running = False
         self._transition_stop.set()
+        if not self._timeline.completed and not self._timeline.incomplete:
+            self._timeline.abort("shutdown_before_task_completion")
 
         # 停止视觉线程和 YOLO 进程
         if self._vision_enabled and self._vision_active:
@@ -2168,7 +2338,7 @@ class InteractiveTeleop:
             print("\n   视觉模块已停止（YOLO 进程自动终止）")
 
         # 打印主端 Omega.7 轨迹长度统计
-        elapsed_total = time.time() - self._trajectory_start_time if hasattr(self, '_trajectory_start_time') else 0
+        elapsed_total = self._timeline.system_time()
         print(f"\n  📏 主端 Omega.7 轨迹长度统计:")
         print(f"     累计轨迹长度: {self._omega_traj_length:.3f} m")
         print(f"     运行时长:     {elapsed_total:.1f} s")
@@ -2190,9 +2360,16 @@ class InteractiveTeleop:
         if self._trajectory_record:
             from datetime import datetime as _dt
             timestamp = _dt.now().strftime('%Y%m%d_%H%M%S')
-            _, ts = self._save_trajectory(timestamp)
+            csv_path, ts = self._save_trajectory(timestamp)
             if ts:
                 self._save_summary(ts)
+            if csv_path:
+                try:
+                    from force_metrics import analyze_csv
+                    result = analyze_csv(csv_path, save_plot=True)
+                    print(f"  📈 分阶段指标: {result.get('metrics_json')}")
+                except Exception as e:
+                    print(f"  ⚠️ 分阶段指标生成失败（原始CSV已保留）: {e}")
 
         print("\n   关闭 Omega.7 力输出...")
         try:
@@ -2212,7 +2389,7 @@ class InteractiveTeleop:
 
 def main():
     # 动态从 PRESETS 生成 choices: default + vision + 所有 preset key
-    MODE_CHOICES = ["default", "vision", "vision_observe", "vision_force", "f", "F"] + sorted(PRESETS.keys())
+    MODE_CHOICES = ["default", "vision", "vision_observe", "vision_stiffness", "vision_force", "f", "F"] + sorted(PRESETS.keys())
     parser = argparse.ArgumentParser(description="交互式遥操作：实时调节阻尼/刚度/力反馈")
     parser.add_argument("--mode", "-m", type=str, default="default",
                         choices=MODE_CHOICES,
@@ -2226,6 +2403,9 @@ def main():
                         help="关闭轨迹自动录制（默认开启）")
     parser.add_argument("--trajectory-dir", type=str, default=TRAJECTORY_DIR,
                         help=f"轨迹 CSV 输出目录 (默认: {TRAJECTORY_DIR}/)")
+    parser.add_argument("--subject-id", default="unknown", help="被试编号")
+    parser.add_argument("--object-id", default="unknown", help="物体编号")
+    parser.add_argument("--trial-id", default="unknown", help="试次编号")
     args = parser.parse_args()
     canonical_mode = "vision_force" if args.mode in ("f", "F") else args.mode
 
@@ -2233,6 +2413,9 @@ def main():
         mode=canonical_mode,
         record_trajectory=not args.no_trajectory,
         trajectory_dir=args.trajectory_dir,
+        subject_id=args.subject_id,
+        object_id=args.object_id,
+        trial_id=args.trial_id,
     )
 
     # 若指定了启动参数文件，替换默认保存路径
