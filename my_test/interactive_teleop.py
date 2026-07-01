@@ -261,22 +261,22 @@ PRESETS = {
     "soft_obj": {
         "name": "🫧 人工选择模式（实验 B）",
         "desc": "人工正确选择 soft 策略，与视觉 soft 前馈参数一致",
-        "K_trans": 90.0, "K_rot": 5.0,
-        "damping_ratio": 0.9, "K_fb": 0.25, "deadband": 0.3,
+        "K_trans": 50.0, "K_rot": 5.0,
+        "damping_ratio": 0.8, "K_fb": 0.2, "deadband": 0.3,
         "scale": 3.0, "gripper_speed": 0.02, "gripper_force": 8.0,
     },
     "medium_obj": {
         "name": "📦 中物体手感",
         "desc": "人工正确选择 medium 策略，与视觉 medium 前馈参数一致",
-        "K_trans": 130.0, "K_rot": 9.0,
-        "damping_ratio": 1.0, "K_fb": 0.45, "deadband": 0.4,
+        "K_trans": 150.0, "K_rot": 10.0,
+        "damping_ratio": 1.0, "K_fb": 0.5, "deadband": 0.4,
         "scale": 3.0, "gripper_speed": 0.05, "gripper_force": 15.0,
     },
     "hard_obj": {
         "name": "🪨 硬物体手感",
         "desc": "人工正确选择 hard 策略，与视觉 hard 前馈参数一致",
-        "K_trans": 170.0, "K_rot": 12.0,
-        "damping_ratio": 1.15, "K_fb": 0.65, "deadband": 0.5,
+        "K_trans": 200.0, "K_rot": 13.0,
+        "damping_ratio": 1.2, "K_fb": 0.7, "deadband": 0.5,
         "scale": 3.0, "gripper_speed": 0.10, "gripper_force": 20.0,
     },
     # ── 六模式预实验专用参数 ──
@@ -296,23 +296,23 @@ PRESETS = {
     },
     "vision_soft": {
         "name": "👁️ 视觉软物体",
-        "desc": "实验 C/F 的 soft 视觉前馈基线 (保留跟踪刚度，接触刚度由 fusion 策略降低)",
-        "K_trans": 90.0, "K_rot": 5.0,
-        "damping_ratio": 0.9, "K_fb": 0.25, "deadband": 0.3,
+        "desc": "实验 D/E/F 的 soft 视觉前馈基线",
+        "K_trans": 50.0, "K_rot": 5.0,
+        "damping_ratio": 0.8, "K_fb": 0.2, "deadband": 0.3,
         "scale": 3.0, "gripper_speed": 0.02, "gripper_force": 8.0,
     },
     "vision_medium": {
         "name": "👁️ 视觉中等物体",
-        "desc": "实验 C/F 的 medium 视觉前馈基线",
-        "K_trans": 130.0, "K_rot": 9.0,
-        "damping_ratio": 1.0, "K_fb": 0.45, "deadband": 0.4,
+        "desc": "实验 D/E/F 的 medium 视觉前馈基线",
+        "K_trans": 150.0, "K_rot": 10.0,
+        "damping_ratio": 1.0, "K_fb": 0.5, "deadband": 0.4,
         "scale": 3.0, "gripper_speed": 0.05, "gripper_force": 15.0,
     },
     "vision_hard": {
         "name": "👁️ 视觉硬物体",
-        "desc": "实验 C/F 的 hard 视觉前馈基线",
-        "K_trans": 170.0, "K_rot": 12.0,
-        "damping_ratio": 1.15, "K_fb": 0.65, "deadband": 0.5,
+        "desc": "实验 D/E/F 的 hard 视觉前馈基线",
+        "K_trans": 200.0, "K_rot": 13.0,
+        "damping_ratio": 1.2, "K_fb": 0.7, "deadband": 0.5,
         "scale": 3.0, "gripper_speed": 0.10, "gripper_force": 20.0,
     },
 }
@@ -472,13 +472,15 @@ class InteractiveTeleop:
 
     def __init__(self, mode: str = "default", record_trajectory: bool = True,
                  trajectory_dir: str = "data", subject_id: str = "unknown",
-                 object_id: str = "unknown", trial_id: str = "unknown"):
+                 object_id: str = "unknown", trial_id: str = "unknown",
+                 auto_stop: bool = True):
         # ── 运行模式 ──
         self.mode = mode  # "default" | "vision" | PRESETS key
         self._experiment_condition = {
             "default": "A", "experiment_fixed_a": "A",
             "soft_obj": "B", "medium_obj": "B", "hard_obj": "B",
-            "vision": "C", "vision_stiffness": "D", "vision_force": "F",
+            "vision_observe": "C", "vision_stiffness": "D",
+            "vision": "E", "vision_force": "F",
         }.get(mode, mode)
 
         # ── 运行状态 ──
@@ -487,6 +489,14 @@ class InteractiveTeleop:
         self._trajectory_record = record_trajectory
         self._trajectory_dir = trajectory_dir
         self._trajectory: List[dict] = []
+        self._auto_stop = auto_stop
+        self._completion_announced = False
+        # 正式实验模式一旦启动即锁定参数，避免按键误触破坏组间控制变量。
+        # default/light/standard/stable/rigid 仍保留交互调参能力，供设备调试。
+        self._experiment_parameters_locked = mode in (
+            "experiment_fixed_a", "soft_obj", "medium_obj", "hard_obj",
+            "vision_observe", "vision_stiffness", "vision", "vision_force",
+        )
 
         # ── Vision 模式状态 ──
         self._vision_enabled = (mode in ("vision", "vision_observe", "vision_stiffness", "vision_force"))
@@ -1238,9 +1248,8 @@ class InteractiveTeleop:
 
     def _process_keyboard(self):
         """主循环中处理缓存的键盘输入"""
-        # ── Vision 模式下：仅允许辅助按键，禁用所有手动参数调节 ──
-        #    vision_observe 模式：视觉观察不改变手感，键盘完全可用
-        if self._vision_enabled and hasattr(self, '_vision_auto_map') and self._vision_auto_map:
+        # ── 正式实验模式：仅允许查看帮助，禁用调参、预设切换和参数加载 ──
+        if self._experiment_parameters_locked:
             key = ""
             with self._key_lock:
                 if self._key_pressed and not self._key_held:
@@ -1248,11 +1257,7 @@ class InteractiveTeleop:
                     self._key_pressed = ""
             if key == "h":
                 self._print_help()
-            elif key == "v":
-                self._save_params()
-            elif key == "b":
-                self._load_params()
-            # 忽略所有参数调节按键 (1-0, q/w, a-f, z-c)
+            # 忽略所有会改变参数的按键 (1-0, q/w, a-f, z-c, b)
             return
 
         key = ""
@@ -1975,12 +1980,10 @@ class InteractiveTeleop:
                             if p:
                                 print(f"\n  👁️ 首次检测到物体 → {p['name']} (参数已锁定)")
                                 print(f"     {p['desc']}")
-                                # D模式严格只改变平动/旋转刚度；C/F应用完整参数组。
-                                target_damping = (
-                                    self._damping_ratio_cur if self._vision_stiffness_only
-                                    else p["damping_ratio"]
+                                # D模式调度完整阻抗组(Kt/Kr/zeta)；E/F应用完整多参数组。
+                                self._smooth_transition(
+                                    p["K_trans"], p["K_rot"], p["damping_ratio"]
                                 )
-                                self._smooth_transition(p["K_trans"], p["K_rot"], target_damping)
                                 if not self._vision_stiffness_only:
                                     self._K_fb_cur = p["K_fb"]
                                     self._deadband_cur = p["deadband"]
@@ -2031,9 +2034,16 @@ class InteractiveTeleop:
                         )
 
                 if self._timeline.completed:
-                    print("\n\a  ✅ 任务释放完成，自动结束并保存数据")
-                    self.running = False
-                    break
+                    if self._auto_stop:
+                        print("\n\a  ✅ 任务释放完成，自动结束并保存数据")
+                        self.running = False
+                        break
+                    if not self._completion_announced:
+                        print(
+                            "\n\a  ✅ 任务释放完成；manual-stop 调试模式继续运行，"
+                            "请按 Ctrl+C 保存并安全退出"
+                        )
+                        self._completion_announced = True
 
                 # ── 7. 键盘处理 (降频) ──
                 if (now - last_kb_time) >= dt_keyboard:
@@ -2393,8 +2403,11 @@ def main():
     parser = argparse.ArgumentParser(description="交互式遥操作：实时调节阻尼/刚度/力反馈")
     parser.add_argument("--mode", "-m", type=str, default="default",
                         choices=MODE_CHOICES,
-                        help="运行模式: default=手动调节手感, vision=YOLO视觉自动映射, "
-                             "vision_observe=视觉仅观察不改变手感, "
+                        help="运行模式: experiment_fixed_a=SCI模式A固定参数, "
+                             "soft_obj/medium_obj/hard_obj=SCI模式B人工预设, "
+                             "vision_observe=SCI模式C视觉仅显示, "
+                             "vision_stiffness=SCI模式D视觉仅调阻抗, "
+                             "vision=SCI模式E视觉多参数前馈, "
                              "f/vision_force=实验F模式(视觉前馈+力反馈微调融合), "
                              "或直接指定预设: " + ", ".join(sorted(PRESETS.keys())))
     parser.add_argument("--load", "-l", type=str, default=None,
@@ -2406,6 +2419,10 @@ def main():
     parser.add_argument("--subject-id", default="unknown", help="被试编号")
     parser.add_argument("--object-id", default="unknown", help="物体编号")
     parser.add_argument("--trial-id", default="unknown", help="试次编号")
+    parser.add_argument(
+        "--manual-stop", action="store_true",
+        help="调试模式：任务完成后不自动退出，按 Ctrl+C 时保存并安全关闭",
+    )
     args = parser.parse_args()
     canonical_mode = "vision_force" if args.mode in ("f", "F") else args.mode
 
@@ -2416,6 +2433,7 @@ def main():
         subject_id=args.subject_id,
         object_id=args.object_id,
         trial_id=args.trial_id,
+        auto_stop=not args.manual_stop,
     )
 
     # 若指定了启动参数文件，替换默认保存路径
