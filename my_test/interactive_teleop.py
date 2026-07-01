@@ -134,7 +134,7 @@ ROBOT_IP = "192.168.1.51"
 
 # 控制频率
 CTRL_FREQ = 200.0          # 主控制循环 (Hz)
-STATUS_FREQ = 10.0          # 状态打印 (Hz)
+STATUS_FREQ = 1.0           # 状态打印 (Hz)：每秒一行，便于实验观察/回溯
 KEYBOARD_FREQ = 30.0        # 键盘轮询 (Hz)
 
 # 坐标轴方向
@@ -1716,7 +1716,11 @@ class InteractiveTeleop:
             print("=" * 65)
 
     def _print_status(self):
-        """打印当前参数和状态"""
+        """打印当前参数和状态（每次独立一行）。"""
+        # 与 CSV system_time 使用同一条单调时间轴，不再用循环次数估算时间。
+        timeline = self._timeline.snapshot(time.perf_counter())
+        elapsed_s = timeline["system_time"]
+        phase = timeline["phase"]
         K_fb_disp = self._K_fb_cur
         deadband_disp = self._deadband_cur
         F_xyz = self._F_ext_current[:3]
@@ -1728,7 +1732,7 @@ class InteractiveTeleop:
         last_grip_mm = self._last_cmd_width * 1000.0
 
         status = (
-            f"[{self._loop_count // int(CTRL_FREQ)}s] "
+            f"[t={elapsed_s:7.1f}s] [阶段={phase}] "
             f"ζ={self._damping_ratio_cur:.2f} "
             f"Kt={self._K_trans_cur:.0f} "
             f"Kr={self._K_rot_cur:.1f} "
@@ -1768,7 +1772,8 @@ class InteractiveTeleop:
             else:
                 status += f" {lock_str}无检测"
 
-        print(f"\r  {status}", end="", flush=True)
+        # 不用 \r 覆盖旧内容：保留每秒状态，方便现场观察和事后对照。
+        print(f"  {status}", flush=True)
 
     # ═══════════════════════════════════════════
     # 主控制循环
@@ -1820,7 +1825,8 @@ class InteractiveTeleop:
         print(f"  🚀 遥操作已启动！{mode_str}")
         print("=" * 65 + "\n")
 
-        last_status_time = 0.0
+        # 状态调度使用单调时钟，避免系统时间校准导致跳秒。
+        next_status_time = time.perf_counter()
         last_gripper_time = 0.0
         last_gripper_ctrl_time = 0.0
         last_gripper_measure_time = 0.0
@@ -2052,9 +2058,13 @@ class InteractiveTeleop:
 
                 # ── 8. 状态打印 (降频) ──
                 self._loop_count += 1
-                if (now - last_status_time) >= dt_status:
+                if now_perf >= next_status_time:
                     self._print_status()
-                    last_status_time = now
+                    next_status_time += dt_status
+                    # 如果某个控制周期阻塞过久，不补打过期状态，直接对齐下一秒。
+                    if next_status_time <= now_perf:
+                        missed = int((now_perf - next_status_time) / dt_status) + 1
+                        next_status_time += missed * dt_status
 
                 # ── 8a. 轨迹录制进度提示（每 30s） ──
                 if self._trajectory_record and self._loop_count % int(CTRL_FREQ * 30) == 0:
