@@ -327,7 +327,7 @@ SAVE_FILE_PATH = os.path.expanduser("~/teleop_params.json")
 YOLO_MODEL_PATH = "/home/mfj/sunhan/yolo/ultralytics-8.3.163/yolo11n.pt"
 YOLO_CONF_THRESHOLD = 0.25
 VISION_DETECTION_HOLD_TIMEOUT = 5.0  # 检测丢失后保持参数的最大时间 (s)
-VISION_START_DELAY = 2.0             # 控制循环先稳定运行，再启动相机/YOLO (s)
+VISION_START_DELAY = 0.0             # 控制循环进入 run 后立即异步启动视觉
 VISION_USB_RECOVERY_PAUSE = 1.5      # Omega 连续读取失败时，暂停 RealSense 的时长 (s)
 OMEGA_READ_RETRY_DELAY = 0.001       # Omega 读取失败后的快速重试间隔 (s)
 OMEGA_FAIL_WARN_INTERVAL = 2.0       # Omega 读取失败状态打印最小间隔 (s)
@@ -418,6 +418,13 @@ def _yolo_process_main(
                 print(f"[YOLO进程-{pid}] 等待帧入队...", flush=True)
             continue
 
+        # 推理永远面向最新画面：丢弃模型加载/上一轮推理期间积压的旧帧。
+        while True:
+            try:
+                rgb = frame_queue.get_nowait()
+            except _q.Empty:
+                break
+
         try:
             cycle += 1
             det = mapper.detect_and_map(rgb)
@@ -433,21 +440,11 @@ def _yolo_process_main(
                     flush=True,
                 )
             else:
-                _results = mapper._model(rgb, verbose=False)[0]
-                if len(_results.boxes) > 0:
-                    _all = [
-                        f"{_results.names[int(b.cls[0])]}({float(b.conf[0]):.2f})"
-                        for b in _results.boxes
-                    ]
-                    if cycle <= 5 or cycle % 20 == 0:
-                        print(
-                            f"[YOLO进程-{pid}] 推理 #{cycle}: "
-                            f"检测到但未通过过滤: {', '.join(_all)}",
-                            flush=True,
-                        )
-                elif cycle <= 5 or cycle % 20 == 0:
+                # detect_and_map 已经执行过一次模型推理；这里不能为了诊断
+                # 再调用 mapper._model，否则无结果帧会耗费双倍推理时间。
+                if cycle <= 5 or cycle % 20 == 0:
                     print(
-                        f"[YOLO进程-{pid}] 推理 #{cycle}: 未检测到任何物体",
+                        f"[YOLO进程-{pid}] 推理 #{cycle}: 未得到有效映射目标",
                         flush=True,
                     )
         except Exception as e:
@@ -1016,7 +1013,7 @@ class InteractiveTeleop:
         print("[视觉线程] RealSense D435i 已启动")
 
         # ── 进程间通信 ──
-        frame_queue = mp.Queue(maxsize=2)     # RGB 帧 → YOLO 进程
+        frame_queue = mp.Queue(maxsize=1)     # 仅保留最新 RGB 帧，避免视觉延迟累积
         result_queue = mp.Queue(maxsize=2)    # 检测结果 ← YOLO 进程
 
         # ── 启动 YOLO 独立进程 ──
