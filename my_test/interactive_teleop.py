@@ -1255,7 +1255,10 @@ class InteractiveTeleop:
                 if self._key_pressed and not self._key_held:
                     key = self._key_pressed
                     self._key_pressed = ""
-            if key == "h":
+            if key == " ":
+                if self._timeline.start_task(trigger="space_key"):
+                    print("\n\a  ▶ 实验开始 — 操作计时已归零")
+            elif key == "h":
                 self._print_help()
             # 忽略所有会改变参数的按键 (1-0, q/w, a-f, z-c, b)
             return
@@ -1268,6 +1271,11 @@ class InteractiveTeleop:
                     self._key_pressed = ""
 
         if not key:
+            return
+
+        if key == " ":
+            if self._timeline.start_task(trigger="space_key"):
+                print("\n\a  ▶ 实验开始 — 操作计时已归零")
             return
 
         # ── 参数微调 ──
@@ -1920,16 +1928,9 @@ class InteractiveTeleop:
                     self._omega_prev_pos = raw_pos.copy()
                     print(
                         "\n\a  ✅ READY — 机械臂已可操作，"
-                        "首次有效操作将从 0.0 s 开始计时；"
+                        "请在终端按空格开始实验；"
                         "视觉识别在后台独立进行"
                     )
-                task_was_started = "task_start" in self._timeline.event_times
-                self._timeline.observe_motion(raw_pos, now_perf)
-                if (not task_was_started and
-                        "task_start" in self._timeline.event_times):
-                    # 让现场状态从任务开始瞬间的 0.0 s 对齐，
-                    # 后续每秒一行，而不是沿用程序启动时的打印节拍。
-                    next_status_time = now_perf
                 self._timeline.observe_contact(F_mag_now, now_perf)
                 self._timeline.observe_gripper(
                     self._gripper_state.value,

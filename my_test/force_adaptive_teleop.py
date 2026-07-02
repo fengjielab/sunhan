@@ -651,6 +651,11 @@ class ForceAdaptiveTeleop:
         if not key:
             return
 
+        if key == " ":
+            if self._timeline.start_task(trigger="space_key"):
+                print("\n\a  ▶ 实验开始 — 操作计时已归零")
+            return
+
         if key == "1":
             self._damping_ratio_cur = max(DAMPING_MIN, self._damping_ratio_cur - 0.1)
             self.ctrl.set_damping_ratio(self._damping_ratio_cur)
@@ -1030,8 +1035,7 @@ class ForceAdaptiveTeleop:
                 if self._timeline.phase == PHASE_PREP and self._timeline.baseline_ready:
                     self._timeline.set_ready(now_perf)
                     self._omega_prev_pos = raw_pos.copy()
-                    print("\n\a  ✅ READY — 首次有效操作将自动开始计时")
-                self._timeline.observe_motion(raw_pos, now_perf)
+                    print("\n\a  ✅ READY — 请在终端按空格开始实验")
                 self._timeline.observe_contact(F_mag_now, now_perf)
                 self._timeline.observe_gripper(
                     self._gripper_state.value,

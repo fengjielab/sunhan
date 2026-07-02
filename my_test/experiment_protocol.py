@@ -24,7 +24,7 @@ PHASE_INCOMPLETE = "INCOMPLETE"
 
 
 class ExperimentTimeline:
-    """Detect experiment events without asking the operator to press keys.
+    """Track experiment events and phases using a monotonic clock.
 
     Times are based on ``time.perf_counter``.  Wall-clock time is retained only
     as metadata, never for duration calculations.
@@ -120,6 +120,15 @@ class ExperimentTimeline:
         self.phase = PHASE_READY
         self._motion.clear()
         self.mark("system_ready", now)
+
+    def start_task(self, now: Optional[float] = None,
+                   trigger: str = "operator_key") -> bool:
+        """Start operation timing explicitly after the system reaches READY."""
+        if self.phase != PHASE_READY or self.completed or self.incomplete:
+            return False
+        now = time.perf_counter() if now is None else now
+        self.phase = PHASE_APPROACH
+        return self.mark("task_start", now, trigger=trigger)
 
     def observe_motion(self, pos: np.ndarray, now: float) -> None:
         if self.phase != PHASE_READY or self.completed:
