@@ -1717,9 +1717,11 @@ class InteractiveTeleop:
 
     def _print_status(self):
         """打印当前参数和状态（每次独立一行）。"""
-        # 与 CSV system_time 使用同一条单调时间轴，不再用循环次数估算时间。
+        # 现场显示使用 CSV operation_time：首次有效操作为 0 s，
+        # 一直连续到任务结束。system_time 仍保留在 CSV 中用于诊断启动阶段。
         timeline = self._timeline.snapshot(time.perf_counter())
-        elapsed_s = timeline["system_time"]
+        operation_time = timeline["operation_time"]
+        elapsed_s = operation_time if np.isfinite(operation_time) else 0.0
         phase = timeline["phase"]
         K_fb_disp = self._K_fb_cur
         deadband_disp = self._deadband_cur
@@ -1911,14 +1913,23 @@ class InteractiveTeleop:
                 # ── 2b. 自动实验生命周期 ──
                 F_mag_now = float(np.linalg.norm(self._F_ext_current[:3]))
                 self._timeline.add_force_baseline(F_mag_now, now_perf)
-                vision_ready = (not self._vision_auto_map) or self._vision_locked
                 controller_ready = not self._transition_active
                 if (self._timeline.phase == PHASE_PREP and
-                        self._timeline.baseline_ready and vision_ready and controller_ready):
+                        self._timeline.baseline_ready and controller_ready):
                     self._timeline.set_ready(now_perf)
                     self._omega_prev_pos = raw_pos.copy()
-                    print("\n\a  ✅ READY — 首次有效操作将自动开始计时")
+                    print(
+                        "\n\a  ✅ READY — 机械臂已可操作，"
+                        "首次有效操作将从 0.0 s 开始计时；"
+                        "视觉识别在后台独立进行"
+                    )
+                task_was_started = "task_start" in self._timeline.event_times
                 self._timeline.observe_motion(raw_pos, now_perf)
+                if (not task_was_started and
+                        "task_start" in self._timeline.event_times):
+                    # 让现场状态从任务开始瞬间的 0.0 s 对齐，
+                    # 后续每秒一行，而不是沿用程序启动时的打印节拍。
+                    next_status_time = now_perf
                 self._timeline.observe_contact(F_mag_now, now_perf)
                 self._timeline.observe_gripper(
                     self._gripper_state.value,
