@@ -77,7 +77,7 @@ ROBOT_IP = "192.168.1.51"
 
 # 控制频率
 CTRL_FREQ = 200.0
-STATUS_FREQ = 10.0
+STATUS_FREQ = 1.0           # 每秒一行，便于实验现场观察和事后回溯
 KEYBOARD_FREQ = 30.0
 
 # 坐标轴方向
@@ -651,11 +651,6 @@ class ForceAdaptiveTeleop:
         if not key:
             return
 
-        if key == " ":
-            if self._timeline.start_task(trigger="space_key"):
-                print("\n\a  ▶ 实验开始 — 操作计时已归零")
-            return
-
         if key == "1":
             self._damping_ratio_cur = max(DAMPING_MIN, self._damping_ratio_cur - 0.1)
             self.ctrl.set_damping_ratio(self._damping_ratio_cur)
@@ -903,6 +898,10 @@ class ForceAdaptiveTeleop:
     def _print_status(self):
         F_mag = float(np.linalg.norm(self._F_ext_current[:3]))
         traj_len = self._omega_traj_length
+        timeline = self._timeline.snapshot(time.perf_counter())
+        operation_time = timeline["operation_time"]
+        elapsed_s = operation_time if np.isfinite(operation_time) else 0.0
+        phase = timeline["phase"]
         grip_busy_str = " ⏳" if self._cmd_busy else "   "
         last_grip_mm = self._last_cmd_width * 1000.0
 
@@ -910,7 +909,7 @@ class ForceAdaptiveTeleop:
         K_min = self._K_base_cur * (1.0 - self._alpha_cur)
 
         status = (
-            f"\r[{self._loop_count // int(CTRL_FREQ)}s] "
+            f"[t={elapsed_s:7.1f}s] [阶段={phase}] "
             f"Kt={self._K_trans_cur:.0f} "
             f"[{K_min:.0f}~{self._K_base_cur:.0f}] "
             f"Kr={self._K_rot_cur:.1f} "
@@ -935,7 +934,7 @@ class ForceAdaptiveTeleop:
         else:
             status += " 自由运动"
 
-        print(status, end="", flush=True)
+        print(status, flush=True)
 
     # ═══════════════════════════════════════════
     # 主控制循环
@@ -1034,8 +1033,9 @@ class ForceAdaptiveTeleop:
                 self._timeline.add_force_baseline(F_mag_now, now_perf)
                 if self._timeline.phase == PHASE_PREP and self._timeline.baseline_ready:
                     self._timeline.set_ready(now_perf)
+                    self._timeline.start_task(now_perf, trigger="system_ready")
                     self._omega_prev_pos = raw_pos.copy()
-                    print("\n\a  ✅ READY — 请在终端按空格开始实验")
+                    print("\n\a  ✅ 实验开始 — 机械臂已可操作")
                 self._timeline.observe_contact(F_mag_now, now_perf)
                 self._timeline.observe_gripper(
                     self._gripper_state.value,
