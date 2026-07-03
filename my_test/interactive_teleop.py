@@ -184,6 +184,7 @@ TRAJECTORY_DIR = "data"          # 轨迹 CSV 输出目录
 TRAJECTORY_DECIMATION = 1        # 降采样: 1=每周期记录(200Hz), 5=每5周期记录(40Hz)
 TRAJECTORY_CSV_HEADER = ["time", "x", "y", "z", "gripper_deg", "button",
                           "K_trans", "K_rot", "damping_ratio", "K_fb", "deadband", "scale",
+                          "gripper_speed", "gripper_force",
                           "F_ext_mag", "fusion_delta_K", "fusion_active", "vision_label"]
 
 # 平滑过渡步长
@@ -249,59 +250,59 @@ PRESETS = {
     "soft_obj": {
         "name": "🫧 人工选择模式（实验 B）",
         "desc": "人工正确选择 soft 策略，与视觉 soft 前馈参数一致",
-        "K_trans": 90.0, "K_rot": 5.0,
-        "damping_ratio": 0.9, "K_fb": 0.25, "deadband": 0.3,
-        "scale": 3.0,
+        "K_trans": 50.0, "K_rot": 5.0,
+        "damping_ratio": 0.8, "K_fb": 0.2, "deadband": 0.3,
+        "scale": 3.0, "gripper_speed": 0.02, "gripper_force": 8.0,
     },
     "medium_obj": {
         "name": "📦 中物体手感",
         "desc": "中力反馈 + 中刚度 — 模拟触碰纸盒/塑料瓶",
         "K_trans": 150.0, "K_rot": 10.0,
         "damping_ratio": 1.0, "K_fb": 0.5, "deadband": 0.4,
-        "scale": 3.0,
+        "scale": 3.0, "gripper_speed": 0.05, "gripper_force": 15.0,
     },
     "hard_obj": {
         "name": "🪨 硬物体手感",
         "desc": "强力反馈 + 高刚度 — 模拟触碰金属/岩石",
         "K_trans": 200.0, "K_rot": 13.0,
         "damping_ratio": 1.2, "K_fb": 0.7, "deadband": 0.5,
-        "scale": 3.0,
+        "scale": 3.0, "gripper_speed": 0.10, "gripper_force": 20.0,
     },
     # ── 六模式预实验专用参数 ──
     "experiment_fixed_a": {
         "name": "🇦 固定参数模式",
-        "desc": "实验 A — 高刚度固定基线",
-        "K_trans": 200.0, "K_rot": 13.0,
-        "damping_ratio": 1.2, "K_fb": 0.5, "deadband": 0.3,
+        "desc": "实验 A — 固定参数基线",
+        "K_trans": 150.0, "K_rot": 10.0,
+        "damping_ratio": 1.0, "K_fb": 0.5, "deadband": 0.3,
         "scale": 3.0,
     },
     "experiment_observe_d": {
         "name": "🇩 视觉观察模式",
         "desc": "实验 D — 视觉仅提示，与 A 使用相同固定参数",
-        "K_trans": 200.0, "K_rot": 13.0,
-        "damping_ratio": 1.2, "K_fb": 0.5, "deadband": 0.3,
+        "K_trans": 150.0, "K_rot": 10.0,
+        "damping_ratio": 1.0, "K_fb": 0.5, "deadband": 0.3,
         "scale": 3.0,
     },
     "vision_soft": {
         "name": "👁️ 视觉软物体",
         "desc": "实验 C/F 的 soft 视觉前馈基线",
-        "K_trans": 90.0, "K_rot": 5.0,
-        "damping_ratio": 0.9, "K_fb": 0.25, "deadband": 0.3,
-        "scale": 3.0,
+        "K_trans": 50.0, "K_rot": 5.0,
+        "damping_ratio": 0.8, "K_fb": 0.2, "deadband": 0.3,
+        "scale": 3.0, "gripper_speed": 0.02, "gripper_force": 8.0,
     },
     "vision_medium": {
         "name": "👁️ 视觉中等物体",
         "desc": "实验 C/F 的 medium 视觉前馈基线",
-        "K_trans": 130.0, "K_rot": 9.0,
-        "damping_ratio": 1.0, "K_fb": 0.45, "deadband": 0.4,
-        "scale": 3.0,
+        "K_trans": 150.0, "K_rot": 10.0,
+        "damping_ratio": 1.0, "K_fb": 0.5, "deadband": 0.4,
+        "scale": 3.0, "gripper_speed": 0.05, "gripper_force": 15.0,
     },
     "vision_hard": {
         "name": "👁️ 视觉硬物体",
         "desc": "实验 C/F 的 hard 视觉前馈基线",
-        "K_trans": 170.0, "K_rot": 12.0,
-        "damping_ratio": 1.15, "K_fb": 0.65, "deadband": 0.5,
-        "scale": 3.0,
+        "K_trans": 200.0, "K_rot": 13.0,
+        "damping_ratio": 1.2, "K_fb": 0.7, "deadband": 0.5,
+        "scale": 3.0, "gripper_speed": 0.10, "gripper_force": 20.0,
     },
 }
 
@@ -468,6 +469,10 @@ class InteractiveTeleop:
         self._trajectory_record = record_trajectory
         self._trajectory_dir = trajectory_dir
         self._trajectory: List[dict] = []
+        self._experiment_parameters_locked = mode in (
+            "experiment_fixed_a", "soft_obj", "medium_obj", "hard_obj",
+            "vision", "vision_observe", "vision_stiffness",
+        )
 
         # ── Vision 模式状态 ──
         self._vision_enabled = (mode in ("vision", "vision_observe", "vision_stiffness", "vision_force"))
@@ -546,6 +551,8 @@ class InteractiveTeleop:
         self._grasp_armed = True                     # 必须先张开，才允许下一次抓取
         self._btn0_prev = 0  # 灰色按钮 (上一帧)
         self._gripper_force_feedback = 0.0  # 夹爪力反馈值
+        self._gripper_speed_cur = GRIPPER_SPEED
+        self._gripper_force_cur = GRIPPER_FORCE
 
         # ── Franka 状态 ──
         self._init_pos = np.zeros(3)
@@ -815,6 +822,8 @@ class InteractiveTeleop:
         self._K_fb_cur = p["K_fb"]
         self._deadband_cur = p["deadband"]
         self._scale_cur = p["scale"]
+        self._gripper_speed_cur = p.get("gripper_speed", GRIPPER_SPEED)
+        self._gripper_force_cur = p.get("gripper_force", GRIPPER_FORCE)
 
     # ═══════════════════════════════════════════
     # Vision 模式 — profile → PRESETS 映射
@@ -1186,6 +1195,19 @@ class InteractiveTeleop:
 
     def _process_keyboard(self):
         """主循环中处理缓存的键盘输入"""
+        # 正式A–E实验锁定控制参数，避免误触改变组间控制变量。
+        if self._experiment_parameters_locked:
+            key = ""
+            with self._key_lock:
+                if self._key_pressed and not self._key_held:
+                    key = self._key_pressed
+                    self._key_pressed = ""
+            if key == "h":
+                self._print_help()
+            elif key == "v":
+                self._save_params()
+            return
+
         # ── Vision 模式下：仅允许辅助按键，禁用所有手动参数调节 ──
         #    vision_observe 模式：视觉观察不改变手感，键盘完全可用
         if self._vision_enabled and hasattr(self, '_vision_auto_map') and self._vision_auto_map:
@@ -1358,7 +1380,7 @@ class InteractiveTeleop:
             return
         self._cmd_busy = True
         try:
-            self.gripper.move(width, GRIPPER_SPEED)
+            self.gripper.move(width, self._gripper_speed_cur)
             self._last_cmd_width = width
             self._cmd_count += 1
         except Exception as e:
@@ -1375,13 +1397,13 @@ class InteractiveTeleop:
         self._cmd_busy = True
         try:
             success = self.gripper.grasp(
-                width, GRIPPER_SPEED, GRIPPER_FORCE,
+                width, self._gripper_speed_cur, self._gripper_force_cur,
                 GRIPPER_EPS_INNER, GRIPPER_EPS_OUTER,
             )
             self._last_cmd_width = width
             self._cmd_count += 1
             if success:
-                print(f"\n  🤖 已抓取物体! (宽度={width*1000:.1f}mm, 力={GRIPPER_FORCE:.0f}N)")
+                print(f"\n  🤖 已抓取物体! (宽度={width*1000:.1f}mm, 力={self._gripper_force_cur:.0f}N)")
                 if self._gripper_state == GripperState.GRASPING:
                     self._gripper_state = GripperState.HOLDING
             else:
@@ -1410,12 +1432,12 @@ class InteractiveTeleop:
             if not self._gripper_stop():
                 raise RuntimeError("stop() 未能释放夹爪力控")
             # 第二步：move 到目标开度
-            moved = self.gripper.move(width, GRIPPER_SPEED)
+            moved = self.gripper.move(width, self._gripper_speed_cur)
             if moved is False:
                 print("  ⚠️ 首次张开被拒绝，再次 stop 后重试...")
                 if not self._gripper_stop():
                     raise RuntimeError("重试前 stop() 失败")
-                moved = self.gripper.move(width, GRIPPER_SPEED)
+                moved = self.gripper.move(width, self._gripper_speed_cur)
             if moved is False:
                 raise RuntimeError("move() 两次均未能张开夹爪")
             self._last_cmd_width = width
@@ -1879,6 +1901,8 @@ class InteractiveTeleop:
                                     self._K_fb_cur = p["K_fb"]
                                     self._deadband_cur = p["deadband"]
                                     self._scale_cur = p["scale"]
+                                    self._gripper_speed_cur = p.get("gripper_speed", GRIPPER_SPEED)
+                                    self._gripper_force_cur = p.get("gripper_force", GRIPPER_FORCE)
                                 self._vision_locked_label = getattr(profile, "label", "unknown")
                                 self._vision_base_K_trans = p["K_trans"]
                                 self._vision_base_K_rot = p["K_rot"]
@@ -1955,6 +1979,8 @@ class InteractiveTeleop:
             "K_fb": self._K_fb_cur,
             "deadband": self._deadband_cur,
             "scale": self._scale_cur,
+            "gripper_speed": self._gripper_speed_cur,
+            "gripper_force": self._gripper_force_cur,
             "F_ext_mag": F_mag,
             "fusion_delta_K": self._fusion_delta_K,
             "fusion_active": int(self._fusion_active),
@@ -2000,6 +2026,7 @@ class InteractiveTeleop:
                     f"{row['damping_ratio']:.2f}",
                     f"{row['K_fb']:.3f}", f"{row['deadband']:.3f}",
                     f"{row['scale']:.2f}",
+                    f"{row['gripper_speed']:.3f}", f"{row['gripper_force']:.1f}",
                     f"{row['F_ext_mag']:.3f}",
                     f"{row['fusion_delta_K']:.3f}",
                     row['fusion_active'],
@@ -2091,6 +2118,8 @@ class InteractiveTeleop:
             "K_fb": self._K_fb_cur,
             "deadband": self._deadband_cur,
             "scale": self._scale_cur,
+            "gripper_speed": self._gripper_speed_cur,
+            "gripper_force": self._gripper_force_cur,
             "vision_base_K_trans": self._vision_base_K_trans,
             "vision_base_K_rot": self._vision_base_K_rot,
             "fusion_delta_K_final": self._fusion_delta_K,
