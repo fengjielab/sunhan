@@ -470,8 +470,11 @@ class InteractiveTeleop:
         self._trajectory: List[dict] = []
 
         # ── Vision 模式状态 ──
-        self._vision_enabled = (mode in ("vision", "vision_observe", "vision_force"))
-        self._vision_auto_map = (mode in ("vision", "vision_force"))
+        self._vision_enabled = (mode in ("vision", "vision_observe", "vision_stiffness", "vision_force"))
+        self._vision_auto_map = (mode in ("vision", "vision_stiffness", "vision_force"))
+        # 实验E：视觉仅调度完整阻抗组 K_trans/K_rot/damping_ratio，
+        # 力反馈、映射比例和夹爪参数保持固定基线。
+        self._vision_stiffness_only = (mode == "vision_stiffness")
         self._vision_force_fusion = (mode == "vision_force")
         self._init_preset = mode if mode in PRESETS else None  # 命令行指定的初始预设
         self._vision_lock = threading.Lock()
@@ -1712,7 +1715,7 @@ class InteractiveTeleop:
         # 确定启动预设：命令行 preset > 实验模式基线
         if self._init_preset:
             self._set_preset(self._init_preset)
-        elif self.mode == "default":
+        elif self.mode in ("default", "vision_stiffness"):
             self._set_preset("experiment_fixed_a")
         elif self.mode == "vision_observe":
             self._set_preset("experiment_observe_d")
@@ -1724,6 +1727,8 @@ class InteractiveTeleop:
                 mode_str = "👁️ Vision-Observe 模式 — 视觉仅观察不改变手感"
             elif self._vision_force_fusion:
                 mode_str = "👁️+F Vision-Force 模式 — 视觉前馈 + 力反馈微调"
+            elif self._vision_stiffness_only:
+                mode_str = "👁️+K Vision-Stiffness 模式 — 视觉仅调阻抗（实验E）"
             else:
                 mode_str = "👁️ Vision 模式 — YOLO 自动映射物体手感"
         elif self._init_preset:
@@ -1870,9 +1875,10 @@ class InteractiveTeleop:
                                 print(f"\n  👁️ 首次检测到物体 → {p['name']} (参数已锁定)")
                                 print(f"     {p['desc']}")
                                 self._smooth_transition(p["K_trans"], p["K_rot"], p["damping_ratio"])
-                                self._K_fb_cur = p["K_fb"]
-                                self._deadband_cur = p["deadband"]
-                                self._scale_cur = p["scale"]
+                                if not self._vision_stiffness_only:
+                                    self._K_fb_cur = p["K_fb"]
+                                    self._deadband_cur = p["deadband"]
+                                    self._scale_cur = p["scale"]
                                 self._vision_locked_label = getattr(profile, "label", "unknown")
                                 self._vision_base_K_trans = p["K_trans"]
                                 self._vision_base_K_rot = p["K_rot"]
@@ -2093,8 +2099,10 @@ class InteractiveTeleop:
         # ── 模式信息 ──
         mode_info = {
             "mode": self.mode,
+            "experiment_condition": "E" if self._vision_stiffness_only else self.mode,
             "vision_enabled": self._vision_enabled,
             "vision_auto_map": self._vision_auto_map,
+            "vision_stiffness_only": self._vision_stiffness_only,
             "vision_force_fusion": self._vision_force_fusion,
             "vision_locked": self._vision_locked,
             "vision_label": self._vision_locked_label,
@@ -2212,12 +2220,16 @@ class InteractiveTeleop:
 
 def main():
     # 动态从 PRESETS 生成 choices: default + vision + 所有 preset key
-    MODE_CHOICES = ["default", "vision", "vision_observe", "vision_force", "f", "F"] + sorted(PRESETS.keys())
+    MODE_CHOICES = [
+        "default", "vision", "vision_observe", "vision_stiffness",
+        "vision_force", "e", "E", "f", "F",
+    ] + sorted(PRESETS.keys())
     parser = argparse.ArgumentParser(description="交互式遥操作：实时调节阻尼/刚度/力反馈")
     parser.add_argument("--mode", "-m", type=str, default="default",
                         choices=MODE_CHOICES,
                         help="运行模式: default=手动调节手感, vision=YOLO视觉自动映射, "
                              "vision_observe=视觉仅观察不改变手感, "
+                             "e/E/vision_stiffness=实验E视觉仅调阻抗, "
                              "f/vision_force=实验F模式(视觉前馈+力反馈微调融合), "
                              "或直接指定预设: " + ", ".join(sorted(PRESETS.keys())))
     parser.add_argument("--load", "-l", type=str, default=None,
@@ -2227,7 +2239,11 @@ def main():
     parser.add_argument("--trajectory-dir", type=str, default=TRAJECTORY_DIR,
                         help=f"轨迹 CSV 输出目录 (默认: {TRAJECTORY_DIR}/)")
     args = parser.parse_args()
-    canonical_mode = "vision_force" if args.mode in ("f", "F") else args.mode
+    mode_aliases = {
+        "e": "vision_stiffness", "E": "vision_stiffness",
+        "f": "vision_force", "F": "vision_force",
+    }
+    canonical_mode = mode_aliases.get(args.mode, args.mode)
 
     teleop = InteractiveTeleop(
         mode=canonical_mode,
