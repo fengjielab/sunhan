@@ -9,7 +9,7 @@ This paper addresses the challenge that fixed teleoperation parameters are diffi
 The mechatronic system integrates an asynchronous RGB-D perception thread, a 200 Hz master–slave Cartesian impedance control loop, a haptic-interface parameter pre-setting module and gripper execution on an Omega.7–Franka Panda–Franka Hand platform. Before contact, an RGB-D camera identifies the target object and maps it to one of three operation-oriented policies: fragility-oriented, balanced and stability-oriented. The proposed scheduler then coordinates slave-side translational/rotational stiffness, damping ratio, master-side haptic-interface gain, force-interface dead zone, gripper closing speed and grasping force through a discrete, interpretable parameter table. Three operators performed 135 grasping trials involving six objects and five modes: fixed parameters, manual selection, full vision-semantic multi-parameter scheduling, visual information only and vision-semantic impedance-only scheduling.
 
 **Findings**
-In the tested mechatronic platform and participants, the proposed mode achieved the shortest median completion time (19.57 s [18.41, 20.05] IQR), the highest success rate as a descriptive metric (26/27, 96.3%) and the lowest Raw NASA-TLX (median 48.67 [47.67, 51.83] IQR). Compared with impedance-only scheduling, the proposed mode reduced mean completion time by −1.79 s (Bootstrap 95% CI [−2.51, −1.10] s; relative reduction 8.5%), while all three operators and all six tested objects showed the same directional trend. The trajectory-length difference was smaller (−0.024 m, 95% CI [−0.059, 0.014] m), suggesting that the benefit mainly came from fewer pauses and operation corrections rather than a shorter geometric path. Raw NASA-TLX decreased by −4.87 points (Bootstrap 95% CI [−5.35, −4.39]).
+In the tested mechatronic platform and participants, the proposed mode achieved the shortest median completion time (19.57 s [18.41, 20.05] IQR), the highest success rate as a descriptive metric (26/27, 96.3%) and the lowest Raw NASA-TLX (median 48.67 [47.67, 51.83] IQR). Compared with impedance-only scheduling, the proposed mode reduced mean completion time by -1.79 s (Bootstrap 95% CI [-2.51, -1.10] s; relative reduction 8.5%), while all three operators and all six tested objects showed the same directional trend. The trajectory-length difference was smaller (-0.024 m, 95% CI [-0.059, 0.014] m), suggesting that the benefit mainly came from fewer pauses and operation corrections rather than a shorter geometric path. Raw NASA-TLX decreased by -4.87 points (Bootstrap 95% CI [-5.35, -4.39]).
 
 **Originality**
 The originality lies in a deployable, system-level bridge between high-level object semantics and low-level mechatronic teleoperation interface parameters, rather than in a new impedance equation or a closed-loop force-feedback method. The proposed three-level mapping coordinates perception, slave-side impedance, pre-contact haptic-interface settings and gripper execution parameters in a unified mechatronic architecture. The asynchronous perception-control separation, the strategy-locking mechanism and the five-mode design constitute a practical integration blueprint that distinguishes perception, manual selection, impedance-only scheduling and full multi-channel pre-contact coordination.
@@ -18,60 +18,54 @@ The originality lies in a deployable, system-level bridge between high-level obj
 
 ---
 
-## 摘要
+## 1 Introduction
 
-针对异质对象遥操作抓取中固定控制参数难以同时兼顾易损对象柔顺接触、硬质对象稳定定位和不同夹持需求的问题，本文提出一种视觉语义驱动的多通道接触前机电参数调度方法。作为机电一体化系统，该平台集成异步RGB-D感知线程、200 Hz主从笛卡尔阻抗控制回路、主端触觉接口参数预置模块和夹爪执行模块，运行于Omega.7–Franka Panda–Franka Hand平台。系统利用RGB-D相机识别目标对象类别，将其映射为易损优先、折中和稳定优先三类操作策略，并在接触前协同配置从端平移/旋转刚度、阻尼比、主端触觉接口增益、力接口死区、夹爪闭合速度和夹持力。3名操作者围绕苹果、香蕉、纸杯、瓶子、鼠标和剪刀6种对象完成135次五模式抓取实验。结果显示，在当前机电平台和参与者范围内，视觉多参数模式取得完成时间中位数19.57 s [18.41, 20.05] IQR、最高成功率（26/27, 96.3%）和最低Raw NASA-TLX中位数48.67 [47.67, 51.83] IQR。相较视觉仅阻抗模式，视觉多参数模式平均完成时间降低−1.79 s（Bootstrap 95% CI [−2.51, −1.10] s；相对降幅8.5%），且3名操作者和6种已测试对象均表现出一致方向。主端轨迹长度差异较小（−0.024 m, 95% CI [−0.059, 0.014] m），提示多通道协同的收益更可能来自停顿和操作修正减少，而非几何路径显著缩短。Raw NASA-TLX降低−4.87分（Bootstrap 95% CI [−5.35, −4.39]）。本文不声称提出新的阻抗控制方程，也不把力反馈闭环建模或力觉透明性验证作为本篇贡献，而是提供一种低计算开销、可解释、可部署的机电系统接触前语义参数初始化方案。
+Teleoperated robots combine human judgment with remote robotic execution, which is well-suited for flexible manufacturing, hazardous-environment operations, service robotics, and unstructured object manipulation. Haptic teleoperation further conveys remote contact information to the operator through master-side force feedback, improving the operator's perception of grasping, contact, and slip risks. From a mechatronic system design perspective, a practical haptic teleoperation platform must integrate multiple subsystems including mechanical actuation, human-machine interfaces, visual perception, real-time control, and parameter scheduling [1–4].
 
----
+In real grasping tasks, operators encounter objects with diverse shapes, surfaces, fragility, and gripping requirements. If the system always uses a fixed set of impedance and gripper parameters, it must compromise among compliant contact, response speed, positioning stability, and grasping reliability. This problem is not limited to laboratory tabletop grasping. Similar requirements arise in remote maintenance, hazardous material handling, flexible sorting, unstructured disassembly, and human-supervised robotic operations, where the mechatronic system needs to handle fragile items, slippery objects, rigid tools, lightweight containers, or geometrically irregular objects in partially structured environments. The six objects selected in this study—apple, banana, paper cup, bottle, mouse, and scissors—do not claim to cover a complete industrial object set. Instead, they serve as a **mechatronic benchmark task set**: they are selected to generate distinct requirements on compliance, haptic-interface sensitivity, and gripper execution, rather than to represent a complete industrial object taxonomy.
 
-## 1 引言
+Impedance control provides compliance during contact by prescribing the dynamic relationship among robot displacement deviation, velocity deviation, and interaction force [5]. Fixed-impedance control is simple to implement and easy to deploy, but cannot simultaneously accommodate fragile, lightweight, and rigid objects in heterogeneous grasping. Variable impedance control can adjust stiffness and damping online based on contact force, trajectory error, task phase, or human motion states [6–9]. However, online variable impedance typically depends on continuous state estimation, post-contact feedback, and stability constraints. For teleoperation tasks where object categories are identifiable and task procedures are relatively fixed but still require the operator to perform fine grasping and placement, pre-contact object semantics can serve as a low-cost, interpretable task prior.
 
-遥操作机器人能够把人的判断能力与机器人的远程执行能力结合起来，适用于柔性制造、危险环境作业、服务机器人以及非结构化物体操作等场景。触觉遥操作进一步通过主端力反馈向操作者传递远程接触信息，有助于提高操作者对抓取、接触和滑移风险的感知。从机电一体化系统设计的角度看，一个实用的触觉遥操作平台必须协同集成机械执行机构、人机接口、视觉感知、实时控制和参数调度等多个子系统[1–4]。对于真实抓取任务而言，操作者面对的对象往往具有不同的形状、表面、易损性和夹持需求。若系统始终采用一组固定阻抗和固定夹爪参数，则必须在柔顺接触、响应速度、定位稳定性和夹持可靠性之间折中。
+Prior studies on visual impedance, shared control, and haptic guidance have shown that visual information, task state, or operator intent can improve remote operation efficiency and interaction experience [10–13]. However, in heterogeneous-object haptic teleoperation, object semantics affect not only slave-side arm compliance but also the haptic-interface feedback intensity, dead zone, gripper closing speed, and grasping force that the operator expects. When only visual information is displayed without changing the system dynamics, the operator must still compensate manually. When only impedance is adjusted while default force-feedback and gripper parameters remain unchanged, the grasping and transport phases may still be constrained by the gripper and haptic-feedback channels. Therefore, the question addressed in this paper is: In real haptic teleoperation grasping, does pre-contact, vision-semantic-driven multi-channel mechatronic parameter coordination outperform fixed parameters, manual selection, visual cues, and impedance-only adjustment?
 
-从工业机器人应用角度看，这类问题并不限于实验室桌面抓取。远程维护、危险品处理、柔性分拣、非结构化拆解和人监督机器人操作中也经常出现类似需求：机电系统需要在不完全结构化的环境中处理易损件、易滑件、硬质工具、轻质容器或几何不规则对象。本文所选苹果、香蕉、纸杯、瓶子、鼠标和剪刀并不声称覆盖完整工业对象集，而是作为一个**mechatronic benchmark task set**——六种对象被选用于激发不同的柔顺性需求、触觉接口灵敏度和夹爪执行条件，而非代表完整的工业对象分类体系。
+This paper proposes a vision-semantic-driven multi-channel parameter scheduling method from a mechatronic system integration perspective. The system maps the target object to one of three operation-oriented strategies and invokes a discrete, interpretable parameter table before contact, simultaneously configuring slave-side impedance, master-side haptic-interface parameters, and gripper execution parameters. The contributions are as follows:
 
-阻抗控制通过规定机器人位移偏差、速度偏差与交互力之间的动态关系，为接触操作提供柔顺性[5]。固定阻抗实现简单，工程上较易部署，但在异质对象抓取中难以同时适配易损对象、轻质对象和硬质对象。变阻抗控制能够根据接触力、轨迹误差、任务阶段或人的运动状态在线调节刚度和阻尼[6–9]。然而，在线变阻抗通常依赖连续状态估计、接触后反馈和稳定性约束。对于类别可识别、任务流程相对固定但仍需操作者完成精细抓取与放置的遥操作任务，接触发生前的对象语义可以作为一种低成本、可解释的任务先验。
+1. **Mechatronic system architecture integration.** RGB-D perception, 200 Hz real-time control, Cartesian impedance, haptic-interface presetting, and gripper execution are unified within an asynchronous perception-control decoupled mechatronic architecture, with seven explicitly defined subsystem layers and their coordination relationships.
+2. **Three-level mapping: vision semantics–operation strategy–control parameters.** Object category is transformed into fragility-oriented, balanced, and stability-oriented strategies, allowing visual information to enter the mechatronic teleoperation system as a pre-contact control prior.
+3. **Multi-channel pre-contact parameter coordination.** Beyond adjusting slave-side translational/rotational stiffness and damping ratio, the method simultaneously presets master-side haptic-interface gain, force-interface dead zone, gripper closing speed, and grasping force. This paper does not claim closed-loop force-feedback modeling, contact force estimation, or haptic transparency verification as its contributions.
+4. **Five-mode human-in-the-loop ablation validation.** On a real Omega.7–Panda platform, five modes—fixed parameters, manual selection, vision multi-parameter, vision observe only, and vision impedance-only—are configured to distinguish the roles of visual cue, manual parameter selection, impedance-only adjustment, and full multi-channel mechatronic coordination.
 
-已有视觉阻抗、共享控制和触觉引导研究表明，视觉信息、任务状态或操作者意图可用于改善远程操作效率和交互体验[10–13]。但是，在异质对象触觉遥操作中，对象语义不仅影响从端机械臂的柔顺性，还影响操作者期望获得的主端力反馈强度、反馈死区、夹爪闭合速度和夹持力。只显示视觉信息而不改变系统动力学时，操作者仍需通过手动补偿完成任务；只调节阻抗而保留默认力反馈和夹爪参数时，抓取和运输阶段仍可能受到夹爪执行与触觉反馈通道限制。因此，本文关注的问题是：在真实触觉遥操作抓取中，接触前视觉语义驱动的多通道机电参数协同是否比固定参数、人工选择、视觉提示和仅阻抗调节更有效？
-
-本文从机电系统集成的视角提出一种视觉语义驱动的多通道参数调度方法。系统将目标对象映射为三类操作策略，并在接触前调用离散、可解释的参数表，同时配置从端阻抗、主端触觉接口参数和夹爪执行参数。本文贡献如下：
-
-1. **机电系统架构集成（mechatronic system architecture）。** 将RGB-D感知、200 Hz实时控制、笛卡尔阻抗、触觉接口预设和夹爪执行统一在一个异步感知-控制解耦的机电架构中，并明确七层子系统及其协同关系。
-2. **视觉语义—操作策略—控制参数三级映射（three-level mapping: vision semantics–operation strategy–control parameters）。** 将目标对象类别转化为易损优先、折中和稳定优先三类操作策略，使视觉信息以接触前控制先验的形式进入机电遥操作系统。
-3. **多通道接触前参数协同。** 不仅调节从端平移/旋转刚度和阻尼比，还同步设置主端触觉接口增益、力接口死区、夹爪闭合速度和夹持力。本文不把力反馈闭环建模、接触力估计或力觉透明性验证作为本篇贡献。
-4. **五模式人在环消融验证。** 在真实Omega.7–Panda平台上设置固定参数、人工选择、视觉多参数、视觉仅观察和视觉仅阻抗五种模式，区分视觉提示、人工选参、仅阻抗调节和完整多通道机电协同的作用。
-
-不同于侧重新阻抗方程推导或接触后在线自适应控制的研究，本文的创新在于提供一种系统级接触前参数调度范式，将高层对象语义感知与底层机电遥操作接口参数连接起来。本文中的触觉接口增益和死区只作为接触前策略表中的接口预设参数使用，不作为力反馈闭环或力觉透明性研究的独立贡献。本文的核心定位是：一种低计算开销、可解释、可部署的机电系统接触前语义参数初始化方法。
+Unlike studies focusing on novel impedance equations or online adaptive post-contact control, the novelty of this paper lies in providing a system-level pre-contact parameter scheduling paradigm that bridges high-level object semantic perception and low-level mechatronic teleoperation interface parameters. The haptic-interface gain and dead zone in this paper are used only as interface presets in the pre-contact strategy table, not as independent contributions to closed-loop force feedback or haptic transparency research. The core positioning of this paper is: a low-computation, interpretable, deployable mechatronic-system pre-contact semantic parameter initialization method.
 
 ---
 
-## 2 方法与系统实现
+## 2 Method and System Implementation
 
 ### 2.1 Mechatronic System Architecture
 
-本机电遥操作平台由七层子系统协同构成，信息流与系统架构如图1和图2所示。
+The mechatronic teleoperation platform consists of seven subsystem layers working in coordination. The information flow and system architecture are illustrated in Figs. 1 and 2.
 
-**图1.** 机电一体化触觉遥操作实验平台，标注Omega.7力反馈主端、Franka Panda七自由度机械臂、Franka Hand夹爪、Intel RealSense D435i RGB-D相机、目标物体操作区和控制计算机。
+**Fig. 1.** Mechatronic haptic teleoperation experimental platform, labeling the Omega.7 force-feedback master, Franka Panda 7-DOF arm, Franka Hand gripper, Intel RealSense D435i RGB-D camera, target object area, and control computer.
 
-**图2.** 系统信息流图，包含主端输入、增量位置映射、视觉识别、异步缓冲区、操作策略锁定、参数调度、阻抗控制、夹爪控制和基础触觉接口。图中区分低频视觉线程（约20 Hz）与200 Hz主控制线程，以及参数调度层与安全层的协同关系。
+**Fig. 2.** System information flow diagram, including master input, incremental position mapping, visual recognition, asynchronous buffer, strategy locking, parameter scheduling, impedance control, gripper control, and basic haptic interface. The figure distinguishes the low-frequency vision thread (~20 Hz) from the 200 Hz main control thread, as well as the coordination between the parameter scheduling layer and the safety layer.
 
-**机械执行层**：Franka Panda七自由度机械臂和Franka Hand夹爪构成执行端。Panda通过笛卡尔阻抗控制响应期望位姿和阻抗参数，Franka Hand以指定速度和夹持力执行开闭动作。
+**Mechanical execution layer**: The Franka Panda 7-DOF robot arm and Franka Hand gripper constitute the execution side. The Panda responds to desired pose and impedance parameters via Cartesian impedance control; the Franka Hand executes open/close actions at a specified speed and grasping force.
 
-**人机接口层**：Omega.7七自由度力反馈主端采集操作者位移和夹钳输入，并通过基础触觉接口渲染从端交互力。操作者通过夹钳开度控制夹爪闭合程度，系统根据当前策略的参数表设定夹爪速度和夹持力上限。
+**Human-machine interface layer**: The Omega.7 7-DOF force-feedback master device captures the operator's displacement and gripper input, and renders slave-side interaction forces through the basic haptic interface. The operator controls gripper closure via the gripper opening; the system sets the gripper speed and force upper bounds according to the current strategy's parameter table.
 
-**感知层**：Intel RealSense D435i RGB-D相机以约20 Hz采集RGB-D图像。YOLO11n目标检测模型运行于独立子进程（与Python GIL解耦），每帧处理时间约50 ms。检测结果通过 `multiprocessing.Queue(maxsize=2)` 传回主控制线程，共享状态由 `threading.Lock` 保护。
+**Perception layer**: An Intel RealSense D435i RGB-D camera captures RGB-D images at approximately 20 Hz. The YOLO11n object detection model runs in an independent sub-process (decoupled from the Python GIL), with per-frame processing time of approximately 50 ms. Detection results are transmitted back to the main control thread via `multiprocessing.Queue(maxsize=2)`, with shared state protected by `threading.Lock`.
 
-**控制层**：200 Hz主控制循环执行：读取Omega.7位姿增量 → 应用位置比例和坐标映射 → 更新从端期望位姿 → 调用Franka笛卡尔阻抗控制器 → 读取从端外力估计 → 渲染主端基础触觉反馈。控制周期为5 ms，不因视觉推理阻塞。
+**Control layer**: The 200 Hz main control loop executes: read Omega.7 pose increment → apply position scale and coordinate mapping → update slave desired pose → call Franka Cartesian impedance controller → read slave-side external force estimate → render master-side basic haptic feedback. The control period is 5 ms and is not blocked by vision inference.
 
-**视觉线程**：视觉子进程异步接收RGB帧（`mp.Queue(maxsize=1)` 仅保留最新帧以避免延迟累积），执行目标检测并返回类别标签和置信度。视觉线程与控制线程完全解耦，视觉推理的最长执行时间（≈50 ms）不会影响200 Hz控制循环的实时性。
+**Vision thread**: The vision sub-process asynchronously receives RGB frames (`mp.Queue(maxsize=1)` retains only the latest frame to avoid latency accumulation), performs object detection, and returns class labels and confidence. The vision thread is fully decoupled from the control thread; the maximum vision inference time (~50 ms) does not affect the real-time performance of the 200 Hz control loop.
 
-**参数调度层**：视觉结果传入参数调度层后，根据对象类别→操作策略映射关系，从预设参数表中查找对应策略的七个参数（\(K_t, K_r, \zeta, K_f, d, v_g, F_g\)），并通过原子更新写入控制回路中的共享变量。参数更新仅在首次有效检测后的策略锁定事件中触发，此后参数在本次任务内保持不变。
+**Parameter scheduling layer**: After vision results enter the scheduling layer, the object-class-to-strategy mapping looks up the seven-parameter set (\(K_t, K_r, \zeta, K_f, d, v_g, F_g\)) from the preset parameter table and writes them into the control-loop shared variables via atomic updates. Parameter updates are triggered only at the strategy-lock event after the first valid detection; thereafter, parameters remain unchanged for the entire task episode.
 
-**安全层**：当视觉未锁定或检测结果不可映射时，系统使用折中策略默认参数作为安全回退。任务内策略锁定避免视觉抖动导致参数频繁跳变。机械臂自身碰撞检测、程序退出零力命令、统一初始姿态和操作者人工急停共同构成基础安全措施。
+**Safety layer**: When vision is not locked or the detection result is unmappable, the system uses the default balanced-strategy parameters as a safe fallback. Intra-task strategy locking prevents frequent parameter jumps due to vision jitter. The arm's built-in collision detection, program-exit zero-force command, unified initial pose, and manual emergency stop jointly constitute the basic safety measures.
 
 ### 2.2 Real-time Implementation and Synchronization
 
-表1总结了各系统模块的频率/时间特性、输入输出和是否阻塞主控制线程。
+Table 1 summarizes the frequency/timing characteristics, inputs, outputs, and whether each system module blocks the main control loop.
 
 **Table 1.** Real-time characteristics of mechatronic system modules.
 
@@ -84,61 +78,68 @@ The originality lies in a deployable, system-level bridge between high-level obj
 | Haptic rendering | 200 Hz | \(\mathbf{F}_{ext}, K_f, d\) | Omega.7 force vector | No |
 | Gripper command | Event-based (gripper button) | gripper input, \(v_g, F_g\) | Franka Hand grasp/goal | No |
 
-视觉检测和策略调度均为事件驱动且不阻塞主控制回路。视觉子进程运行于独立Python进程，通过`multiprocessing.Queue`以生产者-消费者模式传递检测结果。帧队列长度限制为1（仅保留最新帧），检测结果队列长度限制为2。主控制线程在每个5 ms周期开始时非阻塞地读取结果队列，若队列为空则沿用上一次锁定的策略，若视觉尚从未锁定则保持默认折中参数。策略锁定发生在接近阶段开始前——一旦主控制线程检测到有效类别且置信度≥0.25，立即锁定策略并一次性设置全部7个参数，此后该任务周期内参数不再改变。
+Vision detection and strategy scheduling are both event-driven and do not block the main control loop. The vision sub-process runs as an independent Python process, using `multiprocessing.Queue` in a producer-consumer pattern to pass detection results. The frame queue length is limited to 1 (retaining only the latest frame), and the result queue length is limited to 2. At the start of each 5 ms period, the main control thread non-blockingly reads the result queue; if the queue is empty, the previously locked strategy is retained; if vision has never locked, the default balanced parameters are maintained. Strategy locking occurs before the approach phase begins: once the main control thread detects a valid class with confidence ≥ 0.25, it immediately locks the strategy and sets all seven parameters atomically; thereafter, parameters remain unchanged for the entire task episode.
 
-### 2.3 主从增量位置映射
+**Control-loop jitter.** Per-cycle timing instrumentation (via `time.perf_counter()`) was not performed during the formal 135 trials because the trajectory CSV logged the system clock (`time.time()`) for timestamping, which has insufficient resolution for cycle-level profiling. Therefore, the present paper reports the non-blocking software architecture design—specifically, the vision sub-process (`mp.Process`) is fully decoupled from the 200 Hz main control thread via `multiprocessing.Queue`, meaning that the ~50 ms YOLO inference does not occupy the main-thread time slice. The system-level implications of this architecture are discussed in §5.4; formal cycle-level profiling remains future work.
 
-主端相邻采样时刻的位置增量为
+### 2.3 Master-Slave Incremental Position Mapping
+
+The master-side position increment between adjacent sampling instants is
 
 \[
 \Delta\mathbf{x}_m(k)=\mathbf{x}_m(k)-\mathbf{x}_m(k-1).
 \]
 
-从端期望位置更新为
+The slave-side desired position update is
 
 \[
 \mathbf{x}_d(k)=\mathbf{x}_d(k-1)+S\mathbf{C}\Delta\mathbf{x}_m(k),
 \]
 
-其中，位置比例系数固定为\(S=3.0\)，\(\mathbf{C}=\mathrm{diag}(-1,-1,1)\)为坐标映射矩阵。本文不将位置比例作为视觉调度变量，以便把实验差异集中在阻抗、触觉接口和夹爪参数上。
+where the position scaling factor is fixed at \(S=3.0\) and \(\mathbf{C}=\mathrm{diag}(-1,-1,1)\) is the coordinate mapping matrix. The position scaling factor is not included in the visual scheduling variables, so that experimental differences are concentrated on impedance, haptic-interface, and gripper parameters.
 
-### 2.4 从端笛卡尔阻抗控制
+### 2.4 Slave-Side Cartesian Impedance Control
 
-从端采用笛卡尔阻抗控制，其等效关系表示为
+The slave side uses Cartesian impedance control, whose equivalent relationship is
 
 \[
 \mathbf{F}_c=\mathbf{K}(c)(\mathbf{x}_d-\mathbf{x})+\mathbf{D}(c)(\dot{\mathbf{x}}_d-\dot{\mathbf{x}}),
 \]
 
-其中\(c\)为操作策略类别，\(\mathbf{K}(c)\)和\(\mathbf{D}(c)\)分别为对应刚度与阻尼矩阵。平移和旋转刚度写为
+where \(c\) is the strategy class, and \(\mathbf{K}(c)\) and \(\mathbf{D}(c)\) are the corresponding stiffness and damping matrices. Translational and rotational stiffness are written as
 
 \[
 \mathbf{K}(c)=\mathrm{diag}(K_t,K_t,K_t,K_r,K_r,K_r).
 \]
 
-阻尼依据阻尼比\(\zeta(c)\)配置。经典阻抗控制提供柔顺交互的基本机理，本文改进点不在阻抗方程本身，而在于利用接触前对象语义对多通道机电控制参数进行任务相关初始化。
+Damping is configured according to the damping ratio \(\zeta(c)\). Classical impedance control provides the basic mechanism for compliant interaction. The improvement in this paper lies not in the impedance equation itself, but in the task-relevant initialization of multi-channel mechatronic control parameters using pre-contact object semantics.
 
 ### 2.5 Haptic-interface Parameter Implementation
 
-Omega.7具备主端力反馈能力，从端外力估计值\(F_{\mathrm{ext}}\)由Franka机器人内置的关节力矩估计器提供。主端基础触觉反馈按以下接口级公式渲染：
+The Omega.7 master device is capable of force-feedback rendering. The slave-side external force estimate \(\mathbf{F}_{\mathrm{ext}}\) is provided by the Franka robot's built-in joint-torque estimator. The master-side basic haptic feedback is rendered according to the following interface-level formula:
 
 \[
-u_h = \mathcal{D}_{d}\!\left(K_f \cdot \|\mathbf{F}_{\mathrm{ext}}\|\right) \cdot \mathrm{sign}(\mathbf{F}_{\mathrm{ext}}),
+\mathbf{u}_h =
+\begin{cases}
+\mathbf{0}, & \|\mathbf{F}_{\mathrm{ext}}\| \le d,\\[4pt]
+K_f\bigl(\|\mathbf{F}_{\mathrm{ext}}\|-d\bigr)\,
+\dfrac{\mathbf{F}_{\mathrm{ext}}}{\|\mathbf{F}_{\mathrm{ext}}\|}, & \|\mathbf{F}_{\mathrm{ext}}\| > d.
+\end{cases}
 \]
 
-其中\(\mathcal{D}_{d}(\cdot)\)为死区算子：当输入幅值小于\(d\)时输出零，否则输出输入幅值减去\(d\)。\(K_f\)和\(d\)仅作为接触前策略表中的接口预设参数，在任务过程中不实时更新，也不作为独立的力反馈闭环控制器。**This term is only an interface setting in the present study, not a closed-loop force-feedback contribution.** 本文不研究接触后外力估计的精度、力觉透明性、力反馈稳定性、力反馈有无对比，也不引入力反馈驱动的在线阻抗自适应。本文的实验只能支持"完整接触前多参数策略优于仅阻抗调节"这一整体机电系统级结论，不能单独证明触觉接口参数或夹爪参数的独立因果贡献。接触后外力估计、力反馈闭环修正及力觉感知验证将作为后续研究单独展开。
+Here \(\mathbf{u}_h\) is the three-dimensional force-feedback vector sent to the Omega.7 master device, and \(d\) is the dead-zone threshold. The dead-zone operator outputs only the portion exceeding \(d\) along the external-force direction, attenuating small perturbations and haptic-interface jitter. **\(K_f\) and \(d\) are only used to scale and threshold the basic haptic cue rendered on the master side. They are not updated online during the task and are not evaluated as an independent force-feedback controller. In this study, this term is only an interface setting, not a closed-loop force-feedback contribution.** This paper does not study the accuracy of post-contact external force estimation, haptic transparency, force-feedback stability, or the comparison of force feedback vs. no force feedback, nor does it introduce force-feedback-driven online impedance adaptation. The experiments in this paper can only support the overall mechatronic-system-level conclusion that "the full pre-contact multi-parameter strategy outperforms impedance-only adjustment"; they cannot independently prove the causal contributions of the haptic-interface parameters or gripper parameters. Post-contact external force estimation, force-feedback closed-loop correction, and operator haptic perception validation are reserved for subsequent studies.
 
-### 2.6 视觉语义多通道参数调度
+### 2.6 Vision-semantic Multi-channel Parameter Scheduling
 
-视觉检测输出目标类别后，系统将类别映射为三类**操作策略**而非严格材料类别：易损优先策略、折中策略和稳定优先策略。苹果和香蕉映射为易损优先策略，纸杯和瓶子映射为折中策略，鼠标和剪刀映射为稳定优先策略。该映射依据的是本实验任务中的操作风险与夹持需求，而不是材料刚度的通用物理分类。首次有效检测达到置信度阈值0.25后，系统锁定本次任务策略；若无有效类别或类别不可映射，则保持折中策略默认参数作为安全回退。任务内策略锁定用于避免检测抖动导致频繁切换。
+After visual detection outputs the target class, the system maps the class to one of three **operation-oriented strategies** rather than strict material categories: fragility-oriented strategy, balanced strategy, and stability-oriented strategy. Apple and banana map to the fragility-oriented strategy; paper cup and bottle map to the balanced strategy; mouse and scissors map to the stability-oriented strategy. This mapping is based on the operational risks and grasping requirements in the present experimental tasks, not on a universal physical classification of material stiffness. After the first valid detection with confidence ≥ 0.25, the system locks the strategy for the current task episode. If no valid class is detected or the class is unmappable, the balanced-strategy default parameters are retained as a safe fallback. Intra-task strategy locking prevents frequent switching due to detection jitter.
 
-完整策略定义为
+The full strategy is defined as
 
 \[
 \Theta(c)=\{K_t,K_r,\zeta,K_f,d,v_g,F_g\},
 \]
 
-其中\(K_f\)为主端触觉接口增益，\(d\)为力接口死区，\(v_g\)和\(F_g\)分别为夹爪闭合速度与夹持力设定。
+where \(K_f\) is the master-side haptic-interface gain, \(d\) is the force-interface dead zone, and \(v_g\) and \(F_g\) are the gripper closing speed and grasping force setting, respectively.
 
 **Table 2.** Parameter table for the three operation-oriented strategies.
 
@@ -150,7 +151,7 @@ u_h = \mathcal{D}_{d}\!\left(K_f \cdot \|\mathbf{F}_{\mathrm{ext}}\|\right) \cdo
 
 ### 2.7 Parameter Design Space and Rationale
 
-参数选择遵循"对象操作风险—控制响应—硬件约束"的工程逻辑。表3给出了每个参数的设计空间：低值和高值分别对应的物理意义，以及约束本文取值的硬件/安全边界。
+Parameter selection follows the engineering logic of "object operational risk → control response → hardware constraint." Table 3 presents the design space for each parameter: the physical meaning of low and high values, and the hardware/safety boundaries that constrain the values used in this study.
 
 **Table 3.** Parameter design space: physical meaning of low and high values, hardware constraints, and the values used in this study.
 
@@ -164,47 +165,47 @@ u_h = \mathcal{D}_{d}\!\left(K_f \cdot \|\mathbf{F}_{\mathrm{ext}}\|\right) \cdo
 | \(v_g\) | Low-impact closure | Fast grasping | Franka Hand execution limits | 0.02 / 0.05 / 0.10 |
 | \(F_g\) | Gentle grip | High grasping stability | Gripper force limits | 8 / 15 / 20 |
 
-易损优先策略采用较低平移/旋转刚度、较低接口增益、较低夹爪速度和较低夹持力，以降低对易损或表面易滑对象的冲击和挤压风险。稳定优先策略采用较高刚度、较强的接口增益和更快夹爪动作，以提高硬质对象的定位稳定性和操作效率。折中策略用于夹持需求介于两者之间的对象。
+The fragility-oriented strategy adopts lower translational/rotational stiffness, lower interface gain, lower gripper speed, and lower grasping force to reduce the risk of impact and crushing for fragile or surface-slippery objects. The stability-oriented strategy adopts higher stiffness, stronger interface gain, and faster gripper motion to improve positioning stability and operational efficiency for rigid objects. The balanced strategy is used for objects with intermediate grasping requirements.
 
-参数范围由Franka控制接口、Omega.7反馈接口舒适性、Franka Hand执行能力和预实验共同约束。预实验由两名研究人员在正式实验前完成，覆盖三类对象的抓取操作，用于排除明显不安全、明显低效或操作者主观不可接受的参数组合。正式实验前参数表被冻结，并对所有操作者和所有正式试次保持一致。B模式使用相同参数表，但由操作者手动选择策略。因此，B模式在本文中被定义为**人工选参工作流基线**，而不是纯粹的自动/手动控制器性能对比。人工选择时间计入B模式总完成时间，因此B模式用于评价包含人工判断与切换成本的实际工作流，而不作为纯控制器执行时间基线。
+The parameter ranges are jointly constrained by the Franka control interface, Omega.7 feedback-interface comfort, Franka Hand execution capability, and pre-experiments. Pre-experiments were performed by two researchers before the formal experiment, covering grasping operations for all three object categories, to exclude parameter combinations that were obviously unsafe, inefficient, or subjectively unacceptable to the operator. **The parameter table was finalized before the formal 135 trials and was not modified after observing the formal experimental results.** Mode B uses the same parameter table, but the operator manually selects the strategy. Therefore, Mode B is defined in this paper as a **manual-selection workflow baseline**, not a pure automatic-vs-manual controller performance comparison. Manual selection time is included in the total completion time for Mode B; thus, Mode B evaluates the actual workflow including human judgment and switching overhead, rather than serving as a pure controller execution-time baseline.
 
-### 2.8 方法流程
+### 2.8 Algorithm Flow
 
 **Algorithm 1: Vision-semantic multi-channel parameter scheduling for the integrated mechatronic system**
 
-1. 系统初始化，加载折中策略默认参数\(\Theta(\text{balanced})\)，启动200 Hz主控制循环和视觉子进程；
-2. 视觉子进程异步读取RGB-D图像并执行YOLO11n目标检测（不阻塞主循环）；
-3. 主控制线程非阻塞读取检测结果队列；若检测类别属于预定义对象集合且置信度不低于0.25，则将对象类别映射为操作策略\(c\)；
-4. 首次有效检测触发策略锁定事件：调用参数组\(\Theta(c)=\{K_t,K_r,\zeta,K_f,d,v_g,F_g\}\)，原子更新控制回路共享变量；
-5. 锁定后本次任务周期内参数不再改变，避免视觉抖动频繁切换；
-6. 将\(K_t,K_r,\zeta\)发送至从端阻抗控制器，将\(K_f,d\)作为主端基础触觉接口参数，将\(v_g,F_g\)用于夹爪控制；
-7. 若检测失败或类别不可映射，则保持折中策略默认参数；
-8. 任务结束后复位系统，策略解锁，准备下一次试验。
+1. Initialize the system, load the balanced-strategy default parameters \(\Theta(\text{balanced})\), start the 200 Hz main control loop and the vision sub-process.
+2. The vision sub-process asynchronously reads RGB-D images and performs YOLO11n object detection (does not block the main loop).
+3. The main control thread non-blockingly reads the detection result queue; if the detected class belongs to the predefined object set and confidence ≥ 0.25, map the object class to the operation-oriented strategy \(c\).
+4. The first valid detection triggers a strategy-lock event: invoke parameter set \(\Theta(c)=\{K_t,K_r,\zeta,K_f,d,v_g,F_g\}\) and atomically update the control-loop shared variables.
+5. After locking, parameters remain unchanged for the entire task episode, preventing frequent switching due to vision jitter.
+6. Send \(K_t,K_r,\zeta\) to the slave impedance controller, use \(K_f,d\) as master-side basic haptic-interface parameters, and use \(v_g,F_g\) for gripper control.
+7. If detection fails or the class is unmappable, retain the balanced-strategy default parameters.
+8. After task completion, reset the system, unlock the strategy, and prepare for the next trial.
 
-### 2.9 安全回退与工程约束
+### 2.9 Safety Fallback and Engineering Constraints
 
-视觉未锁定或检测结果不可映射时，系统使用折中策略默认参数。任务内策略锁定避免视觉抖动造成参数频繁跳变。机械臂自身碰撞检测、程序退出零力命令、统一初始姿态和操作者人工急停共同构成基础安全措施。本文主要关注接触前参数初始化，不讨论接触后在线最优调参。
+When vision is not locked or the detection result is unmappable, the system uses the default balanced-strategy parameters. Intra-task strategy locking prevents frequent parameter jumps due to vision jitter. The arm's built-in collision detection, program-exit zero-force command, unified initial pose, and manual emergency stop jointly constitute the basic safety measures. This paper focuses on pre-contact parameter initialization and does not discuss online post-contact optimal tuning.
 
 ---
 
-## 3 实验设计
+## 3 Experimental Design
 
-### 3.1 研究问题与假设
+### 3.1 Research Questions and Hypotheses
 
-本文围绕以下问题展开：
+This paper addresses the following research questions:
 
-- **RQ1:** 视觉语义多参数前馈是否优于固定参数、人工选择和视觉仅观察？
-- **RQ2:** 完整多通道机电参数调度是否优于视觉语义仅阻抗调节？
-- **RQ3:** 异步视觉感知与控制线程集成是否满足任务开始阶段的实时性和基础可靠性要求？
-- **RQ4:** 方法收益是否在不同操作者和不同已测试对象之间表现出一致方向？
+- **RQ1:** Does vision-semantic multi-parameter feedforward outperform fixed parameters, manual selection, and vision-only observation?
+- **RQ2:** Does full multi-channel mechatronic parameter scheduling outperform vision-semantic impedance-only scheduling?
+- **RQ3:** Does the asynchronous vision-perception and control-thread integration meet the real-time and basic reliability requirements of the task-start phase?
+- **RQ4:** Does the benefit of the method show consistent direction across different operators and across different tested objects?
 
-相应假设为：与基线模式相比，视觉多参数模式能够降低完成时间和主端轨迹长度，提高成功率（作为描述性指标）并降低主观负荷；相较视觉仅阻抗模式，完整多通道模式能够减少停顿或操作修正，从而体现完整接触前机电参数策略相对于仅阻抗调节的整体附加作用。
+The corresponding hypotheses are: compared with baseline modes, the vision multi-parameter mode can reduce completion time and master trajectory length, increase success rate (as a descriptive metric), and lower subjective workload; compared with the vision impedance-only mode, the full multi-channel mode can reduce pauses or operation corrections, thereby demonstrating the overall additional benefit of the full pre-contact mechatronic parameter strategy relative to impedance-only adjustment.
 
-### 3.2 操作者与实验对象
+### 3.2 Operators and Experimental Objects
 
-3名操作者（P01–P03，23–24岁男性，右利手）参与主实验。三名操作者均具有基础遥操作训练经验，并在每次正式实验前完成10–15分钟训练试次。所有操作者均签署知情同意书。本研究不涉及医学干预，也不采集可识别个人身份的信息。
+Three operators (P01–P03, 23–24 years old, male, right-handed) participated in the main experiment. All three operators had basic teleoperation training experience and completed 10–15 minutes of warm-up trials before each formal session. All operators provided written informed consent. This study does not involve medical intervention and does not collect personally identifiable information.
 
-实验覆盖六种对象，构成一个**mechatronic benchmark task set**，用于激发不同的顺应性、触觉接口灵敏度和夹爪执行条件。六种对象归入易损优先、折中和稳定优先三类操作策略。该分类用于本实验任务中的参数调度，不声称代表对象材料属性的普适物理分类。
+The experiment covers six objects, forming a **mechatronic benchmark task set** designed to generate distinct requirements on compliance, haptic-interface sensitivity, and gripper execution conditions. The six objects are assigned to fragility-oriented, balanced, and stability-oriented strategies. This classification is used for parameter scheduling in the present experimental task and does not claim to represent a universal physical classification of object material properties.
 
 | Object | Strategy | Mass (g) | Surface | Size (mm) | Primary task risk |
 |:---:|:---:|---:|:---|:---|:---|
@@ -215,9 +216,9 @@ u_h = \mathcal{D}_{d}\!\left(K_f \cdot \|\mathbf{F}_{\mathrm{ext}}\|\right) \cdo
 | Mouse | Stability-oriented | ~100 | Smooth plastic | 65×120×35 | Rigid, irregular surface; transport slip risk |
 | Scissors | Stability-oriented | ~150 | Metal+plastic | 50×170×15 | Rigid, elongated; high pose-precision requirement |
 
-### 3.3 实验模式与试验结构
+### 3.3 Experimental Modes and Trial Structure
 
-实验包括五种模式：
+The experiment includes five modes:
 
 | Mode | Setting | Purpose |
 |:---:|:---|:---|
@@ -227,9 +228,9 @@ u_h = \mathcal{D}_{d}\!\left(K_f \cdot \|\mathbf{F}_{\mathrm{ext}}\|\right) \cdo
 | D | Visual information displayed, fixed parameters maintained | Isolate effect of visual cue alone |
 | E | Vision-semantic scheduling of \(K_t, K_r, \zeta\) only | Impedance-only ablation |
 
-A模式用于检验固定参数在异质对象上的折中局限；B模式用于检验人工选参工作流是否会引入额外判断与切换负担；D模式用于区分视觉提示与控制参数改变的作用；E模式用于检验单独调节阻抗是否足以复现完整多通道机电参数策略。C与E的比较是本文核心消融，因为两者共享视觉语义和阻抗调节，差异在于C额外设置主端触觉接口参数和夹爪执行参数。本文不在该比较中分离触觉接口参数与夹爪参数的独立贡献。
+Mode A tests the compromise limitation of fixed parameters on heterogeneous objects. Mode B tests whether the manual-selection workflow introduces additional judgment and switching burden. Mode D distinguishes the role of visual cues from control-parameter changes. Mode E tests whether impedance-only adjustment suffices to reproduce the complete multi-channel mechatronic parameter strategy. The C–E comparison is the core ablation in this paper, because both modes share vision semantics and impedance adjustment, with the difference being that Mode C additionally sets master-side haptic-interface parameters and gripper execution parameters. This paper does not separate the independent contributions of haptic-interface parameters and gripper parameters within this comparison.
 
-试验结构以27个匹配块为基本单位。每个匹配块由同一操作者、同一对象/操作策略和同一重复编号下的A–E五个模式组成，因此总试次数为\(27\times5=135\)。六种对象在27个匹配块中的分布如下：
+The trial structure uses 27 matched blocks as the fundamental unit. Each matched block consists of all five modes (A–E) under the same operator, same object/strategy, and same repetition index, yielding a total of \(27\times5=135\) trials. The distribution of the six objects across the 27 matched blocks is:
 
 | Strategy | Specific object | Block count | Trials (×5 modes) |
 |---|---|---|---:|---:|
@@ -241,31 +242,31 @@ A模式用于检验固定参数在异质对象上的折中局限；B模式用于
 | Stability-oriented | Scissors | 4 | 20 |
 | Total | Six objects | 27 | 135 |
 
-模式顺序在实验中进行了部分平衡，以降低单一固定顺序造成的学习或疲劳偏差。由于未执行严格完全随机化，也未将所有对象、操作者和顺序因素完全解耦，本文不将顺序效应视为已完全排除，而是在局限性中保守解释。完整的逐试次执行顺序作为补充材料提供。
+Mode order was partially balanced during the experiment to reduce learning or fatigue bias from a single fixed sequence. Since strict full randomization was not performed and all objects, operators, and order factors were not completely decoupled, this paper does not claim that order effects were fully eliminated; rather, these are conservatively discussed in the limitations section. The complete trial-by-trial execution sequence is provided as supplementary material.
 
-### 3.4 实验任务与流程
+### 3.4 Task and Procedure
 
-每次试验包括复位、接近、抓取、运输、释放和任务结束六个阶段。成功定义为在规定时间内完成抓取—转移—放置，且物体未掉落、未发生明显滑移或可观察损伤。每次任务记录主端轨迹、夹钳输入、控制参数和任务持续时间。B模式中操作者通过按键选择策略，手动选择时间计入总完成时间；因此B模式代表包含人工判断与切换成本的工作流基线。
+Each trial consists of six phases: reset, approach, grasp, transport, release, and task end. Success is defined as completing grasp–transfer–placement within the time limit without dropping, observable slip, or visible damage to the object. Master trajectory, gripper input, control parameters, and task duration are recorded for each trial. In Mode B, the operator selects the strategy via keypress, and the manual selection time is included in the total completion time; therefore, Mode B represents a workflow baseline including human judgment and switching overhead.
 
-**图3.** 实验任务流程与视觉语义参数调度框架，包含六阶段时间线和机电参数配置点。
+**Fig. 3.** Experimental task flow and vision-semantic parameter scheduling framework, including the six-phase timeline and mechatronic parameter configuration points.
 
-### 3.5 评价指标
+### 3.5 Evaluation Metrics
 
-主要终点为完成时间。次要客观终点包括成功率、主端轨迹长度、停顿次数、方向反转次数和运动平滑性。主观负荷采用未加权Raw NASA-TLX，即六个维度的算术平均。NASA-TLX按"操作者×对象策略×模式"采集六维评分。视觉模块报告类别识别正确率、策略触发正确率、置信度和单帧处理时间。
+The primary endpoint is completion time. Secondary objective endpoints include success rate, master trajectory length, pause count, direction-reversal count, and motion smoothness. Subjective workload is assessed using unweighted Raw NASA-TLX, the arithmetic mean of six dimensions. NASA-TLX scores are collected at the "operator × object strategy × mode" level. The vision module reports class-level recognition accuracy, strategy-trigger accuracy, confidence, and per-frame processing time.
 
-过程行为指标在正式统计前固定定义。停顿定义为：主端速度低于0.005 m/s且持续时间不短于0.30 s，由原始主端轨迹CSV（采样频率约200 Hz）通过差分计算速度后实时检测。
+Process-behavior metrics were defined and fixed before formal statistical analysis. Pause is defined as master velocity below 0.005 m/s for a duration of at least 0.30 s, detected in real time by differencing velocity from the raw master trajectory CSV (sampled at approximately 200 Hz).
 
-### 3.6 统计分析
+### 3.6 Statistical Analysis
 
-考虑到试次嵌套在少数操作者内部，统计结果以配对趋势、操作者级方向性和效应大小为主，不将135次试验视为135个独立参与者样本。五模式完成时间采用Friedman检验进行总体比较；总体显著后进行配对Wilcoxon符号秩检验，并采用Holm-Bonferroni方法校正多重比较。C–E比较作为核心消融，报告配对均值差、Bootstrap 95%置信区间（10,000次重抽样，配对块bootstrap）、相对变化、效应量和操作者级聚合趋势。Raw NASA-TLX采用相同的非参数框架，但由于独立操作者数量仅为3名，主观负荷结果解释为初步人在环证据。成功率以描述性报告为主。结果同时报告median [IQR]以适配非参数分析框架。
+Considering that trials are nested within a small number of operators, statistical results emphasize paired trends, operator-level directionality, and effect sizes, and do not treat the 135 trials as 135 independent participant samples. Five-mode completion times are compared globally with the Friedman test; after global significance, paired Wilcoxon signed-rank tests are performed with Holm-Bonferroni correction for multiple comparisons. The C–E comparison, as the core ablation, reports paired mean difference, Bootstrap 95% confidence interval (10,000 re-samples, block-level bootstrap), relative change, effect size, and operator-level aggregated trends. Raw NASA-TLX is analyzed with the same non-parametric framework, but because only three independent operators are available, subjective workload results are interpreted as preliminary human-in-the-loop evidence. Success rate is reported descriptively. Results report median [IQR] alongside mean ± SD to align with the non-parametric analysis framework.
 
 ---
 
-## 4 实验结果
+## 4 Experimental Results
 
-### 4.1 视觉识别与策略触发验证
+### 4.1 Visual Recognition and Strategy-Trigger Validation
 
-在受控视角、背景和光照下，6种对象各30幅图像，共180幅。类别识别和策略触发均为180/180，平均置信度0.853，单帧墙钟处理时间50.08 ms。该结果说明在本文实验条件下视觉触发没有成为主要误差来源，但不外推至遮挡、强光变化、复杂背景、未知对象或未测试类别。
+Under controlled viewpoint, background, and illumination, 30 images per object class, 180 images total. Class recognition and strategy triggering achieved 180/180 (100%), with mean confidence 0.853 and per-frame wall-clock processing time 50.08 ms. This result indicates that visual triggering was not a major source of error under the present experimental conditions, but does not generalize to occlusion, strong illumination variation, cluttered backgrounds, unknown objects, or untested classes.
 
 | Object | Images | Class accuracy | Strategy trigger accuracy | Mean confidence | Time (ms) |
 |---|---|---|---|---|---:|---:|---:|---:|
@@ -276,9 +277,9 @@ A模式用于检验固定参数在异质对象上的折中局限；B模式用于
 | Mouse | 30 | 100% | 100% | 0.914 | 46.79 |
 | Scissors | 30 | 100% | 100% | 0.938 | 49.27 |
 
-**图4.** 视觉识别验证结果，包括混淆矩阵、置信度分布和单帧处理时间分布。
+**Fig. 4.** Visual recognition validation results, including confusion matrix, confidence distribution, and per-frame processing time distribution.
 
-### 4.2 五模式实验结果
+### 4.2 Five-Mode Experimental Results
 
 **Table 4.** Five-mode experimental results: completion time, master trajectory length, success rate, and Raw NASA-TLX. Values reported as median [IQR] with mean±SD in parentheses.
 
@@ -290,13 +291,13 @@ A模式用于检验固定参数在异质对象上的折中局限；B模式用于
 | D Vision observe | 20.79 [20.32, 21.16] (20.91±1.10) | 0.716 [0.684, 0.779] (0.734±0.085) | 24/27 (88.9%) | 59.00 [57.83, 62.83] (60.22±3.85) |
 | E Vision impedance-only | 20.73 [19.95, 22.25] (21.07±1.56) | 0.732 [0.678, 0.799] (0.739±0.084) | 24/27 (88.9%) | 53.67 [51.83, 57.83] (54.54±4.09) |
 
-描述性结果显示，C模式在五种模式中取得最短median完成时间、最短主端轨迹、最高成功率和最低Raw NASA-TLX。C模式相较A、B、D和E的mean完成时间分别降低约10.0%、8.2%、7.8%和8.5%。
+Descriptive results show that Mode C achieves the shortest median completion time, shortest master trajectory, highest success rate, and lowest Raw NASA-TLX among all five modes. Compared with Modes A, B, D, and E, Mode C's mean completion time is reduced by approximately 10.0%, 8.2%, 7.8%, and 8.5%, respectively.
 
-五模式完成时间的Friedman检验显示总体差异显著（χ²(4)=30.904, p<0.001）。配对Wilcoxon检验经Holm校正后，C模式完成时间显著低于A、B、D和E（p < 0.01，效应量 r > 0.7）。由于试次嵌套在3名操作者内部，本文将这些结果解释为当前机电平台、对象集合和参与者内的配对证据，而非一般操作者群体的总体统计结论。Raw NASA-TLX同样呈现C模式最低的方向，但主观负荷结果结合小样本和非盲法条件进行谨慎解释。
+The Friedman test on five-mode completion times shows significant global differences (χ²(4)=30.904, p<0.001). Paired Wilcoxon tests with Holm correction indicate that Mode C completion time is significantly lower than Modes A, B, D, and E (p < 0.01, effect size r > 0.7). Because trials are nested within three operators, these results are interpreted as paired evidence within the current mechatronic platform, object set, and participant pool, rather than as general-population statistical conclusions. Raw NASA-TLX also shows the lowest direction for Mode C, but subjective workload results are interpreted cautiously given the small sample and non-blinded conditions.
 
-**图5.** 五模式完成时间对比——箱线图叠加配对散点（每个点代表一个匹配块），不采用柱状图。左侧面板：完成时间；右侧面板：主端轨迹长度和Raw NASA-TLX分子图。
+**Fig. 5.** Five-mode completion time comparison: boxplot overlaid with individual matched-block scatter points (each point represents one block), bar charts are avoided. Left panel: completion time; right panels: master trajectory length and Raw NASA-TLX sub-panels.
 
-### 4.3 核心消融：完整多参数策略 vs 仅阻抗调节
+### 4.3 Core Ablation: Full Multi-Parameter Strategy vs. Impedance-Only
 
 **Table 5.** Core C–E ablation: median [IQR], paired mean difference, Bootstrap 95% CI (10,000 re-samples, block-level bootstrap), and operator-level direction.
 
@@ -306,21 +307,21 @@ A模式用于检验固定参数在异质对象上的折中局限；B模式用于
 | Trajectory (m) | 0.697 [0.660, 0.769] | 0.732 [0.678, 0.799] | −0.024 | [−0.059, 0.014] | mixed |
 | Raw NASA-TLX | 48.67 [47.67, 51.83] | 53.67 [51.83, 57.83] | −4.87 | [−5.35, −4.39] | 3/3 operators ↓ |
 
-C–E比较是本文最关键的消融。两种模式均使用视觉语义和阻抗调节，区别在于C模式额外设置主端触觉接口增益、力接口死区、夹爪闭合速度和夹持力。该设计用于检验一个工程问题：仅改变从端柔顺性是否足以覆盖异质对象抓取需求，还是需要同时初始化操作者感知通道和夹爪执行通道。需要强调的是，该比较只能说明完整接触前多参数策略相较仅阻抗调节具有整体机电系统级优势，不能单独证明触觉接口参数或夹爪参数各自的独立贡献。
+The C–E comparison is the most critical ablation in this paper. Both modes use vision semantics and impedance adjustment; the difference is that Mode C additionally sets master-side haptic-interface gain, force-interface dead zone, gripper closing speed, and grasping force. This design tests an engineering question: whether adjusting slave-side compliance alone is sufficient to cover heterogeneous-object grasping requirements, or whether the operator's perception channels and gripper execution channels need to be simultaneously initialized. It should be emphasized that this comparison can only demonstrate that the full pre-contact multi-parameter strategy has an overall mechatronic-system-level advantage over impedance-only adjustment; it cannot independently prove the causal contributions of haptic-interface parameters or gripper parameters.
 
-在27个匹配块中，C模式median完成时间为19.57 s，E模式为20.73 s，配对均值差为−1.79 s（Bootstrap 95% CI [−2.51, −1.10] s），相对降低约8.5%。CI不包含零，支持C模式在完成时间上的显著改善。操作者级聚合结果显示，三名操作者均表现出C快于E的方向：P01为18.94 s vs 20.60 s（−8.1%），P02为19.09 s vs 21.66 s（−11.8%），P03为19.80 s vs 20.95 s（−5.5%）。六种对象层面也均表现出C快于E的方向（降幅范围3.3%–13.2%）。
+In the 27 matched blocks, Mode C median completion time is 19.57 s and Mode E is 20.73 s, with a paired mean difference of −1.79 s (Bootstrap 95% CI [−2.51, −1.10] s), representing a relative reduction of approximately 8.5%. The CI excludes zero, supporting a real improvement in completion time for Mode C. Operator-level aggregated results show that all three operators exhibit a C-faster-than-E direction: P01 18.94 s vs. 20.60 s (−8.1%), P02 19.09 s vs. 21.66 s (−11.8%), P03 19.80 s vs. 20.95 s (−5.5%). All six objects also show C-faster-than-E direction (reduction range 3.3%–13.2%).
 
-主端轨迹长度差异较小（0.697 m vs 0.732 m），Bootstrap 95% CI为[−0.059, 0.014] m，穿过零点，说明轨迹长度差异在统计上不稳健。结合停顿分析，本文将C–E差异解释为操作效率改善的初步证据，即多通道机电参数协同可能减少了抓取、运输或释放阶段的停顿与修正。该机制解释与现有实验结果保持一致，但其因果性仍有待通过更细粒度的阶段标注与消融实验进一步验证。
+The master trajectory length difference is small (0.697 m vs. 0.732 m), with Bootstrap 95% CI [−0.059, 0.014] m crossing zero, indicating that the trajectory-length difference is not statistically robust. Combined with the pause analysis, this paper interprets the C–E difference as preliminary evidence for operational efficiency improvement: multi-channel mechatronic parameter coordination may have reduced pauses and corrections during the grasping, transport, or release phases. This mechanistic interpretation is consistent with the present experimental results, but its causality still requires further verification through finer-grained phase annotation and additional ablation experiments.
 
-**图6.** C–E核心消融结果。图中展示27个匹配块C–E完成时间配对散点（对角线以下为C更快），三名操作者分面图，六对象分层箱线图。图注声明Bootstrap CI仅作为配对证据解释。
+**Fig. 6.** Core C–E ablation results. The figure shows 27 matched-block C–E completion-time paired scatter points (below the diagonal indicates C faster), three-operator facet plots, and six-object stratified boxplots. The figure caption states that Bootstrap CIs are interpreted only as paired evidence.
 
-### 4.4 过程行为指标：C–E停顿分析
+### 4.4 Process-Behavior Metric: C–E Pause Analysis
 
-从原始主端轨迹CSV（采样频率约200 Hz）计算停顿次数。停顿定义为主端速度低于0.005 m/s且持续不少于0.30 s。C模式每试次median停顿次数为3 [2, 3.5] IQR（mean: 2.74±1.23），E模式为3 [2, 5] IQR（mean: 3.41±1.67）。分策略看，易损优先、折中和稳定优先三类均表现出C模式停顿较少的方向。该结果与C模式完成时间更短而轨迹长度差异较小的现象一致，支持"多通道协同的附加收益主要来自操作效率提升（机电参数协同减少了停顿和修正），而非路径缩短"的解释。未来工作将通过引入阶段级时间标注（如接近、抓取、运输与释放），以实现对机电系统行为的更细粒度归因分析。
+Pause counts were computed from the raw master trajectory CSVs (sampled at approximately 200 Hz). A pause is defined as master velocity below 0.005 m/s for a duration of at least 0.30 s. Mode C per-trial median pause count is 3 [2, 3.5] IQR (mean: 2.74±1.23), and Mode E is 3 [2, 5] IQR (mean: 3.41±1.67). By strategy, fragility-oriented, balanced, and stability-oriented categories all show a direction of fewer pauses in Mode C. This result is consistent with the observation that Mode C has shorter completion time while trajectory-length difference is small, supporting the interpretation that the additional benefit of multi-channel coordination mainly comes from operational efficiency improvement (mechatronic parameter coordination reduced pauses and corrections) rather than path shortening. Future work will introduce phase-level time annotation (e.g., approach, grasp, transport, release) for finer-grained attribution analysis of mechatronic system behavior.
 
-### 4.5 失败案例分析
+### 4.5 Failure Case Analysis
 
-135次试次中共发生9次失败，失败形式包括掉落、明显滑移或可观察损伤。各模式失败分布如下：
+Nine failures occurred across the 135 trials, including drops, observable slip, or visible damage. The failure distribution by mode is:
 
 | Mode | Failures / Total | Typical observation |
 |:---:|:---:|:---|
@@ -330,11 +331,11 @@ C–E比较是本文最关键的消融。两种模式均使用视觉语义和阻
 | D Vision observe | 3/27 | Inadequate grip force on medium objects |
 | E Vision impedance-only | 3/27 | Unstable grasp on medium objects |
 
-失败案例分析表明，C模式在本实验中具有最低失败率（1/27）。各模式失败主要表现出不同机制特征，说明多通道机电参数协同对抑制失败具有系统级作用。
+Mode C recorded the lowest failure count (1/27) in the present experiment. This observation is consistent with the interpretation that the full multi-channel parameter strategy may improve grasping stability, but due to the absence of phase-level logs, contact-force measurements, and slip measurements, this paper does not interpret the failure count difference as a directly proven causal mechanism.
 
-### 4.6 跨操作者与六对象一致性
+### 4.6 Cross-Operator and Six-Object Consistency
 
-三名操作者均表现出C模式完成时间低于E模式的方向。六种对象层面的median值也显示C模式均为五模式中最短完成时间。对象层面结果如下：
+All three operators exhibit a C-faster-than-E direction in completion time. At the per-object level, Mode C also shows the shortest mean completion time among all five modes for all six tested objects. Per-object results are:
 
 | Object | A Fixed (s) | B Manual (s) | **C Vision multi-param (s)** | D Observe (s) | E Impedance-only (s) |
 |:---:|---:|---:|---:|---:|---:|
@@ -345,58 +346,58 @@ C–E比较是本文最关键的消融。两种模式均使用视觉语义和阻
 | Mouse | 21.74 | 20.93 | **19.75** | 20.74 | 21.64 |
 | Scissors | 21.79 | 20.70 | **18.84** | 21.83 | 21.70 |
 
-C相对E的时间降幅范围为瓶子3.3%、香蕉5.5%、苹果8.1%、鼠标8.7%、纸杯11.7%和剪刀13.2%。这说明方法在六种已测试对象上具有方向一致性，但不外推至未测试对象或复杂遮挡场景。
+The C-over-E time reduction ranges from 3.3% (bottle) through 5.5% (banana), 8.1% (apple), 8.7% (mouse), 11.7% (paper cup) to 13.2% (scissors). This indicates directional consistency across the six tested objects, but does not extrapolate to untested objects or complex occlusion scenarios.
 
 ---
 
-## 5 讨论
+## 5 Discussion
 
-### 5.1 为什么接触前视觉语义前馈能够改善机电系统表现
+### 5.1 Why Pre-Contact Vision-Semantic Feedforward Improves Mechatronic System Performance
 
-固定参数模式必须用单一折中参数覆盖三类操作策略，因此难以同时满足易损对象的柔顺性和硬质对象的稳定定位。人工选择模式虽然能够调用不同策略，但把对象判断和策略切换责任交给操作者，增加了工作流负担。视觉仅观察模式改善了场景信息，却没有改变系统动力学和夹爪行为。视觉多参数模式利用对象语义在接触前完成机电参数策略初始化，使操作者不必在任务过程中持续补偿不合适的手感、夹爪速度或夹持力。这一机制与C模式较短完成时间、较低停顿次数和较低主观负荷趋势一致。
+The fixed-parameter mode must cover all three strategy categories with a single compromise parameter set, making it difficult to simultaneously satisfy the compliance needs of fragile objects and the stable positioning needs of rigid objects. Although the manual-selection mode can invoke different strategies, it transfers the object-judgment and strategy-switching responsibility to the operator, increasing workflow burden. The vision-observe-only mode improves scene information but does not change the system dynamics or gripper behavior. The vision multi-parameter mode uses object semantics to complete mechatronic parameter strategy initialization before contact, so the operator does not need to continuously compensate for inappropriate hand-feel, gripper speed, or grasping force during the task. This mechanism is consistent with Mode C's shorter completion time, lower pause count, and lower subjective workload trend.
 
-### 5.2 完整接触前机电参数策略相对仅阻抗调节的意义
+### 5.2 Significance of the Full Pre-Contact Mechatronic Parameter Strategy Relative to Impedance-Only Adjustment
 
-C与E均根据视觉语义调整平移刚度、旋转刚度和阻尼比，因此两者共享柔顺性适配机制。C额外设置主端触觉接口增益、力接口死区、夹爪闭合速度和夹持力。当前数据中，C相较E的mean完成时间降低约8.5%（Bootstrap 95% CI [−2.51, −1.10] s），而主端轨迹长度降低约3.2%（95% CI [−0.059, 0.014] m，穿过零点）。这表明附加收益更可能来自抓取、运输或释放阶段的操作效率，而非大幅改变几何路径。
+Both Mode C and Mode E adjust translational stiffness, rotational stiffness, and damping ratio based on vision semantics, so they share the compliance-adaptation mechanism. Mode C additionally presets master-side haptic-interface gain, force-interface dead zone, gripper closing speed, and grasping force. In the present data, Mode C's mean completion time is reduced by approximately 8.5% relative to Mode E (Bootstrap 95% CI [−2.51, −1.10] s), whereas the master trajectory length is reduced by approximately 3.2% (95% CI [−0.059, 0.014] m, crossing zero). This indicates that the additional benefit is more likely from operational efficiency during the grasping, transport, or release phases, rather than from substantially changing the geometric path.
 
-这一结果对应用型机电遥操作系统的工程意义在于：操作者面对的不仅是从端末端柔顺性，还包括主端触觉接口增益、力接口死区以及夹爪执行速度和夹持力构成的完整机电交互体验。单独调节阻抗可能无法覆盖异质对象抓取中的全部机电系统需求。例如，易损或易滑对象不仅需要较低刚度，还需要较慢的夹爪闭合和较低夹持力，以降低挤压与滑移风险；硬质或几何不规则对象则可能需要更明确的接口反馈和更稳定的夹持执行，以减少操作者在抓取建立和运输阶段的反复修正。力接口死区的工程作用主要是削弱小幅扰动和触觉接口噪声，使操作者感受到更稳定的接触提示，而不是作为接触力闭环控制律。多通道机电参数协同能够把对象语义转化为更完整的操作手感和执行策略。
+The engineering significance of this result for application-oriented mechatronic teleoperation systems is that what the operator faces is not only slave-side end-effector compliance, but a complete mechatronic interaction experience comprising master-side haptic-interface gain, force-interface dead zone, gripper execution speed, and grasping force. Adjusting impedance alone may not cover all the mechatronic system requirements in heterogeneous-object grasping. For example, fragile or slippery objects require not only lower stiffness but also slower gripper closure and lower grasping force to reduce crushing and slip risk; rigid or geometrically irregular objects may require clearer interface feedback and more stable gripping execution to reduce operator corrections during grasp establishment and transport phases. The engineering role of the force-interface dead zone is mainly to attenuate small perturbations and haptic-interface noise, providing the operator with more stable contact cues rather than serving as a closed-loop contact-force control law. Multi-channel mechatronic parameter coordination can translate object semantics into a more complete operational hand-feel and execution strategy.
 
-### 5.3 与相关研究的区别
+### 5.3 Differences from Related Work
 
-已有任务分解和共享控制研究通常通过切换控制方式、约束输入空间或提供引导来提高完成效率并降低操作者负荷[10–13]。视觉阻抗研究则从视觉与力特征空间统一控制目标[9]。本文区别在于：不进行连续视觉伺服，不依赖在线轨迹规划，也不声称接触后的外力闭环自适应或最优控制，而是把对象语义作为接触前任务先验，以低计算开销调用可解释的多通道机电参数策略。换言之，本文提供的是一种机电系统级桥接范式：将高层视觉语义转换为低层机电遥操作接口参数，使操作者在接触发生前获得更适合当前对象的从端柔顺性、触觉接口设置和夹爪执行行为。该定位适合类别可识别、环境相对结构化、但仍需要操作者完成精细抓取与放置的工程遥操作场景。
+Existing task-decomposition and shared-control studies typically improve completion efficiency and reduce operator workload by switching control modes, constraining input spaces, or providing guidance [10–13]. Visual-impedance studies unify control objectives in the visual-and-force feature space [9]. The difference of this paper is that it does not perform continuous visual servoing, does not rely on online trajectory planning, and does not claim closed-loop external-force adaptation or optimal control after contact; instead, it uses object semantics as a pre-contact task prior, invoking interpretable multi-channel mechatronic parameter strategies with low computational overhead. In other words, this paper provides a mechatronic-system-level bridging paradigm: transforming high-level visual semantics into low-level mechatronic teleoperation interface parameters so that the operator obtains slave-side compliance, haptic-interface settings, and gripper execution behavior more suitable for the current object before contact. This positioning is suitable for engineering teleoperation scenarios where object categories are identifiable, the environment is relatively structured, but the operator is still required to perform fine grasping and placement.
 
-### 5.4 对机电遥操作系统的设计启示
+### 5.4 Design Implications for Mechatronic Teleoperation Systems
 
-本节从机电系统设计视角提炼三点启示：
+This section distills three design insights from a mechatronic system perspective:
 
-**1. Perception should not only inform the operator; it should initialize low-level interface parameters.** 本研究表明，将视觉语义信息从"操作者提示"升级为"机电参数前馈"，能够在不增加操作者认知负担的前提下改善系统级表现。视觉感知模块不应只是显示器上的信息，而应作为机电参数初始化链路的一环。
+**1. Perception should not only inform the operator; it should initialize low-level interface parameters.** This study demonstrates that upgrading visual semantic information from "operator cue" to "mechatronic parameter feedforward" can improve system-level performance without increasing the operator's cognitive burden. The visual perception module should not merely be information on a display; it should be a link in the mechatronic parameter initialization chain.
 
-**2. Compliance adaptation alone is incomplete for grasping.** 仅调节从端阻抗（C–E消融中的E模式）虽然提供了柔顺性适配，但不能覆盖夹爪执行速度和夹持力，也不能调整操作者感知到的触觉接口强度和死区。一个完整的机电遥操作抓取系统需要将阻抗、触觉接口和夹爪执行作为耦合的参数组进行协同调度。
+**2. Compliance adaptation alone is incomplete for grasping.** Adjusting only slave-side impedance (Mode E in the C–E ablation) provides compliance adaptation but cannot cover gripper execution speed and grasping force, nor can it adjust the haptic-interface intensity and dead zone perceived by the operator. A complete mechatronic teleoperation grasping system needs to co-schedule impedance, haptic-interface, and gripper execution as a coupled parameter set.
 
-**3. Asynchronous perception-control separation improves deployability.** 本文的异步架构（视觉子进程≈20 Hz，控制回路200 Hz，策略锁定只在首次检测时触发）既保证了控制实时性，又避免了视觉推理延迟对主从跟随的影响。这种感知-控制解耦的机电设计模式降低了视觉模块的实时性要求，使系统更容易部署到现有的遥操作平台上，而无需对控制回路进行实质性改造。
+**3. Asynchronous perception-control separation improves deployability.** The asynchronous architecture in this paper separates the approximately 20 Hz vision sub-process from the nominal 200 Hz control loop, preventing vision inference from directly blocking master–slave control. Although cycle-level jitter was not logged during the formal trials, the non-blocking design (independent `mp.Process` for YOLO, `mp.Queue` with bounded capacity, and atomic shared-variable updates) prevents the ~50 ms vision inference from occupying the main-thread time slice. This perception-control-decoupled mechatronic design pattern lowers the real-time requirements on the vision module, making the system easier to deploy onto existing teleoperation platforms without substantial modification to the control loop. Formal cycle-level profiling remains future work.
 
-### 5.5 为什么不同对象收益幅度不同
+### 5.5 Why the Benefit Magnitude Differs Across Objects
 
-六种对象均表现出C模式完成时间低于E模式，但降幅并不相同。瓶子和香蕉的降幅较小，可能是因为其抓取动作较熟悉，操作者即使在E模式下也能通过经验补偿默认夹爪参数。纸杯和剪刀的降幅较大，可能与其抓取风险和姿态稳定要求更高有关：纸杯需要避免变形和不稳定夹持，剪刀则需要更明确的定位和稳定运输。该机制解释可通过引入阶段耗时、重抓行为及夹爪状态日志等多源数据进行进一步细粒度验证。
+All six objects show a C-faster-than-E direction, but the reduction magnitude is not uniform. The smaller reductions for bottle and banana may be because their grasping actions are relatively familiar, and operators could compensate for default gripper parameters through experience even in Mode E. The larger reductions for paper cup and scissors may be related to higher grasping risk and pose-stability requirements: the paper cup requires avoidance of deformation and unstable gripping, and the scissors require more explicit positioning and stable transport. This mechanistic interpretation can be further verified through finer-grained data including phase-level durations, re-grasp behavior, and gripper state logs.
 
-### 5.6 局限性
+### 5.6 Limitations
 
-1. 独立操作者仅3名，135次重复任务不能替代更大参与者样本；主观负荷和跨操作者结论应视为真实机电平台上的初步人在环证据。
-2. 试次嵌套在操作者、对象和重复块内部，统计结果不解释为一般人群层面的强显著结论。Bootstrap CI仅作为配对证据的辅助量化。
-3. 模式顺序进行了部分平衡，但未执行严格完全随机化，学习效应和疲劳效应不能完全排除。
-4. 人工选择模式B包含选择时间，因此它是人工选参工作流基线，而不是纯控制器执行时间基线。
-5. 人在环实验覆盖六种具体对象，每类对象数量有限，结果支持已测试对象间的一致方向，不外推至未知对象、复杂遮挡和开放场景。
-6. 视觉验证来自受控视角、背景和光照，100%正确率仅代表受控实验条件，不外推至遮挡、复杂背景和未测试类别。
-7. 现有数据未提供经独立传感器校准的接触力、滑移量和物体损伤量，因此本文不直接声称已证明"保护易损对象"。
-8. 参数由工程经验、安全范围和预实验确定，本文证明的是离散语义策略在当前机电任务中的有效性，而非参数全局最优性。
+1. Only three independent operators participated; 135 repeated task trials cannot substitute for a larger participant sample. Subjective workload and cross-operator conclusions should be considered preliminary human-in-the-loop evidence on a real mechatronic platform.
+2. Trials are nested within operators, objects, and repetition blocks; statistical results are not interpreted as strong general-population-level conclusions. Bootstrap CIs serve only as auxiliary quantification of paired evidence.
+3. Mode order was partially balanced but not strictly fully randomized; learning effects and fatigue effects cannot be fully excluded.
+4. Manual-selection Mode B includes selection time; it is thus a manual-selection workflow baseline rather than a pure controller execution-time baseline.
+5. The human-in-the-loop experiment covers six specific objects with limited trials per object category; the results support consistent direction across the tested objects but do not extrapolate to unknown objects, complex occlusions, or open-world scenarios.
+6. Vision validation was performed under controlled viewpoint, background, and illumination; the 100% accuracy represents only controlled experimental conditions and does not extrapolate to occlusion, cluttered backgrounds, or untested classes.
+7. The current data do not provide independently sensor-calibrated contact force, slip quantity, or object damage measurements; therefore, this paper does not directly claim to have demonstrated "protection of fragile objects."
+8. Parameters were determined by engineering experience, safety ranges, and pre-experiments. This paper demonstrates the effectiveness of discrete semantic strategies in the current mechatronic task, not the global optimality of the parameters.
 
 ---
 
-## 6 结论
+## 6 Conclusion
 
-本文从机电系统集成的视角提出一种面向异质对象触觉遥操作抓取的视觉语义多通道参数调度方法。该方法将目标对象类别解释为易损优先、折中和稳定优先三类操作策略，并在接触前协同配置从端阻抗、主端触觉接口和夹爪执行参数，构成一个异步感知-控制解耦的机电遥操作系统。真实平台五模式实验显示，在当前3名操作者、6种对象和135次试验组成的mechatronic benchmark task set范围内，视觉多参数模式取得最短median完成时间（19.57 s [18.41, 20.05] IQR）、最高成功率（26/27, 96.3%）和最低Raw NASA-TLX（median 48.67 [47.67, 51.83] IQR）。与视觉仅阻抗模式相比，完整多通道模式mean完成时间降低−1.79 s（Bootstrap 95% CI [−2.51, −1.10] s），且3名操作者和6种对象均表现出一致方向。停顿分析和Bootstrap CI进一步提示，附加收益可能主要来自机电参数协同带来的操作停顿和修正减少，而非几何路径显著缩短。
+This paper proposes a vision-semantic multi-channel parameter scheduling method for heterogeneous-object haptic teleoperation grasping from a mechatronic system integration perspective. The method interprets the target object category as one of three operation-oriented strategies—fragility-oriented, balanced, and stability-oriented—and coordinates slave-side impedance, master-side haptic-interface parameters, and gripper execution parameters before contact, forming an asynchronous perception-control-decoupled mechatronic teleoperation system. Real-platform five-mode experiments show that, within the current three-operator, six-object, 135-trial mechatronic benchmark task set, the vision multi-parameter mode achieves the shortest median completion time (19.57 s [18.41, 20.05] IQR), the highest success rate (26/27, 96.3%), and the lowest Raw NASA-TLX (median 48.67 [47.67, 51.83] IQR). Compared with the vision impedance-only mode, the full multi-channel mode reduces mean completion time by −1.79 s (Bootstrap 95% CI [−2.51, −1.10] s), with all three operators and all six objects showing a consistent direction. Pause analysis and Bootstrap CIs further suggest that the additional benefit may mainly come from reduced operational pauses and corrections through mechatronic parameter coordination, rather than from a significantly shorter geometric path.
 
-总体而言，本文为无需复杂在线优化的异质对象触觉遥操作提供了一种可解释、低成本、可部署的机电系统接触前参数初始化方案。其统计普适性和外部泛化能力仍需通过更多操作者、严格随机化顺序、对象实例级记录、阶段过程指标以及接触质量指标进一步验证。接触后外力估计、力反馈闭环修正和操作者力觉感知验证属于后续研究范围，不由本文数据单独证明。
+Overall, this paper provides an interpretable, low-cost, deployable mechatronic-system pre-contact parameter initialization method for heterogeneous-object haptic teleoperation without requiring complex online optimization. Its statistical generalizability and external validity still require further verification through more operators, strictly randomized order, object-instance-level recording, phase-level process metrics, and contact-quality metrics. Post-contact external force estimation, force-feedback closed-loop correction, and operator haptic perception validation belong to the scope of subsequent studies and are not independently demonstrated by the data in this paper.
 
 ---
 
@@ -406,7 +407,7 @@ C与E均根据视觉语义调整平移刚度、旋转刚度和阻尼比，因此
 - **Informed consent:** All participants provided written informed consent before the experiment.
 - **Funding:** Not applicable.
 - **Conflict of interest:** The authors declare no conflict of interest.
-- **Data availability:** De-identified trial data, analysis scripts and vision validation results are available from the corresponding author upon reasonable request. A public repository link can be added when available.
+- **Data availability:** De-identified trial data and analysis scripts are available from the corresponding author upon reasonable request.
 
 ---
 
@@ -425,12 +426,12 @@ C与E均根据视觉语义调整平移刚度、旋转刚度和阻尼比，因此
 11. Bowman, M., Zhang, J. and Zhang, X. (2024), "Intent-based task-oriented shared control for intuitive telemanipulation", *Journal of Intelligent & Robotic Systems*, Vol. 110, 167.
 12. Oliva, A.A., Giordano, P.R. and Chaumette, F. (2021), "A general visual-impedance framework for effectively combining vision and force sensing in feature space", *IEEE Robotics and Automation Letters*, Vol. 6 No. 3, pp. 4441–4448.
 13. Peternel, L., Tsagarakis, N. and Ajoudani, A. (2016), "Towards multi-modal intention interfaces for human–robot co-manipulation", in *Proceedings of the IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)*, pp. 2663–2669.
-14. [TODO: Mechatronic system design reference — e.g., mechatronic teleoperation system architecture or human–machine interface design]
-15. [TODO: Real-time robotic control architecture reference — e.g., from IEEE Trans. Mechatronics or Robotics and Autonomous Systems]
-16. [TODO: Haptic teleoperation implementation reference — e.g., from IEEE Trans. Haptics or ICRA/IROS]
-17. [TODO: Perception-control integration reference — e.g., visual servoing with real-time constraints]
-18. [TODO: Gripper control / grasping execution reference — e.g., from IEEE RA-L or ICRA]
-19. Albu-Schäffer, A., Haddadin, S., Ott, C., Stemmer, A., Wimböck, T. and Hirzinger, G. (2007), "The DLR lightweight robot: design and control concepts for robots in human environments", *Industrial Robot*, Vol. 34 No. 5, pp. 376–385.
+14. [To be supplied: mechatronic system design reference — e.g., mechatronic teleoperation system architecture or human-machine interface design]
+15. [To be supplied: real-time robotic control architecture reference — e.g., from IEEE/ASME Trans. Mechatronics or Robotics and Autonomous Systems]
+16. [To be supplied: haptic teleoperation implementation reference — e.g., from IEEE Trans. Haptics or ICRA/IROS]
+17. [To be supplied: perception-control integration reference — e.g., visual servoing with real-time constraints]
+18. [To be supplied: gripper control / grasping execution reference — e.g., from IEEE RA-L or ICRA]
+19. Albu-Schaffer, A., Haddadin, S., Ott, C., Stemmer, A., Wimbock, T. and Hirzinger, G. (2007), "The DLR lightweight robot: design and control concepts for robots in human environments", *Industrial Robot*, Vol. 34 No. 5, pp. 376–385.
 20. Haddadin, S., Parusel, S., Johannsmeier, L. et al. (2022), "The Franka Emika robot: A reference platform for robotics research and education", *IEEE Robotics & Automation Magazine*, Vol. 29 No. 2, pp. 46–64.
 21. Hart, S.G. and Staveland, L.E. (1988), "Development of NASA-TLX (Task Load Index): Results of empirical and theoretical research", in Hancock, P.A. and Meshkati, N. (Eds.), *Human Mental Workload*, North-Holland, Amsterdam, pp. 139–183.
 22. Boessenkool, H., Abbink, D.A., Heemskerk, C.J.M., van der Helm, F.C.T. and Wildenbeest, J.G.W. (2011), "Haptic shared control improves teleoperated task performance toward performance in direct control", in *Proceedings of the IEEE World Haptics Conference*, pp. 433–438.
