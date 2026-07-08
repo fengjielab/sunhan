@@ -1,0 +1,308 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1240" viewBox="0 0 1800 1240" role="img" aria-label="Fig. 2. System architecture and information flow">
+  <defs>
+    <style>
+      .bg { fill: #f8fbff; }
+      .panel { fill: #ffffff; stroke: #2d67b7; stroke-width: 2.2; }
+      .panel-soft { fill: #f9fcff; stroke: #2d67b7; stroke-width: 1.8; }
+      .panel-green { fill: #f7fcf7; stroke: #2f8b57; stroke-width: 1.8; }
+      .panel-purple { fill: #fbf8ff; stroke: #7864b8; stroke-width: 1.8; }
+      .panel-red { fill: #fff8f6; stroke: #ca3b2f; stroke-width: 1.8; }
+      .label-blue { fill: #0b4a9f; }
+      .label-green { fill: #1e7a4a; }
+      .label-purple { fill: #6c4bb0; }
+      .label-red { fill: #b7352b; }
+      .stroke-blue { stroke: #0755b7; }
+      .stroke-purple { stroke: #6d3fb0; }
+      .stroke-green { stroke: #277d4d; }
+      .stroke-red { stroke: #c53328; }
+      .flow { fill: none; stroke: #0755b7; stroke-width: 5; marker-end: url(#arrowBlue); stroke-linecap: round; stroke-linejoin: round; }
+      .flow-thin { fill: none; stroke: #0755b7; stroke-width: 3.4; marker-end: url(#arrowBlue); stroke-linecap: round; stroke-linejoin: round; }
+      .event { fill: none; stroke: #0755b7; stroke-width: 3.2; stroke-dasharray: 10 9; marker-end: url(#arrowBlue); stroke-linecap: round; stroke-linejoin: round; }
+      .haptic { fill: none; stroke: #6d3fb0; stroke-width: 4; stroke-dasharray: 11 8; marker-end: url(#arrowPurple); stroke-linecap: round; stroke-linejoin: round; }
+      .measure { fill: none; stroke: #277d4d; stroke-width: 4; marker-end: url(#arrowGreen); stroke-linecap: round; stroke-linejoin: round; }
+      .safety { fill: none; stroke: #c53328; stroke-width: 3.4; stroke-dasharray: 9 8; marker-end: url(#arrowRed); stroke-linecap: round; stroke-linejoin: round; }
+      .title { font: 700 33px Arial, Helvetica, sans-serif; fill: #101820; }
+      .section { font: 700 25px Arial, Helvetica, sans-serif; fill: #ffffff; }
+      .freq { font: italic 700 23px Arial, Helvetica, sans-serif; fill: #0b4a9f; }
+      .head { font: 700 20px Arial, Helvetica, sans-serif; fill: #0c2a4d; }
+      .text { font: 17px Arial, Helvetica, sans-serif; fill: #162235; }
+      .small { font: 15px Arial, Helvetica, sans-serif; fill: #24364e; }
+      .tiny { font: 13px Arial, Helvetica, sans-serif; fill: #334861; }
+      .math { font: italic 22px "Times New Roman", Times, serif; fill: #111827; }
+      .math-small { font: italic 17px "Times New Roman", Times, serif; fill: #111827; }
+      .mono { font: 15px Consolas, "Courier New", monospace; fill: #1d3557; }
+      .white { fill: #ffffff; }
+      .shadow { filter: url(#shadow); }
+      .dashbox { fill: #ffffff; stroke: #0b63c7; stroke-width: 2; stroke-dasharray: 9 8; }
+    </style>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#7a8ea8" flood-opacity="0.18"/>
+    </filter>
+    <marker id="arrowBlue" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 1 L 11 6 L 1 11 z" fill="#0755b7"/>
+    </marker>
+    <marker id="arrowPurple" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 1 L 11 6 L 1 11 z" fill="#6d3fb0"/>
+    </marker>
+    <marker id="arrowGreen" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 1 L 11 6 L 1 11 z" fill="#277d4d"/>
+    </marker>
+    <marker id="arrowRed" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 1 L 11 6 L 1 11 z" fill="#c53328"/>
+    </marker>
+    <linearGradient id="cameraBody" x1="0" x2="1">
+      <stop offset="0" stop-color="#1f2937"/>
+      <stop offset="1" stop-color="#64748b"/>
+    </linearGradient>
+    <linearGradient id="robotArm" x1="0" x2="1">
+      <stop offset="0" stop-color="#f7f9fc"/>
+      <stop offset="1" stop-color="#dce5ef"/>
+    </linearGradient>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1800" height="1240"/>
+  <text class="title" x="900" y="48" text-anchor="middle">Fig. 2. System architecture and information flow</text>
+
+  <!-- Low-frequency perception and scheduling region -->
+  <rect class="panel shadow" x="28" y="82" width="1568" height="318" rx="8"/>
+  <rect class="label-blue" x="28" y="82" width="172" height="46" rx="8"/>
+  <text class="section" x="114" y="113" text-anchor="middle">Perception</text>
+  <text class="freq" x="232" y="114">~20 Hz low-frequency semantic process</text>
+
+  <rect class="panel-soft shadow" x="58" y="158" width="230" height="178" rx="12"/>
+  <rect x="88" y="184" width="166" height="54" rx="16" fill="url(#cameraBody)"/>
+  <circle cx="125" cy="211" r="17" fill="#0f172a"/>
+  <circle cx="125" cy="211" r="8" fill="#38bdf8"/>
+  <circle cx="176" cy="211" r="13" fill="#111827"/>
+  <circle cx="176" cy="211" r="6" fill="#60a5fa"/>
+  <rect x="116" y="242" width="108" height="18" rx="5" fill="#334155"/>
+  <text class="head" x="173" y="290" text-anchor="middle">RGB-D camera</text>
+  <text class="small" x="173" y="315" text-anchor="middle">Intel RealSense D435i</text>
+
+  <rect class="panel-soft shadow" x="344" y="158" width="230" height="178" rx="12"/>
+  <g stroke="#1e3a8a" stroke-width="1.4" fill="#ffffff">
+    <line x1="401" y1="202" x2="440" y2="183"/><line x1="401" y1="202" x2="455" y2="231"/><line x1="440" y1="183" x2="493" y2="205"/>
+    <line x1="455" y1="231" x2="493" y2="205"/><line x1="420" y1="260" x2="455" y2="231"/><line x1="420" y1="260" x2="493" y2="260"/>
+    <line x1="493" y1="205" x2="493" y2="260"/><line x1="493" y1="205" x2="535" y2="188"/><line x1="493" y1="260" x2="535" y2="278"/>
+    <circle cx="401" cy="202" r="7"/><circle cx="440" cy="183" r="7"/><circle cx="455" cy="231" r="7"/><circle cx="493" cy="205" r="7"/>
+    <circle cx="420" cy="260" r="7"/><circle cx="493" cy="260" r="7"/><rect x="529" y="178" width="16" height="16"/><rect x="529" y="226" width="16" height="16"/><rect x="529" y="270" width="16" height="16"/>
+  </g>
+  <text class="head" x="459" y="302" text-anchor="middle">YOLO11n detection</text>
+  <text class="small" x="459" y="326" text-anchor="middle">subprocess, about 50 ms/frame</text>
+
+  <rect class="panel-soft shadow" x="630" y="158" width="248" height="178" rx="12"/>
+  <text class="small" x="681" y="207">cup</text><text class="small" x="745" y="207">0.92</text>
+  <text class="small" x="681" y="246">mouse</text><text class="small" x="745" y="246">0.76</text>
+  <text class="small" x="681" y="285">bottle</text><text class="small" x="745" y="285">0.41</text>
+  <g fill="#0f172a">
+    <rect x="657" y="190" width="14" height="18" rx="2"/><path d="M653 208h23v8h-23z"/>
+    <ellipse cx="664" cy="239" rx="15" ry="10"/><rect x="655" y="228" width="18" height="12" rx="3"/>
+    <path d="M660 269h9l4 30h-17z"/><rect x="660" y="260" width="9" height="10" rx="2"/>
+  </g>
+  <text class="head" x="800" y="238" text-anchor="middle">Object class</text>
+  <text class="head" x="800" y="266" text-anchor="middle">+ confidence</text>
+
+  <rect class="panel-soft shadow" x="938" y="158" width="372" height="178" rx="12"/>
+  <g transform="translate(968 181)">
+    <polygon points="85,0 140,75 30,75" fill="#eaf2ff" stroke="#315fa6" stroke-width="2"/>
+    <polygon points="30,82 140,82 168,120 2,120" fill="#f6edff" stroke="#7864b8" stroke-width="2"/>
+    <polygon points="2,128 168,128 205,170 -35,170" fill="#eef8f0" stroke="#2f8b57" stroke-width="2"/>
+    <text class="small" x="85" y="48" text-anchor="middle">1</text>
+    <text class="small" x="85" y="106" text-anchor="middle">2</text>
+    <text class="small" x="85" y="154" text-anchor="middle">3</text>
+  </g>
+  <text class="head" x="1166" y="211">Three-level mapping</text>
+  <text class="small" x="1166" y="246">vision semantics -> operation strategy</text>
+  <text class="small" x="1166" y="274">strategy -> bounded control parameters</text>
+  <text class="tiny" x="1166" y="306">fragility-oriented / balanced / stability-oriented</text>
+
+  <rect class="panel-soft shadow" x="1370" y="158" width="194" height="178" rx="12"/>
+  <text class="head" x="1467" y="206" text-anchor="middle">Parameter scheduler</text>
+  <text class="math" x="1467" y="256" text-anchor="middle">Θ(c) = {K<tspan baseline-shift="sub" font-size="15">t</tspan>, K<tspan baseline-shift="sub" font-size="15">r</tspan>, ζ,</text>
+  <text class="math" x="1467" y="288" text-anchor="middle">K<tspan baseline-shift="sub" font-size="15">f</tspan>, d, v<tspan baseline-shift="sub" font-size="15">g</tspan>, F<tspan baseline-shift="sub" font-size="15">g</tspan>}</text>
+
+  <path class="flow" d="M288 247 H334"/>
+  <path class="flow" d="M574 247 H620"/>
+  <path class="flow" d="M878 247 H928"/>
+  <path class="flow" d="M1310 247 H1360"/>
+
+  <!-- Synchronization and dispatch middle region -->
+  <rect class="panel-soft shadow" x="455" y="432" width="1110" height="250" rx="9"/>
+  <text class="freq" x="493" y="470">Asynchronous coupling and strategy-locked parameter dispatch</text>
+
+  <rect class="dashbox shadow" x="62" y="530" width="252" height="164" rx="14"/>
+  <path d="M102 610 L130 558 L158 610 Z" fill="#fff3cd" stroke="#e6a700" stroke-width="4"/>
+  <line x1="130" y1="577" x2="130" y2="594" stroke="#b7791f" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="130" cy="603" r="3.8" fill="#b7791f"/>
+  <text class="head" x="198" y="585" text-anchor="middle">Low confidence or</text>
+  <text class="head" x="198" y="615" text-anchor="middle">unmappable class</text>
+  <text class="head" x="198" y="650" text-anchor="middle">-> balanced default</text>
+
+  <rect class="panel-soft shadow" x="482" y="544" width="255" height="76" rx="10"/>
+  <rect x="508" y="565" width="42" height="34" fill="#eaf2ff" stroke="#123f86" stroke-width="3"/>
+  <line x1="515" y1="577" x2="543" y2="577" stroke="#123f86" stroke-width="3"/>
+  <line x1="515" y1="590" x2="543" y2="590" stroke="#123f86" stroke-width="3"/>
+  <text class="head" x="609" y="575" text-anchor="middle">Bounded queues</text>
+  <text class="small" x="609" y="604" text-anchor="middle">non-blocking read</text>
+
+  <g transform="translate(846 526)">
+    <polygon points="80,0 160,80 80,160 0,80" fill="#ffffff" stroke="#0755b7" stroke-width="3"/>
+    <rect x="62" y="75" width="38" height="36" rx="4" fill="#0f2f66"/>
+    <path d="M70 76 v-17 c0-28 42-28 42 0 v17" fill="none" stroke="#0f2f66" stroke-width="8" stroke-linecap="round"/>
+    <text class="head" x="80" y="186" text-anchor="middle">Strategy-locking event</text>
+  </g>
+
+  <rect class="panel-green shadow" x="693" y="459" width="268" height="166" rx="10"/>
+  <text class="head" x="827" y="489" text-anchor="middle">(a) Slave impedance channel</text>
+  <text class="math-small" x="827" y="526" text-anchor="middle">K<tspan baseline-shift="sub" font-size="12">t</tspan>, K<tspan baseline-shift="sub" font-size="12">r</tspan>, ζ</text>
+  <rect x="742" y="548" width="170" height="46" rx="8" fill="#edf7ff" stroke="#2d67b7" stroke-width="1.8"/>
+  <text class="small" x="827" y="576" text-anchor="middle">Cartesian impedance</text>
+  <text class="small" x="827" y="595" text-anchor="middle">controller</text>
+  <g stroke="#0755b7" stroke-width="5" fill="none" transform="translate(718 516)">
+    <circle cx="25" cy="18" r="8" fill="#eaf2ff"/><circle cx="63" cy="50" r="8" fill="#eaf2ff"/>
+    <line x1="25" y1="18" x2="63" y2="50"/><line x1="63" y1="50" x2="40" y2="84"/><path d="M22 88 h47"/>
+  </g>
+
+  <rect class="panel-purple shadow" x="993" y="459" width="268" height="166" rx="10"/>
+  <text class="head" x="1127" y="489" text-anchor="middle">(b) Haptic-interface channel</text>
+  <text class="math-small" x="1127" y="526" text-anchor="middle">K<tspan baseline-shift="sub" font-size="12">f</tspan>, d</text>
+  <rect x="1042" y="548" width="170" height="46" rx="8" fill="#f5efff" stroke="#7864b8" stroke-width="1.8"/>
+  <text class="small" x="1127" y="576" text-anchor="middle">Omega.7 haptic rendering</text>
+  <text class="small" x="1127" y="595" text-anchor="middle">interface settings</text>
+  <g stroke="#6d3fb0" stroke-width="4" fill="none" transform="translate(1019 514)">
+    <circle cx="44" cy="30" r="22" fill="#f5efff"/><circle cx="44" cy="30" r="9"/>
+    <path d="M44 52 L31 91 h44 L54 52"/><path d="M24 91 h62"/>
+  </g>
+
+  <rect class="panel-green shadow" x="1293" y="459" width="238" height="166" rx="10"/>
+  <text class="head" x="1412" y="489" text-anchor="middle">(c) Gripper execution channel</text>
+  <text class="math-small" x="1412" y="526" text-anchor="middle">v<tspan baseline-shift="sub" font-size="12">g</tspan>, F<tspan baseline-shift="sub" font-size="12">g</tspan></text>
+  <rect x="1335" y="548" width="158" height="46" rx="8" fill="#eef8f0" stroke="#2f8b57" stroke-width="1.8"/>
+  <text class="small" x="1414" y="576" text-anchor="middle">Franka Hand</text>
+  <text class="small" x="1414" y="595" text-anchor="middle">gripper execution</text>
+  <g stroke="#277d4d" stroke-width="5" fill="none" transform="translate(1310 513)">
+    <path d="M53 12 h28 v28 h-28 z" fill="#eef8f0"/><path d="M67 40 v20"/>
+    <path d="M67 61 L39 90 M67 61 L94 90"/><path d="M39 90 L27 72 M94 90 L106 72"/>
+  </g>
+
+  <path class="event" d="M754 336 V583 H472"/>
+  <path class="event" d="M314 614 H472"/>
+  <path class="flow-thin" d="M737 582 H846"/>
+  <path class="event" d="M1006 606 H1030 V625"/>
+  <path class="flow" d="M1467 336 V390 H827 V449"/>
+  <path class="flow" d="M1467 390 H1127 V449"/>
+  <path class="flow" d="M1467 336 V449"/>
+  <path class="flow-thin" d="M926 526 V459"/>
+
+  <rect class="dashbox" x="1124" y="633" width="352" height="66" rx="12"/>
+  <circle cx="1155" cy="665" r="17" fill="#0b63c7"/>
+  <text class="section" x="1155" y="674" text-anchor="middle" font-size="22">i</text>
+  <text class="small" x="1184" y="657">Asynchronous perception-control separation;</text>
+  <text class="small" x="1184" y="681">parameters update only at the strategy lock.</text>
+
+  <!-- High-frequency teleoperation loop -->
+  <rect class="panel shadow" x="28" y="750" width="1438" height="324" rx="8"/>
+  <rect class="label-blue" x="28" y="750" width="356" height="46" rx="8"/>
+  <text class="section" x="206" y="781" text-anchor="middle">Teleoperation supervisory loop</text>
+  <text class="freq" x="414" y="782">nominal 200 Hz</text>
+
+  <rect class="panel-soft shadow" x="62" y="832" width="132" height="132" rx="12"/>
+  <circle cx="128" cy="876" r="27" fill="#ffffff" stroke="#0f3b78" stroke-width="4"/>
+  <path d="M79 950 c11-37 87-37 98 0" fill="none" stroke="#0f3b78" stroke-width="4"/>
+  <text class="head" x="128" y="998" text-anchor="middle">Operator</text>
+
+  <rect class="panel-purple shadow" x="244" y="812" width="214" height="172" rx="12"/>
+  <g transform="translate(282 842)" stroke="#5d46a0" stroke-width="4" fill="#dcd3ff">
+    <ellipse cx="82" cy="32" rx="36" ry="29"/>
+    <path d="M82 58 C64 82 58 107 43 121" fill="none"/>
+    <path d="M83 58 C102 78 120 95 148 108" fill="none"/>
+    <circle cx="152" cy="110" r="12"/>
+    <path d="M37 126 h102" stroke="#5d46a0"/>
+  </g>
+  <text class="head" x="351" y="934" text-anchor="middle">Omega.7</text>
+  <text class="small" x="351" y="960" text-anchor="middle">force-feedback master</text>
+
+  <rect class="panel-soft shadow" x="676" y="812" width="214" height="172" rx="12"/>
+  <rect x="717" y="846" width="102" height="67" fill="#ffffff" stroke="#1f2937" stroke-width="6"/>
+  <rect x="753" y="918" width="32" height="20" fill="#1f2937"/>
+  <line x1="721" y1="946" x2="815" y2="946" stroke="#1f2937" stroke-width="6"/>
+  <path d="M735 885 L759 864 L790 889 L813 856" fill="none" stroke="#0b63c7" stroke-width="3"/>
+  <circle cx="735" cy="885" r="4" fill="#0b63c7"/><circle cx="759" cy="864" r="4" fill="#0b63c7"/><circle cx="790" cy="889" r="4" fill="#0b63c7"/><circle cx="813" cy="856" r="4" fill="#0b63c7"/>
+  <text class="head" x="783" y="934" text-anchor="middle">Panda supervisory</text>
+  <text class="small" x="783" y="960" text-anchor="middle">command interface</text>
+
+  <rect class="panel-soft shadow" x="986" y="812" width="244" height="172" rx="12"/>
+  <g transform="translate(1018 836)" stroke="#334155" stroke-width="4" fill="url(#robotArm)">
+    <circle cx="28" cy="82" r="20"/><circle cx="73" cy="46" r="18"/><circle cx="121" cy="68" r="18"/>
+    <path d="M43 72 L61 55 M89 52 L106 62" stroke-width="10" stroke-linecap="round"/>
+    <path d="M132 70 L170 87" stroke-width="10" stroke-linecap="round"/>
+    <circle cx="174" cy="89" r="14"/>
+    <path d="M188 84 h39" stroke="#0f172a" stroke-width="5"/>
+    <path d="M228 73 v32 M240 73 v32 M252 73 v32" stroke="#0f172a" stroke-width="5" stroke-linecap="round"/>
+  </g>
+  <text class="head" x="1108" y="934" text-anchor="middle">Franka Panda</text>
+  <text class="small" x="1108" y="960" text-anchor="middle">+ Franka Hand</text>
+
+  <rect class="panel-soft shadow" x="1300" y="832" width="132" height="132" rx="12"/>
+  <path d="M1328 930 h82 l-14 19 h-82 z" fill="#e5e7eb" stroke="#1f2937" stroke-width="3"/>
+  <rect x="1362" y="881" width="33" height="49" fill="#60a5fa" stroke="#1f2937" stroke-width="3"/>
+  <rect x="1394" y="900" width="24" height="30" fill="#a78bfa" stroke="#1f2937" stroke-width="3"/>
+  <text class="head" x="1366" y="998" text-anchor="middle">Object workspace</text>
+
+  <path class="flow" d="M194 898 H234"/>
+  <path class="flow" d="M458 881 H666"/>
+  <text class="small" x="562" y="852" text-anchor="middle">desired motion increment</text>
+  <text class="small" x="562" y="875" text-anchor="middle">/ operator command</text>
+  <path class="flow" d="M890 881 H976"/>
+  <text class="small" x="936" y="844" text-anchor="middle">supervisory commands</text>
+  <text class="small" x="936" y="867" text-anchor="middle">(200 Hz)</text>
+  <path class="flow" d="M1230 898 H1290"/>
+
+  <path class="haptic" d="M676 924 H468"/>
+  <text class="small" x="566" y="948" text-anchor="middle">haptic cue / force feedback</text>
+  <path class="measure" d="M1190 984 V1042 H782 V994"/>
+  <text class="small" x="976" y="1027" text-anchor="middle">measured interaction forces / states (200 Hz)</text>
+  <path class="haptic" d="M783 984 V1048 H350 V994"/>
+
+  <rect x="72" y="1090" width="330" height="40" rx="7" fill="#f5efff" stroke="#7864b8" stroke-width="1.5"/>
+  <text class="small" x="237" y="1115" text-anchor="middle">operator-facing interface</text>
+  <rect x="496" y="1090" width="330" height="40" rx="7" fill="#edf7ff" stroke="#2d67b7" stroke-width="1.5"/>
+  <text class="small" x="661" y="1115" text-anchor="middle">teleoperation supervisory control</text>
+  <rect x="942" y="1090" width="228" height="40" rx="7" fill="#eef8f0" stroke="#2f8b57" stroke-width="1.5"/>
+  <text class="small" x="1056" y="1115" text-anchor="middle">robot execution</text>
+  <rect x="1294" y="1090" width="188" height="40" rx="7" fill="#f4f4f5" stroke="#71717a" stroke-width="1.5"/>
+  <text class="small" x="1388" y="1115" text-anchor="middle">object workspace</text>
+  <line x1="454" y1="1082" x2="454" y2="1138" stroke="#8b9bb0" stroke-width="1.5" stroke-dasharray="7 9"/>
+  <line x1="858" y1="1082" x2="858" y2="1138" stroke="#8b9bb0" stroke-width="1.5" stroke-dasharray="7 9"/>
+  <line x1="1268" y1="1082" x2="1268" y2="1138" stroke="#8b9bb0" stroke-width="1.5" stroke-dasharray="7 9"/>
+
+  <!-- Safety/fallback sidebar -->
+  <rect class="panel-red shadow" x="1500" y="702" width="254" height="286" rx="14" stroke-dasharray="8 7"/>
+  <rect class="label-red" x="1520" y="724" width="214" height="44" rx="8"/>
+  <text class="section" x="1627" y="754" text-anchor="middle">Safety / Fallback</text>
+  <rect class="panel-red" x="1532" y="790" width="190" height="54" rx="8"/>
+  <text class="head" x="1627" y="814" text-anchor="middle">balanced default</text>
+  <text class="tiny" x="1627" y="836" text-anchor="middle">low confidence / no lock</text>
+  <rect class="panel-red" x="1532" y="858" width="190" height="54" rx="8"/>
+  <text class="head" x="1627" y="891" text-anchor="middle">manual reset</text>
+  <rect class="panel-red" x="1532" y="926" width="190" height="54" rx="8"/>
+  <text class="head" x="1627" y="959" text-anchor="middle">emergency stop</text>
+  <path class="safety" d="M1564 300 H1748 V702"/>
+  <path class="safety" d="M1476 665 H1748 V702"/>
+
+  <!-- Legend -->
+  <g transform="translate(66 1172)">
+    <path class="flow-thin" d="M0 0 H52"/>
+    <text class="small" x="70" y="6">information / command flow</text>
+    <path class="event" d="M330 0 H382"/>
+    <text class="small" x="400" y="6">event / asynchronous update</text>
+    <path class="haptic" d="M720 0 H772"/>
+    <text class="small" x="790" y="6">haptic feedback flow</text>
+    <path class="measure" d="M1020 0 H1072"/>
+    <text class="small" x="1090" y="6">measured-state feedback</text>
+  </g>
+
+  <!-- Caption-sized note inside figure, kept concise for layout clarity -->
+  <text class="tiny" x="899" y="726" text-anchor="middle">The vision process remains outside the 5 ms teleoperation control cycle; the scheduler writes the seven-parameter set only after a valid strategy-lock event.</text>
+</svg>
