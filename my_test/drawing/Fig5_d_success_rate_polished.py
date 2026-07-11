@@ -39,4 +39,6 @@ ax.text(3, rates[2] + 11, "Highest success rate", ha="center", va="bottom",
 ax.text(0.5, -0.18, "Dots indicate success-rate summary for each mode (successful trials / 27).",
         transform=ax.transAxes, ha="center", va="top", fontsize=8.2)
 plt.tight_layout()
-plt.show()
+plt.savefig("Fig5_d_success_rate.png", dpi=300)
+plt.close()
+print("Fig5(d) saved: Fig5_d_success_rate.png")

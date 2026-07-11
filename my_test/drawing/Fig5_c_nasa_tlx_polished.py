@@ -72,4 +72,6 @@ df_nasa["Raw_NASA_TLX"] = df_nasa[["mental_demand","physical_demand","temporal_d
 fig, ax = plt.subplots(figsize=(6.8, 4.8))
 draw_box_scatter(ax, df_nasa, "Raw_NASA_TLX", "Raw NASA-TLX score", "(c)", None, (35, 80))
 plt.tight_layout()
-plt.show()
+plt.savefig("Fig5_c_nasa_tlx.png", dpi=300)
+plt.close()
+print("Fig5(c) saved: Fig5_c_nasa_tlx.png")
