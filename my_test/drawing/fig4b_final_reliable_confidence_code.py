@@ -64,7 +64,8 @@ for i, values in enumerate(data, start=1):
 ax.axhline(overall_mean, linestyle="--", linewidth=1.3, label=f"Overall mean = {overall_mean:.3f}")
 ax.axhline(DETECTION_THRESHOLD, linestyle=":", linewidth=1.4, label=f"Detection threshold = {DETECTION_THRESHOLD:.2f}")
 
-ax.set_title("Detection confidence across object classes under controlled conditions")
+ax.text(0.5, 1.06, "(b)", transform=ax.transAxes, ha="center", va="bottom",
+        fontsize=11, fontweight="bold")
 ax.set_xlabel("Class")
 ax.set_ylabel("Detection confidence")
 ax.set_xticks(positions)

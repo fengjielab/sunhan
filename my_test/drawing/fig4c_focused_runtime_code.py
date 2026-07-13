@@ -57,7 +57,8 @@ ax.text(0.98, 0.95, "10 Hz reference: 100 ms/frame\n(all class means are below 5
         transform=ax.transAxes, ha="right", va="top", fontsize=8.5,
         bbox=dict(boxstyle="round,pad=0.35", facecolor="white", edgecolor="0.6", linewidth=0.8))
 
-ax.set_title("Per-frame visual processing time across object classes")
+ax.text(0.5, 1.06, "(c)", transform=ax.transAxes, ha="center", va="bottom",
+        fontsize=11, fontweight="bold")
 ax.set_xlabel("Class")
 ax.set_ylabel("Processing time (ms)")
 ax.set_xticks(positions)

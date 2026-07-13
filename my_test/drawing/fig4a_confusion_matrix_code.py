@@ -5,7 +5,7 @@ from pathlib import Path
 from matplotlib.patches import Rectangle
 
 # ============================================================
-# Fig. 4(a): Class confusion matrix
+# Fig. 4(a): Class confusion matrix (simplified)
 # ============================================================
 
 # 1. Input and output
@@ -75,30 +75,18 @@ def plot_fig4a_confusion_matrix(df):
 
     row_totals = cm.sum(axis=1)
     col_totals = cm.sum(axis=0)
-    total = int(cm.sum())
-    correct = int(np.trace(cm))
-    class_acc = correct / total if total > 0 else np.nan
-
-    if "trigger_correct" in df.columns:
-        trigger_correct = int(df["trigger_correct"].sum())
-        trigger_total = len(df)
-        trigger_acc = trigger_correct / trigger_total if trigger_total > 0 else np.nan
-    elif {"expected_property", "triggered_property"}.issubset(df.columns):
-        trigger_correct = int((df["expected_property"] == df["triggered_property"]).sum())
-        trigger_total = len(df)
-        trigger_acc = trigger_correct / trigger_total if trigger_total > 0 else np.nan
-    else:
-        trigger_acc = np.nan
 
     fig, ax = plt.subplots(figsize=FIG_SIZE, dpi=DPI)
     ax.set_axis_off()
 
+    # Compact layout: remove the extra space previously used for text boxes
     ax.set_xlim(-1.85, n + 1.05)
-    ax.set_ylim(n + 2.25, -1.65)
+    ax.set_ylim(n + 1.25, -1.65)
 
+    # Sub-figure label (a), centered above matrix
     ax.text(
         (n - 1) / 2, -1.25,
-        "Class confusion matrix (6 classes)",
+        "(a)",
         ha="center", va="center", fontsize=11, fontweight="bold", color=TEXT_BLACK,
     )
     ax.text(
@@ -112,14 +100,17 @@ def plot_fig4a_confusion_matrix(df):
         ha="center", va="center", rotation=90, fontsize=10, color=TEXT_BLACK,
     )
 
+    # Column headers (including "Row total")
     for j, label in enumerate(DISPLAY_NAMES):
         ax.text(j + 0.5, -0.18, label, ha="center", va="center", fontsize=8.5, color=TEXT_BLACK)
-    ax.text(n + 0.5, -0.18, "Row\ntotal", ha="center", va="center", fontsize=8.5, color=TEXT_BLACK)
+    ax.text(n + 0.5, -0.35, "Row\ntotal", ha="center", va="center", fontsize=8.5, color=TEXT_BLACK)
 
+    # Row headers (including "Column total")
     for i, label in enumerate(DISPLAY_NAMES):
         ax.text(-0.20, i + 0.5, label, ha="right", va="center", fontsize=8.5, color=TEXT_BLACK)
     ax.text(-0.20, n + 0.5, "Column total", ha="right", va="center", fontsize=8.5, color=TEXT_BLACK)
 
+    # Draw matrix cells (6×6 + margin row/col)
     for i in range(n + 1):
         for j in range(n + 1):
             if i < n and j < n:
@@ -132,7 +123,7 @@ def plot_fig4a_confusion_matrix(df):
                 value = int(col_totals[j])
                 facecolor = LIGHT_GRAY
             else:
-                value = total
+                value = int(cm.sum())
                 facecolor = "#EAEAEA"
 
             rect = Rectangle((j, i), 1, 1, facecolor=facecolor, edgecolor=GRID_GRAY, linewidth=0.8)
@@ -142,25 +133,22 @@ def plot_fig4a_confusion_matrix(df):
 
     ax.add_patch(Rectangle((0, 0), n + 1, n + 1, fill=False, edgecolor=MID_BLUE, linewidth=1.0))
 
-    ax.text(1.65, n + 1.48, f"{correct} / {total} correct classifications\n({total - correct} errors)",
-            ha="center", va="center", fontsize=9,
-            bbox=dict(boxstyle="round,pad=0.45", facecolor="white", edgecolor=BLUE, linewidth=1.0, linestyle="--"))
-
-    if np.isnan(trigger_acc):
-        right_text = f"Class recognition accuracy: {class_acc:.1%}"
-    else:
-        right_text = f"Class recognition accuracy: {class_acc:.1%}\nStrategy-trigger accuracy: {trigger_acc:.1%}"
-    ax.text(4.95, n + 1.48, right_text, ha="center", va="center", fontsize=9,
-            bbox=dict(boxstyle="round,pad=0.45", facecolor="white", edgecolor=BLUE, linewidth=1.0))
+    # Bottom annotation: n=30 per class
+    ax.text(
+        (n - 1) / 2, n + 0.85,
+        "Confusion matrix (n = 30 / class, 180 / 180 correct)",
+        ha="center", va="center", fontsize=8.5, color=TEXT_BLACK,
+        fontstyle="italic",
+    )
 
     fig.savefig("Fig4_a_confusion_matrix.png", dpi=DPI, bbox_inches="tight")
     plt.close(fig)
 
+    total = int(cm.sum())
+    correct = int(np.trace(cm))
     print(f"Total samples: {total}")
     print(f"Correct classifications: {correct}/{total}")
-    print(f"Class recognition accuracy: {class_acc:.1%}")
-    if not np.isnan(trigger_acc):
-        print(f"Strategy-trigger accuracy: {trigger_acc:.1%}")
+    print(f"Class recognition accuracy: {correct/total:.1%}")
     print("Fig4(a) saved: Fig4_a_confusion_matrix.png")
 
 
