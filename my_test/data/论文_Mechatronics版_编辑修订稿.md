@@ -1,4 +1,6 @@
-# 面向集成式触觉遥操作机电系统的视觉语义跨域参数协同合成方法
+# 面向异质对象触觉遥操作的视觉语义驱动接触前多通道机电参数调度
+
+*Pre-contact vision-semantic scheduling of coupled mechatronic parameters for haptic teleoperation of heterogeneous objects*
 
 ## 结构化摘要
 
@@ -6,13 +8,13 @@
 针对异质对象在易损性、刚度和抓取需求方面差异较大，固定遥操作参数难以统一调节的问题，本文提出一种视觉语义多通道参数调度框架。该框架将对象级语义与底层机电接口参数连接起来，在接触前建立“感知—操作策略—控制参数”的三级映射关系。
 
 **设计/方法**  
-本文构建的机电系统集成了异步 RGB-D 感知线程、名义 200 Hz 主从笛卡尔阻抗遥操作控制环、触觉接口参数预设模块以及夹爪执行模块，实验平台由 Omega.7 主端、Franka Panda 机械臂和 Franka Hand 夹爪组成。在接触前，RGB-D 相机识别目标对象，并将其映射为三类面向操作的策略：易损优先、折中和稳定优先。随后，调度器通过一个离散且可解释的参数表，协同配置从端平移/转动刚度、阻尼比、主端触觉接口增益、力接口死区、夹爪闭合速度和抓取力。三名操作者围绕六种对象完成了 135 次抓取试验，实验包含五种模式：模式 A（固定参数）、模式 B（操作者选择完整参数策略）、模式 C（视觉语义完整多通道调度）、模式 D（仅视觉提示）以及模式 E（视觉语义仅阻抗调度）。
+本文构建的机电系统集成了异步视觉感知、名义 200 Hz 监督式遥操作更新、从端笛卡尔阻抗、主端触觉接口和夹爪执行模块，实验平台由 Omega.7 主端、Franka Panda 机械臂和 Franka Hand 夹爪组成。相机彩色图像经独立视觉进程识别目标对象，并在目标接触前将其映射为易损优先、折中和稳定优先三类面向操作的策略。随后，调度器通过离散且可解释的参数表，协同配置从端平移/转动刚度、阻尼比、主端触觉接口增益、力接口死区、夹爪闭合速度和抓取力。三名操作者围绕六种对象完成了 135 次抓取试验，实验包含模式 A（固定参数）、模式 B（操作者选择完整参数策略）、模式 C（视觉语义完整多通道调度）、模式 D（仅视觉提示）以及模式 E（视觉语义仅阻抗调度）。
 
 **结果**  
-在当前机电平台和操作者范围内，模式 C（视觉语义完整多通道调度）取得了最短的完成时间中位数 19.57 s [18.41, 20.05] IQR、最高的成功率描述性指标 26/27（96.3%）以及最低的 Raw NASA-TLX，中位数为 48.67 [47.67, 51.83] IQR。与模式 E（视觉语义仅阻抗调度）相比，按改善量 $\Delta T=T_E-T_C$ 定义，模式 C 的平均完成时间改善 1.79 s，Bootstrap 95% CI 为 [1.10, 2.51] s，相对降低约 8.5%；三名操作者和六种测试对象均表现出相同方向的趋势。主端轨迹长度缩短量较小，为 0.024 m，95% CI 为 [−0.014, 0.059] m，提示收益主要来自操作停顿和修正减少，而不是几何路径显著缩短。Raw NASA-TLX 改善 4.87 分，Bootstrap 95% CI 为 [4.39, 5.35]。
+在当前机电平台和操作者范围内，模式 C（视觉语义完整多通道调度）取得了最短的完成时间中位数 19.57 s [18.41, 20.05] IQR、最高的成功率描述性指标 26/27（96.3%）以及最低的 Raw NASA-TLX，中位数为 48.67 [47.67, 51.83] IQR。与模式 E（视觉语义仅阻抗调度）相比，按改善量 $\Delta T=T_E-T_C$ 定义，模式 C 的平均完成时间改善 1.79 s，Bootstrap 95% CI 为 [1.10, 2.51] s，相对降低约 8.5%；三名操作者和六种测试对象均表现出相同方向的趋势。主端轨迹长度缩短量较小，为 0.024 m，95% CI 为 [−0.014, 0.059] m；停顿次数也呈有利的描述性方向。由于尚无阶段级标注或组件级消融，这些过程指标不能确定完成时间改善的具体机制。Raw NASA-TLX 改善 4.87 分，Bootstrap 95% CI 为 [4.39, 5.35]。
 
 **创新性**  
-本文的创新点在于提出一种面向异质对象触觉遥操作的跨域机电参数协同合成框架。该框架在时间上将低频语义感知与名义高频遥操作控制环解耦，同时在功能上将对象语义与从端阻抗、面向操作者的触觉接口设置和夹爪执行参数在接触前耦合起来。所提出的三级映射与策略锁定机制提供了一种可部署的接触前参数初始化范式，可在系统层面区分视觉提示、操作者选择、仅阻抗调度和完整多通道协同调度。
+本文的创新点在于提出一种面向异质对象触觉遥操作的跨通道机电参数协同调度框架。该框架在时间上将低频语义感知与名义高频遥操作控制环解耦，同时在功能上将对象语义与从端阻抗、面向操作者的触觉接口设置和夹爪执行参数在接触前耦合起来。所提出的三级映射与策略锁定机制提供了一种可部署的接触前参数初始化范式，可在系统层面区分视觉提示、操作者选择、仅阻抗调度和完整多通道协同调度。
 
 **关键词：** 机电系统集成；触觉遥操作；对象语义；笛卡尔阻抗控制；感知—控制集成；人在环实验
 
@@ -29,12 +31,12 @@
 已有关于视觉阻抗、共享控制和触觉引导的研究表明，视觉信息、任务状态或操作者意图可以提升远程操作效率和交互体验 [10–13]。然而，在异质对象触觉遥操作中，对象语义不仅影响从端机械臂柔顺性，也影响操作者所感知的触觉反馈强度、力接口死区、夹爪闭合速度和抓取力。若系统只显示视觉信息而不改变动力学和执行参数，操作者仍需要手动补偿不合适的系统手感；若系统只调节阻抗而保持默认触觉接口和夹爪参数，抓取和转运阶段仍可能受到执行通道和接口通道的限制。因此，仍需要一种能够在接触前将对象语义同时转化为从端阻抗、主端触觉接口和夹爪执行参数的系统级调度方法。
 基于这一问题，本文从机电系统集成角度提出一种视觉语义驱动的多通道参数调度框架。系统将目标对象映射为三类面向操作的策略，并通过离散、可解释的参数表，在接触前协同配置从端阻抗、主端触觉接口参数和夹爪执行参数。本文进一步通过模式 A（固定参数）、模式 B（操作者选择完整参数策略）、模式 C（视觉语义完整多通道调度）、模式 D（仅视觉提示）和模式 E（视觉语义仅阻抗调度）五种实验模式，检验完整多通道协同是否优于各类基线。本文贡献如下：
 
-1. **机电系统架构集成。** RGB-D 感知、名义 200 Hz 监督式控制环、笛卡尔阻抗、触觉接口预设和夹爪执行被统一到一个异步感知—控制解耦的机电架构中，并明确给出七个子系统层及其协同关系。
+1. **机电系统架构集成。** 视觉感知、名义 200 Hz 监督式遥操作更新、笛卡尔阻抗、触觉接口预设和夹爪执行被统一到一个异步感知—控制架构中，并明确给出七个子系统层及其协同关系。
 2. **视觉语义—操作策略—控制参数三级映射。** 对象类别被转换为易损优先、折中和稳定优先三类策略，使视觉信息能够作为接触前控制先验进入机电遥操作系统。
-3. **跨域机电参数协同合成。** 除调节从端平移/转动刚度和阻尼比之外，该方法还同时预设主端触觉接口增益、力接口死区、夹爪闭合速度和抓取力，从而把感知、操作者接口和机械执行耦合成一组接触前参数。
+3. **跨通道机电参数协同调度。** 除调节从端平移/转动刚度和阻尼比之外，该方法还同时预设主端触觉接口增益、力接口死区、夹爪闭合速度和抓取力，从而把感知、操作者接口和机械执行耦合成一组接触前参数。
 4. **五模式人在环消融验证。** 在真实 Omega.7–Panda 平台上设置模式 A（固定参数）、模式 B（操作者选择完整参数策略）、模式 C（视觉语义完整多通道调度）、模式 D（仅视觉提示）和模式 E（视觉语义仅阻抗调度），用于区分视觉提示、操作者参数选择、仅阻抗调节和完整多通道机电协同的作用。
 
-不同于依赖在线接触后自适应或连续视觉伺服的研究，本文的新颖性在于提出一种跨域接触前协同合成范式：对象语义被转换为一组有界机电参数，同时低频感知过程在时间上与名义遥操作控制环解耦。该方法强调在接触前对从端阻抗、主端触觉接口和夹爪执行参数进行系统级初始化，而不是依赖接触后的连续参数更新。进一步的接触力估计、触觉透明性分析和闭环力反馈优化将作为后续研究展开。因此，本文的核心定位是：面向异质对象遥操作的一种低计算量、可解释、可部署的机电系统参数初始化方法。
+不同于依赖在线接触后自适应或连续视觉伺服的研究，本文的新颖性在于提出一种跨通道接触前协同调度范式：对象语义被转换为一组有界机电参数，同时低频感知过程在时间上与名义遥操作控制环解耦。该方法强调在接触前对从端阻抗、主端触觉接口和夹爪执行参数进行系统级初始化，而不是依赖接触后的连续参数更新。进一步的接触力估计、触觉透明性分析和闭环力反馈优化将作为后续研究展开。因此，本文的核心定位是：面向异质对象遥操作的一种低计算量、可解释、可部署的机电系统参数初始化方法。
 
 ---
 
@@ -42,29 +44,31 @@
 
 ### 2.1 机电系统架构
 
-触觉遥操作机电平台由七个协同工作的子系统层组成。系统信息流和总体架构如图 1 和图 2 所示。
+触觉遥操作机电平台由七个协同工作的子系统层组成。系统信息流和总体架构如 Fig. 1 和 Fig. 2 所示。
 
 ![Fig. 1](../drawing/图一.png)
 
-**Fig. 1.** Experimental platform for vision-semantic multi-channel parameter scheduling in heterogeneous-object haptic teleoperation. The master side consists of an Omega.7 haptic device operated by the operator, while the slave side comprises a Franka Emika Panda manipulator equipped with a Franka Hand gripper. An Intel RealSense D435i RGB-D camera observes the object workspace, and the control computer performs visual perception, supervisory teleoperation control, parameter scheduling, robot command generation, and data logging.
+**Fig. 1.** Experimental platform for vision-semantic multi-channel parameter scheduling in heterogeneous-object haptic teleoperation. The master side consists of an Omega.7 haptic device, while the slave side comprises a Franka Emika Panda manipulator equipped with a Franka Hand gripper. An Intel RealSense D435i camera observes the object workspace, and the control computer performs visual perception, supervisory teleoperation control, parameter scheduling, robot command generation, and data logging. The image modality used in the formal experiment will be stated after the archived configuration is verified.
 
-![Fig. 2](../drawing/图二.png)
+![Fig. 2a](../drawing/图二.png)
 
-**Fig. 2.** System architecture and timing of the proposed pre-contact vision-semantic multi-channel parameter scheduling framework. (a) Information flow among master-side input, incremental motion mapping, asynchronous RGB-D perception, strategy locking, parameter scheduling, Cartesian impedance control, haptic command generation, gripper execution, and safety supervision. The perception process runs asynchronously at approximately 20 Hz, while the upper-level teleoperation loop operates at a nominal 200 Hz. (b) Timing diagram showing the nominal 5-ms teleoperation update interval, average 48.19-ms visual processing time, first valid detection, strategy locking, and the approach, grasp, transfer, and release phases. The parameter set is initialized before contact and remains fixed during each task episode. The timing values are nominal configurations rather than measured hard-real-time guarantees.
+![Fig. 2b](../drawing/图二b.png)
 
-**机械执行层：** Franka Panda 7 自由度机械臂与 Franka Hand 夹爪构成执行侧。Panda 通过笛卡尔阻抗控制响应期望位姿和阻抗参数；Franka Hand 按照指定速度和抓取力执行开合动作。
+**Fig. 2.** Pre-contact vision-semantic parameter scheduling and asynchronous execution logic. (a) Information flow among color-image perception, three-level semantic mapping, parameter scheduling, slave-side impedance, the master-side haptic interface, gripper execution, and safety fallback. (b) Perception results are transferred through bounded queues and read non-blockingly by the supervisory teleoperation loop. The first valid class triggers a one-time strategy selection, after which subsequent detections do not cause intra-trial strategy switching. Preset initialization parameters are retained when no valid class is available. The diagram describes software architecture and event order and does not imply hard-real-time operation. The two panels will be combined into one vector figure after the formal experiment configuration is confirmed.
+
+**机械执行层：** Franka Panda 7 自由度机械臂与 Franka Hand 夹爪构成执行侧 [14]。Panda 通过笛卡尔阻抗控制响应期望位姿和阻抗参数；Franka Hand 按照指定速度和抓取力执行开合动作。
 
 **人机接口层：** Omega.7 7 自由度力反馈主端设备采集操作者位移和夹爪输入，并通过基础触觉接口渲染从端交互力。操作者通过夹爪开合输入控制夹爪闭合，系统根据当前策略参数表设置夹爪速度和力上限。
 
-**感知层：** Intel RealSense D435i RGB-D 相机以约 20 Hz 采集 RGB-D 图像。YOLO11n 目标检测模型运行在独立子进程中，与 Python GIL 解耦，平均单帧处理时间为 48.19 ms。检测结果通过 `multiprocessing.Queue(maxsize=2)` 传回主控制线程，共享状态由 `threading.Lock` 保护。
+**感知层：** Intel RealSense D435i 提供彩色图像输入，YOLO11n 目标检测模型运行在独立子进程中。受控视觉验证中的平均单帧墙钟处理时间为 48.19 ms。图像队列和结果队列均为有界队列，检测结果通过进程间通信传回监督式遥操作线程。相机输入频率及正式实验软件版本仍需由实验配置或日志最终确认，因此本文不把处理时间等同于图像采集频率。
 
 **控制层：** 名义 200 Hz 主控制循环作为监督式遥操作控制环运行，流程为：读取 Omega.7 位姿增量 → 进行位置缩放和坐标映射 → 更新从端期望位姿 → 更新 Franka 笛卡尔阻抗命令 → 读取从端外力估计 → 渲染主端基础触觉反馈。名义控制周期为 5 ms，视觉推理不直接阻塞该循环。底层关节控制、内部安全功能和执行器级伺服由 Franka 控制器完成；上层主循环负责遥操作指令、阻抗参数、夹爪命令和触觉接口信息的同步更新。
 
-**视觉线程：** 视觉子进程异步接收 RGB 帧，`mp.Queue(maxsize=1)` 仅保留最新帧以避免延迟积累；随后执行目标检测并返回类别标签和置信度。视觉线程与控制线程完全解耦；48.19 ms 的平均单帧视觉处理时间不会直接占用名义 200 Hz 主控制线程的时间片。
+**视觉执行路径：** 图像采集路径将最新彩色帧送入 `mp.Queue(maxsize=1)`，YOLO 子进程执行目标检测并通过 `mp.Queue(maxsize=2)` 返回类别和置信度。监督式遥操作线程以非阻塞方式读取结果，因此视觉推理不作为同步步骤进入每次遥操作更新；但该软件分离不等同于 CPU、USB 或操作系统调度层面的硬实时隔离。
 
-**参数调度层：** 当视觉结果进入调度层后，系统根据对象类别到策略的映射关系，从预设参数表中查找七维参数集 \\((K_t,K_r,\zeta,K_f,d,v_g,F_g)\\)，并通过原子更新写入控制环共享变量。参数更新只在首次有效检测触发的策略锁定事件发生时执行；此后，整个任务 episode 内参数保持不变。
+**参数调度层：** 当有效视觉结果进入调度层后，系统根据对象类别到策略的映射关系调用七维参数集 \\((K_t,K_r,\zeta,K_f,d,v_g,F_g)\\)。首次有效检测触发一次性策略选择；此后，后续视觉结果不再引起试验内策略切换。本文不把该软件过程表述为硬实时原子更新，参数生效顺序以正式实验软件版本为准。
 
-**安全层：** 当视觉未锁定或检测结果不可映射时，系统采用默认折中策略参数作为安全回退。任务内策略锁定可避免视觉抖动导致频繁参数跳变。机械臂内置碰撞检测、程序退出零力命令、统一初始位姿和人工急停共同构成基础安全措施。
+**安全层：** 当视觉尚未完成策略选择或检测结果不可映射时，系统保留软件初始化参数作为回退。试验内策略锁定可避免视觉抖动导致频繁策略跳变。机械臂内置碰撞检测、程序退出零力命令、统一初始位姿和人工急停共同构成基础安全措施。
 
 ### 2.2 实时实现与同步
 
@@ -76,16 +80,16 @@
 |:---|---:|---:|---|:---:|
 | 主端输入 | 200 Hz | Omega.7 位姿与按钮 | \\(\Delta\mathbf{x}_m\\) | 否 |
 | 从端控制 | 200 Hz | \\(\mathbf{x}_d, \mathbf{K}, \mathbf{D}\\) | 发送给 Panda 控制器的期望位姿/阻抗命令 | 否 |
-| 视觉检测（YOLO11n） | 约 20 Hz（平均 48.19 ms/帧） | RGB-D 图像 | 对象类别、置信度 | 否（子进程） |
+| 视觉检测（YOLO11n） | 异步；受控验证平均 48.19 ms/帧 | 彩色图像 | 对象类别、置信度 | 否（子进程） |
 | 策略调度 | 事件触发（首次有效检测） | 类别、置信度 | \\(\Theta(c)\\) 参数集 | 否 |
 | 触觉渲染 | 200 Hz | \\(\mathbf{F}_{ext}, K_f, d\\) | Omega.7 力向量 | 否 |
 | 夹爪命令 | 事件触发（夹爪按钮） | 夹爪输入、\\(v_g,F_g\\) | Franka Hand 抓取/目标命令 | 否 |
 
-视觉检测和策略调度均为事件驱动，不阻塞主控制环。视觉子进程作为独立 Python 进程运行，通过 `multiprocessing.Queue` 生产者—消费者模式传递检测结果。帧队列长度限制为 1，仅保留最新帧；结果队列长度限制为 2。在每个 5 ms 周期开始时，主控制线程非阻塞读取结果队列；如果队列为空，则保留先前锁定的策略；如果视觉从未锁定，则保持默认折中参数。策略锁定发生在接近阶段开始前：一旦主控制线程检测到置信度 ≥ 0.25 的有效类别，就立即锁定策略，并原子设置全部七个参数；随后，整个任务 episode 内参数不再改变。
+视觉检测和策略选择采用异步事件路径。视觉子进程通过有界 `multiprocessing.Queue` 传递检测结果：帧队列长度为 1，仅保留最新帧；结果队列长度为 2。监督式遥操作线程在循环迭代中非阻塞读取结果；队列为空时保留已选择策略，尚无有效结果时维持初始化参数。首次出现置信度 ≥ 0.25 的可映射类别后，系统选择对应策略，后续检测不再触发试验内策略切换。实验流程以在目标接触前完成策略选择为目标，但本文不把该事件表述为经硬件强制的实时门限。
 
-该实现采用名义 200 Hz 主从控制环和异步 RGB-D 感知进程。视觉推理在独立进程中、控制环关键路径之外执行，并通过有界队列与控制环通信。控制环以非阻塞方式读取检测结果，在没有新结果时保留先前锁定策略。因此，视觉模块不需要满足与主从控制更新相同的时序约束，视觉推理也不位于遥操作控制环的关键路径上。该设计降低了低频感知模块与高频遥操作环之间的直接时序耦合，使视觉推理延迟主要影响策略锁定时刻，而不影响每个控制周期内的遥操作指令更新。
+该实现采用名义 200 Hz 监督式遥操作更新和异步视觉感知进程。视觉推理在独立进程中、控制环关键路径之外执行，并通过有界队列与控制环通信。控制环以非阻塞方式读取检测结果，在没有新结果时保留先前锁定策略。因此，视觉模块不需要满足与主从控制更新相同的时序约束，视觉推理也不位于遥操作控制环的关键路径上。该设计降低了低频感知模块与高频遥操作环之间的直接时序耦合，使视觉推理延迟主要影响策略锁定时刻，而不影响每个控制周期内的遥操作指令更新。
 
-如 Fig. 2(b) 所示，异步感知—控制时序包含名义 5 ms 遥操作控制周期、平均 48.19 ms 单帧视觉处理时间、首次有效检测事件、策略锁定以及接近、抓取、转运和释放阶段。策略锁定设计为发生在接近阶段之前；因此，调度参数用作接触前初始化，而不是接触瞬间的反应式切换。如果检测结果延迟、缺失或低于置信度阈值，控制器保持折中默认策略，直到有效锁定事件发生。
+如 Fig. 2(b) 所示，视觉结果通过有界队列异步传递，首次有效检测触发一次性策略选择，后续接近、抓取、转运和释放阶段不再因新检测结果切换策略。该设计目标是使参数选择在对象接触前完成，而不是在接触后反应式切换。若有效检测延迟或缺失，系统维持初始化参数。名义更新周期和视觉处理时间分别描述软件目标与受控测试结果，不构成硬实时保证。
 
 ### 2.3 主从增量位置映射
 
@@ -121,24 +125,21 @@
 
 ### 2.5 触觉接口参数实现
 
-Omega.7 主端设备具备力反馈渲染能力。从端外力估计 \\(\mathbf{F}_{\mathrm{ext}}\\) 由 Franka 机器人内置关节力矩估计器提供。本文将主端触觉反馈作为操作者接口通道的一部分，并根据当前策略设置触觉增益 \\(K_f\\) 和力接口死区 \\(d\\)。主端基础触觉反馈按照如下接口级公式渲染：
+Omega.7 主端设备具备三维力反馈渲染能力。从端外力估计 \\(\mathbf{F}_{\mathrm{ext}}\\) 由 Franka 机器人内部状态估计提供。按当前可核的软件版本，策略设置触觉增益 \\(K_f\\) 和逐轴死区 \\(d\\)，第 \\(i\\) 个方向的基础触觉命令写为：
 
 \[
-\mathbf{u}_h =
-\begin{cases}
-\mathbf{0}, & \|\mathbf{F}_{\mathrm{ext}}\| \le d,\\[4pt]
-K_f\bigl(\|\mathbf{F}_{\mathrm{ext}}\|-d\bigr)\,
-\dfrac{\mathbf{F}_{\mathrm{ext}}}{\|\mathbf{F}_{\mathrm{ext}}\|}, & \|\mathbf{F}_{\mathrm{ext}}\| > d.
-\end{cases}
+u_{h,i}=\operatorname{sgn}\!\left(K_fF_{\mathrm{ext},i}\right)
+\max\!\left(\left|K_fF_{\mathrm{ext},i}\right|-d,0\right),
+\quad i\in\{x,y,z\}.
 \]
 
-其中，\\(\mathbf{u}_h\\) 是发送给 Omega.7 主端设备的三维力反馈向量。死区阈值 \\(d\\) 用于削弱小幅外力估计波动和触觉接口抖动，增益 \\(K_f\\) 用于调整操作者感知到的接触线索强度。二者在本文中作为接触前策略表中的操作者端接口参数，与从端阻抗和夹爪执行参数共同构成多通道机电参数组。
+软件还可在 \\(z\\) 方向叠加一个由主端夹爪输入生成并限幅的夹爪状态提示 \\(u_g\\)，即 \\(u_{h,z}\leftarrow u_{h,z}+u_g\\)。死区用于抑制小幅估计波动，增益用于调节接触线索强度。\\(K_f\\) 和 \\(d\\) 与从端阻抗及夹爪执行参数共同构成接触前多通道参数组。该公式及附加提示在投稿前需与正式实验软件版本和运行配置再次核对。
 
-本文关注对象语义驱动的接触前参数初始化，因此触觉接口参数在每个任务 episode 内随策略锁定后保持不变。接触后力反馈优化、触觉透明性分析、外力估计精度评估以及有/无力反馈对比将在后续研究中进一步展开。
+本文关注对象语义驱动的接触前参数调度，而不把触觉通道视为已经完成透明性或闭环力控制验证。接触后力反馈优化、触觉透明性分析、外力估计精度评估以及有/无力反馈对比属于后续研究。
 
 ### 2.6 视觉语义多通道参数调度
 
-视觉检测输出目标类别后，系统将类别映射为三类 **面向操作的策略**，而不是严格的材料类别：易损优先策略、折中策略和稳定优先策略。苹果和香蕉映射为易损优先策略；纸杯和瓶子映射为折中策略；鼠标和剪刀映射为稳定优先策略。该映射基于当前实验任务中的操作风险和抓取需求，而不是通用材料刚度分类。首次出现置信度 ≥ 0.25 的有效检测后，系统锁定当前任务 episode 的策略。如果没有有效类别或类别不可映射，则保留折中策略默认参数作为安全回退。任务内策略锁定用于防止检测抖动导致频繁切换。
+视觉检测输出目标类别后，系统将类别映射为三类 **面向操作的策略**，而不是严格的材料类别：易损优先策略、折中策略和稳定优先策略。苹果和香蕉映射为易损优先策略；纸杯和瓶子映射为折中策略；鼠标和剪刀映射为稳定优先策略。该映射基于当前实验任务中的操作风险和抓取需求，而不是通用材料刚度分类。首次出现置信度 ≥ 0.25 的可映射类别后，系统选择当前试验的策略，后续检测不再触发策略切换。如果没有有效类别或类别不可映射，则保留软件初始化参数作为回退。任务内策略锁定用于防止检测抖动导致频繁切换。
 
 完整策略定义为：
 
@@ -182,20 +183,20 @@ K_f\bigl(\|\mathbf{F}_{\mathrm{ext}}\|-d\bigr)\,
 
 **算法 1：面向集成机电系统的视觉语义多通道参数调度**
 
-1. 初始化系统，加载折中策略默认参数 \\(\Theta(\text{balanced})\\)，启动 200 Hz 主控制循环和视觉子进程。
-2. 视觉子进程异步读取 RGB-D 图像并执行 YOLO11n 目标检测，不阻塞主循环。
+1. 初始化系统，加载软件初始化参数，启动名义 200 Hz 监督式遥操作循环和视觉子进程。
+2. 视觉子进程异步读取相机图像并执行 YOLO11n 目标检测，不作为同步步骤进入遥操作更新关键路径。
 3. 主控制线程非阻塞读取检测结果队列；如果检测类别属于预定义对象集合且置信度 ≥ 0.25，则将对象类别映射为面向操作的策略 \\(c\\)。
-4. 首次有效检测触发策略锁定事件：调用参数集 \\(\Theta(c)=\{K_t,K_r,\zeta,K_f,d,v_g,F_g\}\\)，并原子更新控制环共享变量。
-5. 锁定后，整个任务 episode 内参数保持不变，避免视觉抖动导致频繁切换。
+4. 首次有效检测触发一次性策略选择：调用参数集 \\(\Theta(c)=\{K_t,K_r,\zeta,K_f,d,v_g,F_g\}\\)；具体参数生效顺序以正式实验软件版本为准。
+5. 选择后，整个试验内不再因后续视觉结果切换策略，避免检测抖动导致频繁切换。
 6. 将 \\(K_t,K_r,\zeta\\) 发送给从端阻抗控制器，将 \\(K_f,d\\) 作为主端基础触觉接口参数，将 \\(v_g,F_g\\) 用于夹爪控制。
-7. 如果检测失败或类别不可映射，则保留折中策略默认参数。
+7. 如果检测失败或类别不可映射，则保留软件初始化参数。
 8. 任务完成后，重置系统、解除策略锁定，并准备下一次试验。
 
 ### 2.9 安全回退与工程约束
 
-当视觉未锁定或检测结果不可映射时，系统使用默认折中策略参数。任务内策略锁定防止视觉抖动导致频繁参数跳变。机械臂内置碰撞检测、夹爪力限制、程序退出零力命令、统一初始位姿和人工急停共同构成基础安全措施。
+当尚无有效视觉策略或检测结果不可映射时，系统保留软件初始化参数。试验内一次性策略选择防止视觉抖动导致频繁参数跳变。机械臂内置碰撞检测、夹爪力限制、程序退出零力命令、统一初始位姿和人工急停共同构成基础安全措施；初始化参数的具体数值须由正式运行配置确认。
 
-**语义误分类与故障安全行为。** 语义识别错误主要影响策略选择，而不是改变参数空间本身。如果对象被误识别为另一个有效类别，系统会从同一预定义参数表中选择一个次优但仍有界的参数集；这可能降低操作效率或对象适配性，例如易损对象被分配为稳定优先策略时，会获得较高刚度、较强接口线索和较快夹爪设置。由于所有候选参数均来自经过硬件约束和预实验筛选的设计空间，且策略在任务 episode 内保持锁定，误分类不会导致任务过程中无界的在线参数变化。对于低置信度或不可映射的检测结果，系统回退到折中策略；同时，机器人碰撞检测、夹爪力限制和操作者急停作为基础安全保护保留。因而，本文方法应理解为一种有界的接触前参数初始化机制，其安全性依赖受限参数表、策略锁定和平台级保护共同实现。
+**语义误分类与故障安全行为。** 语义识别错误主要影响策略选择，而不是改变参数空间本身。如果对象被误识别为另一个有效类别，系统会从同一预定义参数表中选择一个次优但仍有界的参数集；这可能降低操作效率或对象适配性，例如易损对象被分配为稳定优先策略时，会获得较高刚度、较强接口线索和较快夹爪设置。由于所有候选参数均来自经过硬件约束和预实验筛选的设计空间，且策略在试验内不再切换，误分类不会导致任务过程中无界的在线参数变化。对于低置信度或不可映射的检测结果，系统保留初始化参数；同时，机器人碰撞检测、夹爪力限制和操作者急停作为基础安全保护保留。因而，本文方法应理解为一种有界的接触前参数初始化机制，其安全性依赖受限参数表、一次性策略选择和平台级保护共同实现。
 
 ---
 
@@ -207,10 +208,10 @@ K_f\bigl(\|\mathbf{F}_{\mathrm{ext}}\|-d\bigr)\,
 
 - **RQ1：** 模式 C（视觉语义完整多通道调度）是否优于模式 A（固定参数）、模式 B（操作者选择完整参数策略）和模式 D（仅视觉提示）？
 - **RQ2：** 模式 C（视觉语义完整多通道调度）是否优于模式 E（视觉语义仅阻抗调度）？
-- **RQ3：** 异步视觉感知与控制线程集成是否满足任务开始阶段的实时性和基础可靠性需求？
+- **RQ3：** 异步视觉过程是否能够在不将视觉推理置于遥操作更新关键路径的情况下完成任务前策略初始化？
 - **RQ4：** 该方法的收益是否在不同操作者和不同测试对象上表现出一致方向？
 
-相应假设为：与基线模式相比，模式 C（视觉语义完整多通道调度）可以降低完成时间和主端轨迹长度，提高成功率（作为描述性指标），并降低主观工作负荷；与模式 E（视觉语义仅阻抗调度）相比，模式 C 可以减少停顿或操作修正，从而体现完整接触前机电参数策略相对于仅阻抗调节的系统级附加收益。
+相应预期为：与基线模式相比，模式 C（视觉语义完整多通道调度）将缩短完成时间，并在主观工作负荷和描述性成功率方面呈现有利结果；与模式 E（视觉语义仅阻抗调度）相比，模式 C 将表现出系统级完成时间优势。主端轨迹长度和停顿次数用于探索可能的过程差异，不预设其必然显著改变，也不用于单独证明机制。
 
 ### 3.2 操作者与实验对象
 
@@ -261,17 +262,17 @@ K_f\bigl(\|\mathbf{F}_{\mathrm{ext}}\|-d\bigr)\,
 
 ![Fig. 3](../drawing/图三.png)
 
-**Fig. 3.** Experimental workflow, mode definitions, and scope of pre-contact parameter locking. (a) Each trial proceeds from reset and mode-specific strategy input to a pre-contact locking event, followed by approach, grasp, transport, release, and task completion with no further parameter update. (b) Five modes are compared: fixed parameters (A), operator-selected full-parameter strategy (B), vision-semantic full multi-channel scheduling (C), visual cue only without parameter updates (D), and vision-semantic impedance-only scheduling (E). In modes C and E, the first valid visual detection triggers strategy locking. (c) The complete schedule jointly initializes slave-side impedance parameters $K_t$, $K_r$, and $\zeta$; master-side haptic-interface parameters $K_f$ and $d$; and gripper execution parameters $v_g$ and $F_g$, whereas mode E updates only the impedance-related parameters.
+**Fig. 3.** Experimental workflow, mode definitions, and intended scope of pre-contact parameter selection. (a) Each trial proceeds from reset and mode-specific strategy input through approach, grasp, transport, release, and task completion. For modes C and E, the first valid visual result triggers a one-time strategy selection, after which later detections do not cause intra-trial switching. The experimental procedure aims to complete this selection before object contact; the diagram does not imply a hardware-enforced timing gate. (b) Five modes are compared: fixed parameters (A), operator-selected full-parameter strategy (B), vision-semantic full multi-channel scheduling (C), visual cue only without parameter updates (D), and vision-semantic impedance-only scheduling (E). (c) The complete schedule initializes slave-side impedance parameters $K_t$, $K_r$, and $\zeta$; master-side haptic-interface parameters $K_f$ and $d$; and gripper-execution parameters $v_g$ and $F_g$, whereas mode E updates only the impedance-related parameters.
 
 ### 3.5 评价指标
 
-主要终点为完成时间。次要客观终点包括成功率、主端轨迹长度、停顿次数、方向反转次数和运动平滑性。主观工作负荷采用未加权 Raw NASA-TLX 评估，即六个维度的算术平均。NASA-TLX 分数在“操作者 × 对象策略 × 模式”层级收集。视觉模块报告类别识别准确率、策略触发准确率、置信度和单帧处理时间。
+主要终点为完成时间。成功率作为描述性结果报告；主端轨迹长度和停顿次数作为探索性客观指标。主观工作负荷采用未加权 Raw NASA-TLX 评估，即六个维度的算术平均 [15]。NASA-TLX 分数在“操作者 × 对象策略 × 模式”层级收集。视觉模块报告类别识别准确率、策略触发准确率、置信度和单帧处理时间。
 
 过程行为指标在正式统计分析前定义并固定。停顿定义为主端速度低于 0.005 m/s 且持续至少 0.30 s，由约 200 Hz 采样的原始主端轨迹 CSV 通过速度差分检测得到。
 
 ### 3.6 统计分析
 
-统计分析以重复测量和配对比较为主，重点报告模式间配对趋势、操作者层面方向性和效应量。五模式完成时间采用 Friedman 检验进行全局比较；在全局差异后，采用配对 Wilcoxon 符号秩检验进行模式间比较，并使用 Holm-Bonferroni 方法校正多重比较。其中，block 指同一操作者、同一对象和同一重复条件下不同模式之间的匹配试验单元。C–E 比较作为核心消融，进一步报告配对均值差、Bootstrap 95% 置信区间（10,000 次重采样，block 级 bootstrap）、相对变化、效应量和操作者层面聚合趋势。Raw NASA-TLX 采用相同的非参数配对分析框架，并作为主观工作负荷的操作者内趋势证据进行解释。成功率作为描述性指标报告。结果同时报告 median [IQR] 与 mean ± SD，以兼顾非参数统计分析和结果可读性。
+统计分析以重复测量和配对比较为主。五模式完成时间采用 Friedman 检验进行全局比较；在全局差异后，采用配对 Wilcoxon 符号秩检验进行模式间比较，并使用 Holm–Bonferroni 方法校正多重比较。匹配任务块指同一操作者、同一对象和同一重复条件下不同模式之间的配对单元。C–E 比较作为核心系统消融，进一步报告配对均值差、相对变化和 Bootstrap 95% 置信区间（10,000 次匹配任务块级重采样），并检查三名操作者内的方向一致性。Raw NASA-TLX 在“操作者 × 策略”九个配对单元上采用相应的非参数配对分析，并结合仅三名操作者的限制解释。由于 27 个匹配任务块嵌套于三名操作者，任务块级检验和区间仅作为当前样本内的配对证据，不等同于 27 名独立参与者的总体推断。轨迹长度和停顿次数为探索性指标，成功率为描述性指标。结果同时报告 median [IQR] 与 mean ± SD。
 
 ---
 
@@ -279,7 +280,7 @@ K_f\bigl(\|\mathbf{F}_{\mathrm{ext}}\|-d\bigr)\,
 
 ### 4.1 视觉识别与策略触发验证
 
-如 Fig. 4 所示，在受控视角、背景和光照条件下，每类对象采集 30 张图像，共 180 张。类别识别和策略触发达到 180/180（100%），平均置信度为 0.853，单帧 wall-clock 平均处理时间为 48.19 ms。该结果说明，在当前实验条件下，视觉触发不是主要误差来源；其适用性仍受场景条件和对象集合限制，遮挡、强光照变化、杂乱背景、未知对象和未测试类别下的鲁棒性需要进一步验证。
+如 Fig. 4 所示，在受控视角、背景和光照条件下，每类对象评估 30 张图像，共 180 张。类别识别和策略触发达到 180/180（100%），平均置信度为 0.853，单帧 wall-clock 平均处理时间为 48.19 ms。该结果刻画当前图像集合上的视觉性能；在确认图像与训练及调参数据相互独立、并说明是否来自连续视频抽帧之前，不将其表述为独立测试集泛化准确率。遮挡、强光照变化、杂乱背景、未知对象和未测试类别下的鲁棒性仍需进一步验证。
 
 | 对象 | 图像数 | 类别准确率 | 策略触发准确率 | 平均置信度 | 时间 (ms) |
 |---|---:|---:|---:|---:|---:|
@@ -290,13 +291,9 @@ K_f\bigl(\|\mathbf{F}_{\mathrm{ext}}\|-d\bigr)\,
 | 鼠标 | 30 | 100% | 100% | 0.914 | 46.79 |
 | 剪刀 | 30 | 100% | 100% | 0.938 | 49.27 |
 
-![Fig. 4a Confusion matrix](../drawing/Fig4_a_confusion_matrix.png)
+![Fig. 4](../drawing/revision_submission/Figure_4.png)
 
-![Fig. 4b Detection confidence](../drawing/Fig4_b_detection_confidence.png)
-
-![Fig. 4c Processing time](../drawing/Fig4_c_processing_time.png)
-
-**Fig. 4.** Object-recognition and semantic strategy initialization performance under controlled experimental conditions. (a) Confusion matrix for the six object classes, with 30 images evaluated per class. (b) Class-wise detection confidence and (c) per-frame wall-clock processing time, summarized as mean $\pm$ SD. A total of 180 images were evaluated, and all samples were correctly classified and mapped to the predefined operation strategies. The overall mean detection confidence was 0.853, and the average processing time was 48.19 ms per frame. These measurements characterize the perception module under the controlled experimental setting and do not constitute validation of hard-real-time operation.
+**Fig. 4.** Object-recognition and semantic strategy-initialization performance for the 180-image evaluation set under controlled conditions. (a) Confusion matrix for six object classes, with 30 images per class. (b) Detection confidence and (c) per-frame wall-clock processing time for each class. Small symbols show individual image-level observations; diamonds and error bars denote mean $\pm$ SD. All 180 images were correctly classified and mapped to the predefined operation strategies; the overall mean confidence was 0.853 and the mean processing time was 48.19 ms per image. The provenance, sampling dependence, and separation of these images from model training and tuning data must be documented before the set is described as an independent test set. The timing measurements do not establish hard-real-time operation.
 
 ### 4.2 五模式实验结果
 
@@ -304,17 +301,17 @@ K_f\bigl(\|\mathbf{F}_{\mathrm{ext}}\|-d\bigr)\,
 
 | 模式 | 完成时间 (s) | 轨迹长度 (m) | 成功率 | Raw NASA-TLX |
 |:---:|:---:|:---:|:---:|:---:|
-| A 固定参数 | 21.18 [20.62, 22.08] (21.42±1.58) | 0.741 [0.692, 0.811] (0.763±0.098) | 22/27 (81.5%) | 62.00 [60.33, 65.67] (62.59±3.95) |
-| B 操作者选择 | 20.89 [20.12, 21.83] (21.01±1.61) | 0.793 [0.735, 0.875] (0.799±0.115) | 21/27 (77.8%) | 57.00 [54.33, 59.83] (57.15±3.68) |
+| A 固定参数 | 21.18 [20.62, 22.08] (21.42±1.58) | 0.757 [0.693, 0.816] (0.763±0.098) | 22/27 (81.5%) | 62.50 [59.67, 64.50] (62.59±3.95) |
+| B 操作者选择 | 20.89 [20.12, 21.83] (21.01±1.61) | 0.787 [0.721, 0.861] (0.799±0.115) | 21/27 (77.8%) | 56.17 [55.00, 59.33] (57.15±3.68) |
 | **C 完整多通道** | **19.57 [18.41, 20.05] (19.28±1.30)** | **0.697 [0.660, 0.769] (0.715±0.092)** | **26/27 (96.3%)** | **48.67 [47.67, 51.83] (49.67±3.63)** |
-| D 仅视觉提示 | 20.79 [20.32, 21.16] (20.91±1.10) | 0.716 [0.684, 0.779] (0.734±0.085) | 24/27 (88.9%) | 59.00 [57.83, 62.83] (60.22±3.85) |
+| D 仅视觉提示 | 20.79 [20.32, 21.16] (20.91±1.10) | 0.722 [0.678, 0.768] (0.734±0.085) | 24/27 (88.9%) | 60.33 [57.33, 62.50] (60.22±3.85) |
 | E 仅阻抗调度 | 20.73 [19.95, 22.25] (21.07±1.56) | 0.732 [0.678, 0.799] (0.739±0.084) | 24/27 (88.9%) | 53.67 [51.83, 57.83] (54.54±4.09) |
 
-如 Fig. 5 所示，描述性结果显示，模式 C 在五种模式中取得最短完成时间中位数、最短主端轨迹、最高成功率和最低 Raw NASA-TLX。与模式 A、B、D 和 E 相比，模式 C 的平均完成时间分别降低约 10.0%、8.2%、7.8% 和 8.5%。
+如 Fig. 5 所示，描述性结果显示，模式 C 在五种模式中取得最短完成时间中位数、最短主端轨迹中位数、最高描述性成功率和最低 Raw NASA-TLX。与模式 A、B、D 和 E 相比，模式 C 的平均完成时间分别降低约 10.0%、8.2%、7.8% 和 8.5%。完成时间是主要终点；其余指标按预先说明的次要、探索性或描述性层级解释。
 
-五模式完成时间 Friedman 检验提示五种模式之间存在全局差异（χ²(4)=30.904, p<0.001）。经 Holm 校正的配对 Wilcoxon 检验显示，在配对非参数分析中，模式 C 的完成时间低于模式 A、B、D 和 E（p < 0.01，效应量 r > 0.7）。由于试验嵌套于三名操作者内，这些 p 值和效应量解释为当前机电平台、对象集和操作者范围内的配对证据，而不是一般人群统计结论。Raw NASA-TLX 结果同样显示模式 C 具有最低主观工作负荷趋势，与完成时间和成功率结果方向一致；该结果在本文中作为操作者内主观体验证据进行解释。
+五模式完成时间 Friedman 检验提示五种模式之间存在任务块级全局差异（$\chi^2(4)=30.904$, $p<0.001$）。经 Holm 校正的配对 Wilcoxon 检验显示，在当前 27 个匹配任务块中，模式 C 的完成时间低于模式 A、B、D 和 E（校正后 $p<0.01$，效应量 $r>0.7$）。这些任务块嵌套于三名操作者，故统计量表征当前样本内的重复测量证据，不应解释为来自 27 名独立参与者的人群推断。Raw NASA-TLX 在每模式九个“操作者 × 策略”单元上呈现模式 C 最低的结果，并与完成时间和描述性成功率方向一致；鉴于仅有三名操作者，该结果作为有限样本内的主观工作负荷证据解释。
 
-![Fig. 5 Combined](../drawing/Fig5_combined_final.png)
+![Fig. 5](../drawing/revision_submission/Fig5_combined_final.png)
 
 **Fig. 5.** Descriptive comparison of task performance and perceived workload across the five experimental modes: fixed parameters (A), operator-selected full-parameter strategy (B), the proposed vision-semantic full multi-channel scheduling (C), visual cue only without parameter updates (D), and vision-semantic impedance-only scheduling (E). The panels show (a) task execution duration, (b) master-side trajectory length, (c) unweighted Raw NASA-TLX score, and (d) task success rate. In (a) and (b), the symbols represent mode-specific task observations from 27 matched task blocks per mode, with blocks nested within three operators; circles, triangles, and squares identify P01, P02, and P03, respectively. Both successful and failed attempts were recorded to the common task endpoint. Boxes indicate the 25th–75th percentiles, dark center lines indicate medians, and whiskers extend to 1.5 times the interquartile range. In (c), small symbols represent the nine operator–strategy questionnaire units per mode, while larger connected symbols represent operator-level means obtained by equally averaging the three strategies. Lower Raw NASA-TLX scores indicate lower perceived workload. Panel (d) reports successful trials out of 27 attempts per mode and is interpreted descriptively.
 
@@ -330,31 +327,32 @@ K_f\bigl(\|\mathbf{F}_{\mathrm{ext}}\|-d\bigr)\,
 
 C–E 比较是本文最关键的 **系统级** 消融。两种模式都使用视觉语义和阻抗调节；区别在于模式 C 进一步将主端触觉接口增益、力接口死区、夹爪闭合速度和抓取力纳入同一接触前参数组。该设计测试的是一个工程问题：在异质对象触觉遥操作中，仅调节从端柔顺性是否足以覆盖抓取需求，还是需要将操作者端接口和夹爪执行通道与阻抗一起初始化。因此，C–E 比较用于评估完整接触前多通道参数组相对于仅阻抗调节的系统级收益。
 
-如 Fig. 6 所示，在 27 个匹配 block 中，模式 C 完成时间中位数为 19.57 s，模式 E 为 20.73 s。按 $\Delta T=T_E-T_C$ 定义，平均配对改善为 1.79 s（Bootstrap 95% CI [1.10, 2.51] s），相对降低约 8.5%。置信区间未跨越零，支持模式 C 在当前平台、操作者和对象范围内存在一致的配对完成时间改善。进一步的分层结果见 Fig. 7：P01、P02 和 P03 的平均改善分别为 1.66、2.57 和 1.15 s；六种对象的相对降低范围为 3.3%–13.2%。
+如 Fig. 6 所示，在 27 个匹配任务块中，模式 C 完成时间中位数为 19.57 s，模式 E 为 20.73 s。按 $\Delta T=T_E-T_C$ 定义，平均配对改善为 1.79 s（匹配任务块级 Bootstrap 95% CI [1.10, 2.51] s），相对降低约 8.5%。置信区间未跨越零，支持模式 C 在当前平台、操作者和对象范围内存在稳定的配对完成时间优势。进一步的分层结果见 Fig. 7：P01、P02 和 P03 的平均改善分别为 1.66、2.56 和 1.16 s；六种对象的相对降低范围为 3.3%–13.2%。
 
-主端轨迹长度差异较小（0.697 m vs. 0.732 m）；按 $E-C$ 定义的缩短量为 0.024 m，Bootstrap 95% CI [−0.014, 0.059] m 跨越零。结合 Fig. 5(b) 与停顿分析，该结果说明 C–E 的完成时间差异并不主要来自几何路径长度显著缩短，并提示多通道机电参数协同可能主要通过减少抓取、转运或释放阶段的停顿和修正来提升操作效率。阶段级时间标注和重新抓取行为记录可在后续实验中进一步细化这一机制解释。
+主端轨迹长度差异较小（0.697 m vs. 0.732 m）；按 $E-C$ 定义的缩短量为 0.024 m，Bootstrap 95% CI [−0.014, 0.059] m 跨越零。结合 Fig. 5(b) 与停顿分析，这说明当前数据不支持“几何路径显著缩短”的解释；停顿次数的描述性方向与完成时间结果一致，但尚不足以把时间优势归因于抓取、转运或释放阶段的某一机制。阶段级时间标注、重新抓取记录和组件级消融可用于进一步检验机制。
 
-![Fig. 6 Core ablation](../drawing/Fig6_AB_final.png)
+![Fig. 6](../drawing/revision_submission/Figure_6.png)
 
 **Fig. 6.** Core system-level ablation of vision-semantic full multi-channel scheduling (mode C) against vision-semantic impedance-only scheduling (mode E). (a) Paired task execution durations for the 27 matched task blocks; points below the identity line indicate faster completion under mode C. (b) Distribution of paired improvement, defined as $\Delta T=T_E-T_C$, across the 27 matched task blocks. Symbols identify P01–P03, the violin provides a descriptive distribution summary, the horizontal segment denotes the median, and the diamond denotes the mean improvement. Positive values in (b) indicate shorter task execution duration under mode C. The 27 matched task blocks are repeated observations nested within three operators and are not interpreted as data from 27 independent participants.
 
 ### 4.4 过程行为指标：C–E 停顿分析
 
-停顿次数由原始主端轨迹 CSV 计算得到，轨迹采样频率约 200 Hz。停顿定义为主端速度低于 0.005 m/s 且持续至少 0.30 s。模式 C 单次试验停顿次数中位数为 3 [2, 3.5] IQR，均值为 2.74±1.23；模式 E 为 3 [2, 5] IQR，均值为 3.41±1.67。按策略分类，易损优先、折中和稳定优先类别均表现出模式 C 停顿次数更少的方向。该结果与 C–E 完成时间差异和轨迹长度结果相一致，提示多通道参数协同可能减少了操作过程中的短暂停顿和修正。阶段级时间标注将在后续实验中用于进一步区分接近、抓取、转运和释放阶段的行为差异。
+停顿次数由原始主端轨迹 CSV 按固定脚本计算，轨迹名义采样频率约 200 Hz。停顿定义为主端速度低于 0.005 m/s 且持续至少 0.30 s。模式 C 单次试验停顿次数中位数为 3 [2, 3.5] IQR，均值为 2.74±1.23；模式 E 为 3 [2, 5] IQR，均值为 3.41±1.67。三类策略均表现出模式 C 停顿次数更少的方向。该描述性结果与 C–E 完成时间差异方向一致，但两组停顿次数中位数均为 3，且当前实验未进行阶段级或组件级消融，因此不能据此确定时间改善的具体机制。
+
 
 ### 4.5 失败案例分析
 
-135 次试验共发生 9 次失败，包括掉落、可观察滑移或可见损伤。各模式失败分布如下：
+按实验评分表汇总，135 次试验共记录 18 次失败（A–E 分别为 5、6、1、3 和 3 次），包括掉落、可观察滑移或可见损伤。各模式失败分布如下：
 
 | 模式 | 失败/总数 | 典型观察 |
 |:---:|:---:|:---|
 | A 固定参数 | 5/27 | 纸杯挤压变形，剪刀定位不稳定 |
-| B 操作者选择 | 6/27 | 操作者策略误选或切换成本高 |
+| B 操作者选择 | 6/27 | 人工选择流程包含额外判断与切换步骤；现有记录不足以归因具体失败原因 |
 | **C 完整多通道** | **1/27** | 鼠标表面较滑，转运中滑移 |
 | D 仅视觉提示 | 3/27 | 中等对象抓取力不足 |
 | E 仅阻抗调度 | 3/27 | 中等对象抓取不稳定 |
 
-模式 C 在当前实验中失败数最低（1/27），其余模式的失败主要表现为掉落、可观察滑移、纸杯挤压变形或定位不稳定。该观察与完整多通道参数策略改善抓取建立和转运稳定性的系统级解释一致：相较于仅调节阻抗，模式 C 同时调整夹爪闭合速度、抓取力和操作者端触觉接口参数，从而为不同对象提供更匹配的执行条件。当前失败记录以任务级观察为主，因此本文将失败案例作为系统级结果的定性补充。
+模式 C 在当前实验中失败数最低（1/27），其余模式的失败表现包括掉落、可观察滑移、纸杯挤压变形或定位不稳定。由于失败记录主要位于任务层级，且未包含独立标定的接触力、滑移量和损伤量，本文仅将该分布作为描述性系统结果，不把具体失败归因于某一参数通道。
 
 ### 4.6 跨操作者与六对象一致性
 
@@ -371,9 +369,9 @@ Fig. 7 汇总了操作者和对象分层的一致性结果。三名操作者在�
 
 C 相对于 E 的时间降低幅度从瓶子的 3.3%，到香蕉的 5.5%、苹果的 8.1%、鼠标的 8.7%、纸杯的 11.7% 和剪刀的 13.2%。这表明完整多通道调度在本文测试对象集内均呈现相同方向的时间收益，且收益幅度随对象操作需求不同而变化。
 
-在操作者层面，按 $\Delta T=T_E-T_C$ 定义，P01、P02 和 P03 的平均改善分别为 1.66、2.57 和 1.15 s。尽管三名操作者在绝对任务速度和操作风格上存在差异，模式 C 相对于模式 E 的时间降低方向保持一致，提示该系统级收益在当前测试操作者范围内具有操作者内一致性。
+在操作者层面，按 $\Delta T=T_E-T_C$ 定义，P01、P02 和 P03 的平均改善分别为 1.66、2.56 和 1.16 s。尽管三名操作者在绝对任务速度和操作风格上存在差异，模式 C 相对于模式 E 的时间降低方向保持一致，提示该系统级收益在当前测试操作者范围内具有操作者内一致性。
 
-![Fig. 7 Combined](../drawing/Fig7_combined_final.png)
+![Fig. 7](../drawing/revision_submission/Figure_7.png)
 
 **Fig. 7.** Operator- and object-stratified consistency of the task-duration improvement of vision-semantic full multi-channel scheduling (mode C) over vision-semantic impedance-only scheduling (mode E). Improvement is defined as $\Delta T=T_E-T_C$, so positive values indicate shorter task execution duration under mode C. (a) Operator-stratified paired improvements for P01–P03, with nine matched task blocks per operator. (b) Object-stratified paired improvements for the six test objects, ordered by decreasing mean improvement; each object contains four or five matched task blocks. Small symbols represent task-block paired differences, diamonds denote stratum means, and horizontal bars indicate $\pm1$ SD of the repeated task-block differences. The right-hand labels report the mean improvement and the number of task blocks in which mode C was faster. The matched task blocks are repeated observations nested within three operators and are interpreted descriptively rather than as independent participant samples.
 
@@ -383,19 +381,19 @@ C 相对于 E 的时间降低幅度从瓶子的 3.3%，到香蕉的 5.5%、苹�
 
 ### 5.1 为什么接触前视觉语义前馈可以改善机电系统性能
 
-固定参数模式必须用一组折中参数覆盖全部三类策略，难以同时满足易损对象的柔顺需求和刚性对象的稳定定位需求。操作者选择模式虽然可以调用不同策略，但对象判断和策略切换由操作者完成，增加了工作流负担。仅视觉提示模式改善了场景信息，却没有改变系统动力学、触觉接口或夹爪执行条件。相比之下，模式 C（视觉语义完整多通道调度）将对象语义在接触前转化为一组机电参数初值，使操作者面对目标对象时获得更匹配的从端柔顺性、触觉接口线索和夹爪执行行为，从而减少对不合适系统手感和执行参数的手动补偿。该机制与 Fig. 5 所示的更短完成时间和更低主观工作负荷，以及过程分析中的更低停顿次数相一致。
+固定参数模式必须用一组折中参数覆盖全部三类策略，难以同时满足易损对象的柔顺需求和刚性对象的稳定定位需求。操作者选择模式虽然可以调用不同策略，但对象判断和策略切换由操作者完成，包含额外工作流步骤。仅视觉提示模式改善了场景信息，却没有改变系统动力学、触觉接口或夹爪执行条件。相比之下，模式 C（视觉语义完整多通道调度）在接触前把对象语义转化为一组机电参数初值，使从端柔顺性、触觉接口设置和夹爪执行条件与当前策略相匹配。该设计解释与 Fig. 5 中更短完成时间和更低主观工作负荷的结果一致；停顿次数仅提供方向一致的探索性过程证据，不能单独建立因果机制。
 
 ### 5.2 完整接触前机电参数策略相对于仅阻抗调节的意义
 
-模式 C 和模式 E 都根据视觉语义调节平移刚度、转动刚度和阻尼比，因此二者共享从端柔顺性适配机制。模式 C 进一步预设主端触觉接口增益、力接口死区、夹爪闭合速度和抓取力。如 Fig. 6 所示，模式 C 相对于模式 E 的平均完成时间改善为 1.79 s（定义为 $\Delta T=T_E-T_C$；Bootstrap 95% CI [1.10, 2.51] s），相对降低约 8.5%，而主端轨迹长度缩短量较小（0.024 m；95% CI [−0.014, 0.059] m，跨越零）。结合 Fig. 5(b) 和停顿结果，这表明附加收益更可能来自抓取、转运或释放阶段的停顿和修正减少，而不是几何路径显著缩短。
+模式 C 和模式 E 都根据视觉语义调节平移刚度、转动刚度和阻尼比，因此二者共享从端柔顺性适配机制。模式 C 进一步预设主端触觉接口增益、力接口死区、夹爪闭合速度和抓取力。如 Fig. 6 所示，模式 C 相对于模式 E 的平均完成时间改善为 1.79 s（定义为 $\Delta T=T_E-T_C$；Bootstrap 95% CI [1.10, 2.51] s），相对降低约 8.5%，而主端轨迹长度缩短量较小（0.024 m；95% CI [−0.014, 0.059] m，跨越零）。结合 Fig. 5(b) 和停顿结果，当前数据不支持以几何路径显著缩短解释时间优势，并与“操作停顿或修正减少”的可能解释相容；由于缺少阶段级标注和组件级消融，尚不能确认具体来源。
 
 该结果对应用型机电遥操作系统的工程意义在于，异质对象抓取不只依赖从端末端柔顺性，还依赖操作者接口、从端阻抗和夹爪执行之间的协同配置。仅调节阻抗可以改变接触柔顺性，但难以同时覆盖夹爪闭合速度、抓取力和操作者感知到的接触线索。对于易损或光滑对象，较低刚度、较慢夹爪闭合和较低抓取力有助于降低挤压和滑移风险；对于刚性或几何不规则对象，更稳定的定位、更清晰的接口线索和更可靠的夹持执行有助于减少抓取建立和转运阶段的操作者修正。力接口死区在这里主要用于削弱小幅外力估计波动和触觉接口噪声，使接触线索更稳定。
 
-因此，C–E 消融应从耦合系统角度理解：视觉语义仅阻抗调度提供了柔顺性适配，而完整多通道策略进一步把对象语义转化为操作者接口和夹爪执行条件。本文结果说明，在当前异质对象抓取任务中，感知—接口—夹爪耦合参数组比单一阻抗调度更能形成匹配对象需求的操作手感和执行策略。
+因此，C–E 消融应从耦合系统角度理解：视觉语义仅阻抗调度提供了柔顺性适配，而完整多通道策略进一步把对象语义转化为操作者接口和夹爪执行条件。本文结果支持该耦合参数组在当前任务集内相对于单一阻抗调度的系统级价值，但不能区分各附加通道的独立因果贡献。
 
 ### 5.3 与相关工作的差异
 
-已有任务分解和共享控制研究通常通过切换控制模式、约束操作者输入空间或提供运动引导来提高完成效率并降低工作负荷 [10–13]。视觉阻抗研究则强调在视觉特征和力/阻抗控制之间建立连续反馈关系 [9]。本文将研究重点放在接触前的系统级参数初始化：对象语义被用作任务先验，以低计算开销调用一组可解释的多通道机电参数。换言之，本文提供的是一种从对象语义到遥操作接口参数的桥接方法，使操作者在接触前获得更适合当前对象的从端柔顺性、触觉接口设置和夹爪执行行为。该定位适合对象类别可识别、环境相对结构化，但仍需操作者完成精细抓取和放置的工程遥操作场景。
+已有任务分解和共享控制研究通常通过切换控制模式、约束操作者输入空间或提供运动引导来提高完成效率并降低工作负荷 [10–13,16,17]。视觉阻抗研究则强调在视觉特征和力/阻抗控制之间建立连续反馈关系 [12]。本文将研究重点放在接触前的系统级参数初始化：对象语义被用作任务先验，以低计算开销调用一组可解释的多通道机电参数。换言之，本文提供的是一种从对象语义到遥操作接口参数的桥接方法，使操作者在接触前获得更适合当前对象的从端柔顺性、触觉接口设置和夹爪执行行为。该定位适合对象类别可识别、环境相对结构化，但仍需操作者完成精细抓取和放置的工程遥操作场景。
 
 ### 5.4 对机电遥操作系统设计的启示
 
@@ -405,7 +403,7 @@ C 相对于 E 的时间降低幅度从瓶子的 3.3%，到香蕉的 5.5%、苹�
 
 **2. 仅柔顺性适配不足以覆盖抓取任务。** 只调节从端阻抗（C–E 消融中的模式 E）能够提供柔顺性适配，但不能覆盖夹爪执行速度和抓取力，也不能调节操作者感知到的触觉接口强度和死区。一个完整的机电遥操作抓取系统需要把阻抗、触觉接口和夹爪执行作为耦合参数集进行协同调度。
 
-**3. 异步感知—控制分离提升可部署性。** 异步架构将约 20 Hz 视觉子进程与名义 200 Hz 遥操作环分离。由于视觉推理在控制环关键路径之外执行，并且只在初始锁定事件更新策略，感知模块不需要满足与主从控制更新相同的时序要求。这种感知—控制解耦的机电设计模式降低了视觉模块的实时负担，使系统更容易部署到已有遥操作平台，而无需让视觉模块以控制环频率运行。
+**3. 异步感知—控制分离提升可部署性。** 异步架构将视觉子进程与名义 200 Hz 遥操作更新分开。由于视觉推理在遥操作更新关键路径之外执行，并且只触发一次性策略选择，感知模块不需要以遥操作环频率运行。这种设计降低了视觉模块的直接时序负担；相机帧率及正式实验配置须由归档日志确认，现有周期长尾也意味着该实现不构成硬实时证明。
 
 ### 5.5 不同对象收益幅度不同的原因
 
@@ -423,14 +421,14 @@ C 相对于 E 的时间降低幅度从瓶子的 3.3%，到香蕉的 5.5%、苹�
 
 当前数据主要包含任务完成时间、成功率、主端轨迹长度、停顿次数和 Raw NASA-TLX。失败案例以任务级观察记录为主，尚未包含独立标定的接触力、滑移量、对象损伤量或阶段级失败时刻。因此，本文将失败分布和停顿分析作为系统级行为证据，而不对抓取建立、转运和释放阶段的具体因果贡献作过度拆分。后续研究可结合阶段级标注、夹爪状态日志和接触质量测量，进一步解释多通道参数协同的作用机制。
 
-本文实现采用名义 200 Hz 监督式遥操作环和异步视觉进程，视觉推理位于控制关键路径之外。该架构展示了低频语义感知与高频遥操作更新解耦的可部署性。面向实时操作系统的周期级 jitter profiling、接触后力反馈优化、触觉透明性分析和在线参数自适应将作为后续系统实现方向。
+本文实现采用名义 200 Hz 监督式遥操作更新和异步视觉进程，视觉推理不作为同步步骤进入每次遥操作更新。现有周期日志的中位周期约为 5.07 ms，但存在明显长尾，因此该架构仅展示软件层面的异步可行性，不构成硬实时证明。更严格的 vision-on/off 周期比较、实时操作系统 profiling、触觉透明性分析和在线参数自适应属于后续工作。
 ---
 
 ## 6 结论
 
-本文从机电系统集成角度提出一种面向异质对象触觉遥操作抓取的视觉语义多通道参数调度方法。该方法将目标对象类别解释为三类面向操作的策略——易损优先、折中和稳定优先——并在接触前协同配置从端阻抗、主端触觉接口参数和夹爪执行参数，形成一个异步感知—控制解耦的机电遥操作系统。真实平台五模式实验显示，在当前三名操作者、六种对象和 135 次试验组成的机电基准任务集内，模式 C（视觉语义完整多通道调度）取得最短完成时间中位数 19.57 s [18.41, 20.05] IQR、最高成功率 26/27（96.3%）和最低 Raw NASA-TLX，中位数 48.67 [47.67, 51.83] IQR。与模式 E（视觉语义仅阻抗调度）相比，按 $\Delta T=T_E-T_C$ 定义，模式 C 的平均完成时间改善 1.79 s（Bootstrap 95% CI [1.10, 2.51] s），三名操作者和六种对象的平均结果均表现出一致方向。Fig. 6–7 与停顿分析共同提示，附加收益可能主要来自通过机电参数协同减少操作停顿和修正，而不是来自明显更短的几何路径。
+本文从机电系统集成角度提出一种面向异质对象触觉遥操作的视觉语义接触前多通道参数调度方法。该方法将目标对象类别映射为易损优先、折中和稳定优先三类面向操作的策略，并协同选择从端阻抗、主端触觉接口和夹爪执行参数。五模式实验表明，在当前三名操作者、六种对象和 135 次试验构成的任务集内，模式 C 取得最短完成时间中位数 19.57 s [18.41, 20.05]、最高描述性成功率 26/27（96.3%）和最低 Raw NASA-TLX 中位数 48.67 [47.67, 51.83]。相较模式 E，模式 C 的平均配对完成时间改善为 1.79 s（task-block-level Bootstrap 95% CI [1.10, 2.51] s），三名操作者和六种对象的分层均值均呈相同方向；轨迹长度差异的置信区间跨越零。
 
-总体而言，本文提供了一种无需复杂在线优化的、可解释、低成本且可部署的机电系统接触前参数初始化方法，用于异质对象触觉遥操作。其统计泛化性和外部有效性仍需通过更多操作者、严格随机化顺序、对象实例级记录、阶段级过程指标和接触质量指标进一步验证。接触后外力估计、力反馈闭环修正和操作者触觉感知验证属于后续研究范围，并未由本文数据独立证明。
+总体而言，结果支持完整接触前多通道参数包在当前平台和任务集内相对于仅阻抗调度的系统级价值。由于研究仅包含三名操作者，且没有独立关闭触觉接口或夹爪通道，本文不作人群层面泛化，也不把性能差异归因于某一单独通道。该框架的外部有效性、组件级贡献、开放场景视觉鲁棒性和周期级实时性能仍需进一步验证。
 
 ---
 
@@ -442,8 +440,10 @@ C 相对于 E 的时间降低幅度从瓶子的 3.3%，到香蕉的 5.5%、苹�
 
 ## 声明
 
-- **伦理审批：** 本研究涉及非医学遥操作任务，不收集可识别个人身份的信息，因此免于正式伦理审查。
+- **伦理审批：** [投稿前确认] 请依据作者所在机构的正式批准、豁免文件或适用规定补充机构名称、决定和编号；不得由作者自行宣称豁免。
 - **知情同意：** 所有参与者在实验前均提供书面知情同意。
+- **图像与生成式 AI：** [投稿前确认] 请核实全部投稿图的生成与编辑来源；若采用生成式 AI 创建或修改图像，应按期刊现行政策重新制作或处理。
+- **生成式 AI 辅助写作：** [投稿前确认] 如采用 AI 辅助语言或结构修改，应按 Elsevier 要求提供声明并由作者核实全文。
 - **资助：** 无。
 - **利益冲突：** 作者声明无利益冲突。
 - **数据可用性：** 去标识化试验数据可根据合理请求向通讯作者获取。
@@ -465,15 +465,7 @@ C 相对于 E 的时间降低幅度从瓶子的 3.3%，到香蕉的 5.5%、苹�
 11. Bowman, M., Zhang, J. and Zhang, X. (2024), "Intent-based task-oriented shared control for intuitive telemanipulation", *Journal of Intelligent & Robotic Systems*, Vol. 110, 167.
 12. Oliva, A.A., Giordano, P.R. and Chaumette, F. (2021), "A general visual-impedance framework for effectively combining vision and force sensing in feature space", *IEEE Robotics and Automation Letters*, Vol. 6 No. 3, pp. 4441–4448.
 13. Peternel, L., Tsagarakis, N. and Ajoudani, A. (2016), "Towards multi-modal intention interfaces for human–robot co-manipulation", in *Proceedings of the IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)*, pp. 2663–2669.
-14. Isermann, R. (2008), "Mechatronic systems—Innovative products with embedded control", *Control Engineering Practice*, Vol. 16 No. 1, pp. 14–29.
-15. Hutchinson, S., Hager, G.D. and Corke, P.I. (1996), "A tutorial on visual servo control", *IEEE Transactions on Robotics and Automation*, Vol. 12 No. 5, pp. 651–670.
-16. Chaumette, F. and Hutchinson, S. (2006), "Visual servo control. I. Basic approaches", *IEEE Robotics & Automation Magazine*, Vol. 13 No. 4, pp. 82–90.
-17. Marchand, E., Spindler, F. and Chaumette, F. (2005), "ViSP for visual servoing: a generic software platform with a wide class of robot control skills", *IEEE Robotics & Automation Magazine*, Vol. 12 No. 4, pp. 40–52.
-18. Bicchi, A. and Kumar, V. (2000), "Robotic grasping and contact: a review", in *Proceedings of the IEEE International Conference on Robotics and Automation (ICRA)*, pp. 348–353.
-19. Albu-Schaffer, A., Haddadin, S., Ott, C., Stemmer, A., Wimbock, T. and Hirzinger, G. (2007), "The DLR lightweight robot: design and control concepts for robots in human environments", *Industrial Robot*, Vol. 34 No. 5, pp. 376–385.
-20. Haddadin, S., Parusel, S., Johannsmeier, L. et al. (2022), "The Franka Emika robot: A reference platform for robotics research and education", *IEEE Robotics & Automation Magazine*, Vol. 29 No. 2, pp. 46–64.
-21. Hart, S.G. and Staveland, L.E. (1988), "Development of NASA-TLX (Task Load Index): Results of empirical and theoretical research", in Hancock, P.A. and Meshkati, N. (Eds.), *Human Mental Workload*, North-Holland, Amsterdam, pp. 139–183.
-22. Boessenkool, H., Abbink, D.A., Heemskerk, C.J.M., van der Helm, F.C.T. and Wildenbeest, J.G.W. (2011), "Haptic shared control improves teleoperated task performance toward performance in direct control", in *Proceedings of the IEEE World Haptics Conference*, pp. 433–438.
-23. Abbott, J.J., Marayong, P. and Okamura, A.M. (2007), "Haptic virtual fixtures for robot-assisted manipulation", in Thrun, S., Brooks, R. and Durrant-Whyte, H. (Eds.), *Robotics Research*, Springer Tracts in Advanced Robotics, Vol. 28, Springer, Berlin, pp. 49–64.
-
-
+14. Haddadin, S., Parusel, S., Johannsmeier, L. et al. (2022), "The Franka Emika robot: A reference platform for robotics research and education", *IEEE Robotics & Automation Magazine*, Vol. 29 No. 2, pp. 46–64.
+15. Hart, S.G. and Staveland, L.E. (1988), "Development of NASA-TLX (Task Load Index): Results of empirical and theoretical research", in Hancock, P.A. and Meshkati, N. (Eds.), *Human Mental Workload*, North-Holland, Amsterdam, pp. 139–183.
+16. Boessenkool, H., Abbink, D.A., Heemskerk, C.J.M., van der Helm, F.C.T. and Wildenbeest, J.G.W. (2011), "Haptic shared control improves teleoperated task performance toward performance in direct control", in *Proceedings of the IEEE World Haptics Conference*, pp. 433–438.
+17. Abbott, J.J., Marayong, P. and Okamura, A.M. (2007), "Haptic virtual fixtures for robot-assisted manipulation", in Thrun, S., Brooks, R. and Durrant-Whyte, H. (Eds.), *Robotics Research*, Springer Tracts in Advanced Robotics, Vol. 28, Springer, Berlin, pp. 49–64.
