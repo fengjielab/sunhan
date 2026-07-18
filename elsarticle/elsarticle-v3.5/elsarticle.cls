@@ -1,93 +1,35 @@
-% \iffalse meta-comment
-%
-% Copyright (C) 2007-2024 by Elsevier Ltd
-% -----------------------------------------------
-% 
-% This file may be distributed and/or modified under the
-% conditions of the LaTeX Project Public License, either version 1.3
-% of this license or (at your option) any later version.
-% The latest version of this license is in:
-%
-%    http://www.latex-project.org/lppl.txt
-%
-% and version 1.3 or later is part of all distributions of LaTeX 
-% version 1999/12/01 or later.
-%
-% \fi
-% \CheckSum{3279}
-%
-% $Id: elsarticle.dtx 259 2024-04-06 12:00:41Z rishi $
-% $URL: https://lenova.river-valley.com/svn/elsarticle/trunk/elsarticle.dtx $
-% \iffalse
-%<*driver>
-\documentclass{ltxdoc}
-\EnableCrossrefs         
-\CodelineIndex
-\RecordChanges
-\usepackage{comment}
-\begin{document}
-  \DocInput{elsarticle.dtx}
-  \PrintChanges
-  \PrintIndex
-\end{document}
-%</driver>
-% \fi
-%
-% \CharacterTable
-%  {Upper-case    \A\B\C\D\E\F\G\H\I\J\K\L\M\N\O\P\Q\R\S\T\U\V\W\X\Y\Z
-%   Lower-case    \a\b\c\d\e\f\g\h\i\j\k\l\m\n\o\p\q\r\s\t\u\v\w\x\y\z
-%   Digits        \0\1\2\3\4\5\6\7\8\9
-%   Exclamation   \!     Double quote  \"     Hash (number) \#
-%   Dollar        \$     Percent       \%     Ampersand     \&
-%   Acute accent  \'     Left paren    \(     Right paren   \)
-%   Asterisk      \*     Plus          \+     Comma         \,
-%   Minus         \-     Point         \.     Solidus       \/
-%   Colon         \:     Semicolon     \;     Less than     \<
-%   Equals        \=     Greater than  \>     Question mark \?
-%   Commercial at \@     Left bracket  \[     Backslash     \\
-%   Right bracket \]     Circumflex    \^     Underscore    \_
-%   Grave accent  \`     Left brace    \{     Vertical bar  \|
-%   Right brace   \}     Tilde         \~}
-%
-%
-% \changes{v1.1}{2008/09/25}{Initial version}
-%
-%
-% \changes{v1.2}{2009/09/17}{Documentation, templates, and *.bst
-%    has been seperated from this .dtx. Incompatibility problems
-%    with amsref.sty, fncylab.sty have been fixed. Some bugs related
-%    to author/affiliation part have been fixed.}
-%
-%
-% \changes{v3.3}{2020/11/20}{Defined \string\affiliation command for structured
-%    address tagging.}
-%
-% \changes{v3.4}{2022/11/26}{A bug fix. Accented characters produced errors. So loaded fontenc package.}
-%
-% \GetFileInfo{elsarticle.dtx}
-%
-% \DoNotIndex{\newcommand,\newenvironment}
-% 
-%
-% \title{The \textsf{elsarticle.cls} -- Implimentation}
-% \author{Elsevier Ltd}
-%
-% \maketitle
-%
-% \StopEventually{}
-%
-% \section{Implementation}
-%
-%    \begin{macrocode}
-%<*class>
+%%
+%% This is file `elsarticle.cls',
+%% generated with the docstrip utility.
+%%
+%% The original source files were:
+%%
+%% elsarticle.dtx  (with options: `class')
 %% 
+%% Copyright 2007-2026 Elsevier Ltd
 %% 
+%% This file is part of the 'Elsarticle Bundle'.
+%% -------------------------------------------
+%% 
+%% It may be distributed under the conditions of the LaTeX Project Public
+%% License, either version 1.3 of this license or (at your option) any
+%% later version.  The latest version of this license is in
+%%    http://www.latex-project.org/lppl.txt
+%% and version 1.3 or later is part of all distributions of LaTeX
+%% version 1999/12/01 or later.
+%% 
+%% The list of all files belonging to the 'Elsarticle Bundle' is
+%% given in the file `manifest.txt'.
+%% 
+
+%%
+%%
 %%
  \def\RCSfile{elsarticle}%
- \def\RCSversion{3.4}%
- \def\RCSdate{2024/04/04}%
+ \def\RCSversion{3.5}%
+ \def\RCSdate{2026/01/09}%
  \def\@shortjnl{\relax}
- \def\@journal{Elsevier Ltd} 
+ \def\@journal{Elsevier Ltd}
  \def\@company{Elsevier Ltd}
  \def\@issn{000-0000}
  \def\@shortjid{elsarticle}
@@ -108,8 +50,8 @@
   \global\useexplthreefunctionstrue%
   \RequirePackage{expl3}}{}
 \ifuseexplthreefunctions\relax%
-	\IfFileExists{xparse.sty}{\RequirePackage{xparse}}{}
-	\IfFileExists{etoolbox.sty}{\RequirePackage{etoolbox}}{}
+\IfFileExists{xparse.sty}{\RequirePackage{xparse}}{}
+\IfFileExists{etoolbox.sty}{\RequirePackage{etoolbox}}{}
 \fi
 
 \def\@blstr{1}
@@ -172,11 +114,6 @@
 \ProcessOptions
 \LoadClass{article}
 \RequirePackage{graphicx}
-%    \end{macrocode}
-% 
-% \section{Preamble}
-%
-%    \begin{macrocode}
 \let\comma\@empty
 \let\tnotesep\@empty
 \let\@title\@empty
@@ -199,7 +136,6 @@
   \def\tnotemark[#1]{}
 \else
   \def\tnotemark[#1]{\@for\mytmark:=#1\do{%
-%       \expandafter\ifcase\csname X@\mytmark\endcsname\or$^{\star}$\or
         \expandafter\ifcase\elsRef{\mytmark}\or$^{\star}$\or
        $^{,\star\star}$\fi
     }%
@@ -307,7 +243,7 @@
 \let\authorsep\@empty
 \let\prelimauthorsep\@empty
 \let\sep\@empty
-\newcounter{author}
+\newcounter{elsarticle@author}
 \def\author{\@ifnextchar[{\@@author}{\@author}}
 
 \newtoks\@eadauthor
@@ -515,7 +451,7 @@
        \keys_set:nn { stm / affiliation } { #2 }
       }
      \IfNoValueTF { #1 }
-      { 
+      {
         \csgappto{elsauthors}{%
           \par\vspace*{6pt}\noindent
           \bgroup\def\baselinestretch{1}%
@@ -527,7 +463,7 @@
           \gdef\authorsep{}
         \egroup}
       }
-      { 
+      {
         \csgappto{elsaddress}{
         \def\baselinestretch{1}%
         \refstepcounter{affn}
@@ -602,40 +538,39 @@
   \define@key{affiliation}{countrysep}{\xdef\@countrypunc{#1}}
 
   \define@key{affiliation}{organization}{%
-  	\caorganization[\@organizationpunc]{#1}}
+   \caorganization[\@organizationpunc]{#1}}
   \define@key{affiliation}{addressline}{%
-  	\caaddressline[\@addresslinepunc]{#1}}
+   \caaddressline[\@addresslinepunc]{#1}}
   \define@key{affiliation}{city}{%
-  	\caaffcity[\@citypunc]{#1}}
+   \caaffcity[\@citypunc]{#1}}
   \define@key{affiliation}{postcode}{%
-  	\capostalcode[\@postcodepunc]{#1}}
+   \capostalcode[\@postcodepunc]{#1}}
   \define@key{affiliation}{state}{%
-  	\castate[\@statepunc]{#1}}
+   \castate[\@statepunc]{#1}}
   \define@key{affiliation}{or}{%
-  	\caorganization[\@organizationpunc]{#1}}
+   \caorganization[\@organizationpunc]{#1}}
   \define@key{affiliation}{ad}{%
-  	\caaddressline[\@addresslinepunc]{#1}}
+   \caaddressline[\@addresslinepunc]{#1}}
   \define@key{affiliation}{ci}{%
-  	\caaffcity[\@citypunc]{#1}}
+   \caaffcity[\@citypunc]{#1}}
   \define@key{affiliation}{po}{%
-  	\capostalcode[\@postcodepunc]{#1}}
+   \capostalcode[\@postcodepunc]{#1}}
   \define@key{affiliation}{st}{%
-  	\castate[\@statepunc]{#1}}
+   \castate[\@statepunc]{#1}}
   \define@key{affiliation}{o}{%
-  	\caorganization[\@organizationpunc]{#1}}
+   \caorganization[\@organizationpunc]{#1}}
   \define@key{affiliation}{a}{%
-  	\caaddressline[\@addresslinepunc]{#1}}
+   \caaddressline[\@addresslinepunc]{#1}}
   \define@key{affiliation}{c}{%
-  	\cacity[\@citypunc]{#1}}
+   \cacity[\@citypunc]{#1}}
   \define@key{affiliation}{p}{%
-  	\capostcode[\@postcodepunc]{#1}}
+   \capostcode[\@postcodepunc]{#1}}
   \define@key{affiliation}{s}{%
-  	\castate[\@statepunc]{#1}}
+   \castate[\@statepunc]{#1}}
   \define@key{affiliation}{cy}{%
-  	\cacountry[\@countrypunc]{#1}}
+   \cacountry[\@countrypunc]{#1}}
   \define@key{affiliation}{country}{%
-  	\cacountry[\@countrypunc]{#1}}
-
+   \cacountry[\@countrypunc]{#1}}
 
   \gdef\@resetaffiliation{%
     \gdef\@organizationpunc{,}%
@@ -696,7 +631,6 @@
       {\xdef#1{#2}}
       {\xdef#1{\stmexpandonce#1#2}}}
 
-
   \long\def\@@affiliation[#1]#2{%
       \@resetaffiliation%
       \gdef\caaffiliationvalues{}%
@@ -742,9 +676,9 @@
   \noindent\unskip\textbf{\@elsarticleabstitle} %*%
  \par\medskip\noindent\unskip\ignorespaces}
  {\egroup}
-   
+
 \newbox\elsarticlehighlightsbox
-\newbox\elsarticlegrabsbox  
+\newbox\elsarticlegrabsbox
 \def\@elsarticlehighlightstitle{Highlights}
 \def\@elsarticlegrabstitle{Graphical Abstract}
 \newif\ifelsprelimpagegrabs\global\elsprelimpagegrabsfalse
@@ -758,12 +692,12 @@
  \ifelsprelimpagehl\relax%
    \thispagestyle{empty}
    \unvbox\elsarticlehighlightsbox%
-   \pagebreak\clearpage%   
+   \pagebreak\clearpage%
    \setcounter{page}{1}%
  \fi%
 }
 \newenvironment{highlights}{%
-  \global\elsprelimpagehltrue%  
+  \global\elsprelimpagehltrue%
   \global\setbox\elsarticlehighlightsbox=\vbox\bgroup
   \hsize=\textwidth\def\baselinestretch{1}%
   \noindent\unskip{\Large\@elsarticlehighlightstitle}%*%
@@ -794,9 +728,9 @@
     \else%
       \elsprelimauthors%
     \fi%
-  \fi%  
+  \fi%
  \par\medskip\noindent\unskip\ignorespaces}
- {\egroup} 
+ {\egroup}
 
 \newbox\keybox
 \let\@elsarticlekwdtitle\@empty %*%
@@ -1089,14 +1023,8 @@
       {\gdef\@elsarticlemyfooteralign{#1}
        \gdef\@elsarticlemyfooter{#2}}
 
-
 \def\myfooterfont#1{\gdef\@myfooterfont{#1}}
 \myfooterfont{\footnotesize\itshape}
-%    \end{macrocode}
-%    
-%\section{Headers/footers}
-%
-%    \begin{macrocode}
 \def\ps@pprintTitle{%
      \let\@oddhead\@empty
      \let\@evenhead\@empty
@@ -1112,21 +1040,16 @@
          \else%
          \ifx\@elsarticlemyfooteralign\@elsarticlemyfooteralignright%
            {}\hfill\@elsarticlemyfooter%
-         \else%
-               Preprint submitted to \ifx\@journal\@empty%
-                 Elsevier%
-            \else\@journal\fi\hfill\@date\fi%
+%% Removed the preprint submitted line as per the instruction
+%% received on 22 Oct 2024 from Arun Shanmugam (ELS) with the
+%% subject line "FW: Preprint sentence in EM submissions"
+         \fi%
          \fi%
          \fi%
          \fi%
          }%
        }%
      \let\@evenfoot\@oddfoot}
-%    \end{macrocode}
-%
-% \section{Section headings}
-%
-%    \begin{macrocode}
 \def\@seccntDot{.}
 \def\@seccntformat#1{\csname the#1\endcsname\@seccntDot\hskip 0.5em}
 
@@ -1151,11 +1074,6 @@
            {10\p@ \@plus 6\p@ \@minus 3\p@}%
            {-6\p@}%
            {\normalfont\itshape}}
-%    \end{macrocode}
-%
-%\section{List environment}
-%
-%    \begin{macrocode}
 \newdimen\leftMargin
 \leftMargin=2em
 \newtoks\@enLab  %\newtoks\@enfont
@@ -1233,11 +1151,6 @@
   \expandafter\list\csname\@itemitem\endcsname
   {\def\makelabel##1{\hss\llap{##1}}}%
  \fi}
-%    \end{macrocode}
-%
-%\section{Theorem environment}
-%
-%    \begin{macrocode}
 \def\newdefinition#1{%
   \@ifnextchar[{\@odfn{#1}}{\@ndfn{#1}}}%]
 \def\@ndfn#1#2{%
@@ -1336,13 +1249,6 @@
     ,\expandafter\strip@prefix\meaning\next}}}
 
 \let\baselinestretch=\@blstr
-%    \end{macrocode}
-%
-%\section{Page dimensions and margins for final form}
-%
-%\subsection{Option 1p}
-%
-%    \begin{macrocode}
 \ifnum\jtype=1
  \RequirePackage{geometry}
  \geometry{twoside,
@@ -1356,15 +1262,7 @@
   footskip=12pt,
   footnotesep=24pt plus 2pt minus 12pt,
  }
- \global\let\bibfont=\footnotesize
- \global\bibsep=0pt
  \if@twocolumn\global\@twocolumnfalse\fi
-%
-%    \end{macrocode}
-%
-%\subsection{Option '3p'}
-%
-%    \begin{macrocode}
 \else\ifnum\jtype=3
  \RequirePackage{geometry}
  \geometry{twoside,
@@ -1379,14 +1277,7 @@
   footnotesep=24pt plus 2pt minus 12pt,
   columnsep=2pc
  }
- \global\let\bibfont=\footnotesize
- \global\bibsep=0pt
  \if@twocolumn\input{fleqn.clo}\fi
-%    \end{macrocode}
-%
-%\subsection{Option '5p'}
-%
-%    \begin{macrocode}
 \else\ifnum\jtype=5
  \RequirePackage{geometry}
  \geometry{twoside,
@@ -1401,19 +1292,12 @@
   footnotesep=24pt plus 2pt minus 12pt,
   columnsep=18pt
  }%
- \global\let\bibfont=\footnotesize
- \global\bibsep=0pt
  \input{fleqn.clo}
  \global\@twocolumntrue
 %%
 %% End of option '5p'
 %%
 \fi\fi\fi
-%    \end{macrocode}
-%
-%\section{Other items}
-%
-%    \begin{macrocode}
 \def\journal#1{\gdef\@journal{#1}}
  \let\@journal\@empty
 \newenvironment{frontmatter}{}{\maketitle}
@@ -1514,13 +1398,6 @@
 }
 
 \def\textmarker#1#2{\textcolor{#1}{#2}}%*%
-%</class>
-%
-%    \end{macrocode}
-% \Finale
 \endinput
-
 %%
-%% End of file 'elsarticle.dtx'
-%%
-
+%% End of file `elsarticle.cls'.
