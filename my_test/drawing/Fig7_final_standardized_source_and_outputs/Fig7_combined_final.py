@@ -10,22 +10,11 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 
 MODE_C = "#6A3D9A"
-MODE_C_LIGHT = "#D9C7F0"
-BASE_BLUE = "#5B8DB8"
-BASE_BLUE_LIGHT = "#DCEAF5"
+MODE_E = "#4F86A6"
 DARK = "#333333"
 MID_GREY = "#707070"
 
 OP_ORDER = ["P01", "P02", "P03"]
-OP_MARKERS = {"P01": "o", "P02": "^", "P03": "s"}
-OBJECT_MARKERS = {
-    "Scissors": "o",
-    "Paper cup": "s",
-    "Mouse": "^",
-    "Apple": "D",
-    "Banana": "v",
-    "Bottle": "P",
-}
 OBJECT_DISPLAY = ["Scissors", "Paper cup", "Mouse", "Apple", "Banana", "Bottle"]
 
 OBJECT_MAP = {
@@ -117,126 +106,76 @@ def save_figure(fig, output_stem: Path) -> None:
     fig.savefig(output_stem.with_suffix(".pdf"), bbox_inches="tight")
     fig.savefig(output_stem.with_suffix(".svg"), bbox_inches="tight")
 
-def draw_panel_a(ax, pivot: pd.DataFrame, panel_tag: str = "(a)") -> None:
-    rng = np.random.default_rng(42)
-    y_positions = np.arange(len(OP_ORDER))[::-1]  # P01 top
-
-    stats = []
-    for op, y in zip(OP_ORDER, y_positions):
-        vals = pivot.loc[pivot["operator"] == op, "improvement_s"].to_numpy()
-        stats.append((op, y, vals.mean(), vals.std(ddof=1), int((vals > 0).sum()), len(vals)))
-
-        y_jitter = y + rng.uniform(-0.10, 0.10, size=len(vals))
-        ax.scatter(
-            vals, y_jitter,
-            marker=OP_MARKERS[op],
-            s=18,
-            facecolors="white",
-            edgecolors=BASE_BLUE,
-            linewidths=0.8,
-            alpha=0.70,
-            zorder=2,
-        )
-        mean_val = vals.mean()
-        sd_val = vals.std(ddof=1)
-        ax.hlines(y, mean_val - sd_val, mean_val + sd_val, color=MID_GREY, linewidth=1.2, zorder=3)
-        ax.scatter(
-            [mean_val], [y],
-            marker="D",
-            s=42,
-            facecolors=MODE_C,
-            edgecolors=MODE_C,
-            linewidths=0.8,
-            zorder=4,
-        )
-
-    ax.axvline(0, linestyle="--", linewidth=1.0, color=MID_GREY, zorder=1)
-    ax.set_yticks(y_positions)
-    ax.set_yticklabels(OP_ORDER)
-    ax.set_ylabel("Operator", fontsize=9)
-    ax.set_xlabel(r"Paired improvement, $\Delta T=T_E-T_C$ (s)", fontsize=9)
-
-    xmin = min(0, pivot["improvement_s"].min()) - 0.45
-    xmax = max(pivot["improvement_s"].max(), 3.0) + 2.05
-    ax.set_xlim(xmin, xmax)
-    ax.set_ylim(-0.65, len(OP_ORDER) - 0.35)
-
-    label_x = max(3.25, pivot["improvement_s"].max() + 0.32)
-    header_y = y_positions.max() + 0.42
-    ax.text(label_x, header_y, "Mean", fontsize=7.7, color=DARK, ha="left")
-    ax.text(label_x + 1.25, header_y, "C faster", fontsize=7.7, color=DARK, ha="left")
-
-    for op, y, mean_val, sd_val, n_pos, n_total in stats:
-        ax.text(label_x, y, f"{mean_val:.2f} s", va="center", fontsize=7.7, color=DARK)
-        ax.text(label_x + 1.25, y, f"{n_pos}/{n_total}", va="center", fontsize=7.7, color=DARK, ha="left")
-
-    style_axes(ax, grid_axis="x")
-    add_panel_tag(ax, panel_tag)
-
-
-def draw_panel_b(ax, pivot: pd.DataFrame, panel_tag: str = "(b)") -> None:
-    rng = np.random.default_rng(123)
+def summarize_groups(pivot: pd.DataFrame, group_column: str, order: list[str]) -> pd.DataFrame:
     rows = []
-    for obj in OBJECT_DISPLAY:
-        vals = pivot.loc[pivot["object_en"] == obj, "improvement_s"].to_numpy()
+    for group in order:
+        subset = pivot.loc[pivot[group_column] == group]
+        c_values = subset["C"].to_numpy(float)
+        e_values = subset["E"].to_numpy(float)
+        improvement = e_values - c_values
         rows.append(
             {
-                "object": obj,
-                "mean": vals.mean(),
-                "sd": vals.std(ddof=1) if len(vals) > 1 else 0.0,
-                "n_pos": int((vals > 0).sum()),
-                "n_total": len(vals),
-                "vals": vals,
+                "group": group,
+                "mean_c": float(c_values.mean()),
+                "sd_c": float(c_values.std(ddof=1)),
+                "mean_e": float(e_values.mean()),
+                "sd_e": float(e_values.std(ddof=1)),
+                "improvement": float(improvement.mean()),
+                "n_pos": int((improvement > 0).sum()),
+                "n_total": int(improvement.size),
             }
         )
-    stats = pd.DataFrame(rows).sort_values("mean", ascending=False).reset_index(drop=True)
-    y_positions = np.arange(len(stats))[::-1]
+    return pd.DataFrame(rows)
 
-    for y, row in zip(y_positions, stats.itertuples(index=False)):
-        y_jitter = y + rng.uniform(-0.10, 0.10, size=len(row.vals))
-        ax.scatter(
-            row.vals, y_jitter,
-            marker=OBJECT_MARKERS[row.object],
-            s=18,
-            facecolors="white",
-            edgecolors=BASE_BLUE,
-            linewidths=0.8,
-            alpha=0.70,
-            zorder=2,
+
+def draw_dumbbell_panel(
+    ax,
+    stats: pd.DataFrame,
+    panel_tag: str,
+    title: str,
+    x_limits: tuple[float, float],
+    sort_by_improvement: bool,
+) -> None:
+    ordered = (
+        stats.sort_values("improvement", ascending=False).reset_index(drop=True)
+        if sort_by_improvement
+        else stats.reset_index(drop=True)
+    )
+    y_positions = np.arange(len(ordered))[::-1]
+    label_x = x_limits[1] - 0.10
+
+    for y, row in zip(y_positions, ordered.itertuples(index=False)):
+        ax.plot([row.mean_c, row.mean_e], [y, y], color=MID_GREY, linewidth=1.15, alpha=0.80, zorder=1)
+        ax.errorbar(
+            row.mean_c, y + 0.11, xerr=row.sd_c, fmt="o", markersize=6.3,
+            markerfacecolor=MODE_C, markeredgecolor="white", markeredgewidth=0.75,
+            color=MODE_C, ecolor=MODE_C, elinewidth=1.25, capsize=2.6, capthick=1.25, zorder=3,
         )
-        ax.hlines(y, row.mean - row.sd, row.mean + row.sd, color=MID_GREY, linewidth=1.2, zorder=3)
-        ax.scatter(
-            [row.mean], [y],
-            marker="D",
-            s=42,
-            facecolors=MODE_C,
-            edgecolors=MODE_C,
-            linewidths=0.8,
+        ax.errorbar(
+            row.mean_e, y - 0.11, xerr=row.sd_e, fmt="o", markersize=6.3,
+            markerfacecolor=MODE_E, markeredgecolor="white", markeredgewidth=0.75,
+            color=MODE_E, ecolor=MODE_E, elinewidth=1.25, capsize=2.6, capthick=1.25, zorder=3,
+        )
+        ax.text(
+            label_x,
+            y,
+            f"+{row.improvement:.2f} s | {row.n_pos}/{row.n_total}",
+            ha="right",
+            va="center",
+            fontsize=7.3,
+            color=DARK,
+            bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.88, "pad": 0.25},
             zorder=4,
         )
 
-    ax.axvline(0, linestyle="--", linewidth=1.0, color=MID_GREY, zorder=1)
+    ax.set_xlim(*x_limits)
+    ax.set_ylim(-0.65, len(ordered) - 0.28)
     ax.set_yticks(y_positions)
-    ax.set_yticklabels(stats["object"])
-    ax.set_ylabel("Object", fontsize=9)
-    ax.set_xlabel(r"Paired improvement, $\Delta T=T_E-T_C$ (s)", fontsize=9)
-
-    xmin = min(0, pivot["improvement_s"].min()) - 0.55
-    xmax = max(3.0, pivot["improvement_s"].max()) + 2.15
-    ax.set_xlim(xmin, xmax)
-    ax.set_ylim(-0.55, len(stats) - 0.35)
-
-    label_x = max(3.25, pivot["improvement_s"].max() + 0.32)
-    header_y = y_positions.max() + 0.58
-    ax.text(label_x, header_y, "Mean", fontsize=7.7, color=DARK, ha="left")
-    ax.text(label_x + 1.25, header_y, "C faster", fontsize=7.7, color=DARK, ha="left")
-
-    for y, row in zip(y_positions, stats.itertuples(index=False)):
-        ax.text(label_x, y + 0.11, f"{row.mean:.2f} s", va="center", fontsize=7.6, color=DARK)
-        ax.text(label_x + 1.25, y - 0.12, f"{row.n_pos}/{row.n_total}", va="center", fontsize=7.6, color=DARK, ha="left")
-
+    ax.set_yticklabels(ordered["group"])
+    ax.set_xlabel("Mean task duration (s)", fontsize=8.5)
+    ax.set_title(f"{panel_tag} {title}", loc="left", fontsize=9.5, fontweight="bold", pad=6)
+    ax.text(label_x, len(ordered) - 0.14, r"$\Delta T$ | C faster", ha="right", va="bottom", fontsize=7.2, color=DARK)
     style_axes(ax, grid_axis="x")
-    add_panel_tag(ax, panel_tag)
 
 def main() -> None:
     parser = argparse.ArgumentParser(
@@ -278,21 +217,43 @@ def main() -> None:
         if not np.isclose(object_means.loc[key], val, atol=5e-4):
             raise ValueError(f"Object mean mismatch for {key}: {object_means.loc[key]:.6f} vs {val:.6f}")
 
-    fig, axes = plt.subplots(
-        2, 1,
-        figsize=(7.2, 6.6),
-        constrained_layout=False,
+    operator_stats = summarize_groups(pivot, "operator", OP_ORDER)
+    object_stats = summarize_groups(pivot, "object_en", OBJECT_DISPLAY)
+    lower = min(
+        (operator_stats["mean_c"] - operator_stats["sd_c"]).min(),
+        (operator_stats["mean_e"] - operator_stats["sd_e"]).min(),
+        (object_stats["mean_c"] - object_stats["sd_c"]).min(),
+        (object_stats["mean_e"] - object_stats["sd_e"]).min(),
+    ) - 0.55
+    upper = max(
+        (operator_stats["mean_c"] + operator_stats["sd_c"]).max(),
+        (operator_stats["mean_e"] + operator_stats["sd_e"]).max(),
+        (object_stats["mean_c"] + object_stats["sd_c"]).max(),
+        (object_stats["mean_e"] + object_stats["sd_e"]).max(),
+    ) + 2.15
+    x_limits = (float(lower), float(upper))
+
+    fig, axes = plt.subplots(1, 2, figsize=(7.2, 3.45), constrained_layout=False)
+    draw_dumbbell_panel(axes[0], operator_stats, "(a)", "Operator", x_limits, sort_by_improvement=False)
+    draw_dumbbell_panel(axes[1], object_stats, "(b)", "Object", x_limits, sort_by_improvement=True)
+    fig.legend(
+        handles=[
+            Line2D([0], [0], marker="o", color=MODE_C, markerfacecolor=MODE_C, markeredgecolor="white", markersize=6, linewidth=1.25, label=r"Mode C: mean $\pm$ SD"),
+            Line2D([0], [0], marker="o", color=MODE_E, markerfacecolor=MODE_E, markeredgecolor="white", markersize=6, linewidth=1.25, label=r"Mode E: mean $\pm$ SD"),
+        ],
+        loc="upper center",
+        bbox_to_anchor=(0.5, 1.01),
+        ncol=2,
+        frameon=False,
+        fontsize=8.0,
     )
 
-    draw_panel_a(axes[0], pivot, "(a)")
-    draw_panel_b(axes[1], pivot, "(b)")
-
     fig.subplots_adjust(
-        left=0.11,
+        left=0.075,
         right=0.985,
-        bottom=0.08,
-        top=0.985,
-        hspace=0.28,
+        bottom=0.19,
+        top=0.84,
+        wspace=0.28,
     )
 
     output_stem = Path(args.output_stem)

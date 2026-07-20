@@ -170,14 +170,6 @@ def draw_panel_a(ax, pivot: pd.DataFrame, panel_tag: str = "(a)") -> None:
     ax.set_aspect("equal", adjustable="box")
     ax.set_xlabel(r"Mode E duration, $T_E$ (s)", fontsize=9)
     ax.set_ylabel(r"Mode C duration, $T_C$ (s)", fontsize=9)
-    ax.text(
-        0.97, 0.05,
-        "Below identity line:\nC faster",
-        transform=ax.transAxes,
-        ha="right", va="bottom",
-        fontsize=7.5,
-        color=DARK,
-    )
     style_axes(ax, grid_axis="both")
     add_panel_tag(ax, panel_tag)
 
@@ -185,10 +177,12 @@ def draw_panel_a(ax, pivot: pd.DataFrame, panel_tag: str = "(a)") -> None:
 def draw_panel_b(ax, pivot: pd.DataFrame, panel_tag: str = "(b)") -> None:
     values = pivot["improvement_s"].to_numpy()
     rng = np.random.default_rng(42)
+    x_min, x_max = 0.66, 1.62
+    center = (x_min + x_max) / 2
 
     parts = ax.violinplot(
         [values],
-        positions=[1.0],
+        positions=[center],
         widths=0.52,
         showmeans=False,
         showmedians=False,
@@ -203,7 +197,7 @@ def draw_panel_b(ax, pivot: pd.DataFrame, panel_tag: str = "(b)") -> None:
     # Show the nesting explicitly using operator-specific markers and offsets.
     for op in OP_ORDER:
         sub = pivot.loc[pivot["operator"] == op, "improvement_s"].to_numpy()
-        x = 1.0 + OP_OFFSETS[op] + rng.uniform(-0.012, 0.012, size=len(sub))
+        x = center + OP_OFFSETS[op] + rng.uniform(-0.012, 0.012, size=len(sub))
         ax.scatter(
             x, sub,
             marker=OP_MARKERS[op],
@@ -220,11 +214,11 @@ def draw_panel_b(ax, pivot: pd.DataFrame, panel_tag: str = "(b)") -> None:
 
     ax.axhline(0, color=MID_GREY, linestyle="--", linewidth=0.9, zorder=1)
     ax.hlines(
-        median_value, 0.84, 1.16,
+        median_value, center - 0.16, center + 0.16,
         color=DARK, linewidth=1.5, zorder=4,
     )
     ax.scatter(
-        [1.29], [mean_value],
+        [center + 0.29], [mean_value],
         marker="D",
         s=38,
         facecolors=MODE_C,
@@ -232,26 +226,10 @@ def draw_panel_b(ax, pivot: pd.DataFrame, panel_tag: str = "(b)") -> None:
         linewidths=0.8,
         zorder=5,
     )
-    ax.text(
-        1.33, mean_value,
-        f"Mean = {mean_value:.2f} s",
-        ha="left", va="center",
-        fontsize=7.5,
-        color=DARK,
-    )
-    ax.text(
-        0.98, 0.96,
-        "Positive improvement: C faster",
-        transform=ax.transAxes,
-        ha="right", va="top",
-        fontsize=7.5,
-        color=DARK,
-    )
-
     margin = 0.55
     ax.set_ylim(values.min() - margin, values.max() + margin)
-    ax.set_xlim(0.66, 1.62)
-    ax.set_xticks([1.0])
+    ax.set_xlim(x_min, x_max)
+    ax.set_xticks([center])
     ax.set_xticklabels(["27 matched task blocks\n(9 per operator)"])
     ax.set_ylabel(r"Paired improvement, $\Delta T=T_E-T_C$ (s)", fontsize=9)
     style_axes(ax, grid_axis="y")

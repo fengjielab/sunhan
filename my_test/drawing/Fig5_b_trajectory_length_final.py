@@ -71,8 +71,6 @@ def main():
     ax.set_ylim(0.5, 1.1)
     ax.set_yticks([0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1])
     format_axes(ax)
-    ax.text(0.015, 0.985, "(b)", transform=ax.transAxes, ha="left", va="top", fontsize=10.5, fontweight="bold")
-
     handles = [Line2D([0], [0], marker=MARKERS[o], linestyle="none", markerfacecolor="white",
                       markeredgecolor="#6B6B6B", markeredgewidth=0.8, markersize=5.2, label=o) for o in OPERATORS]
     ax.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.5, 1.18), ncol=3, frameon=False, fontsize=8)

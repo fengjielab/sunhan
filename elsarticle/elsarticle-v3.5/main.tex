@@ -1,0 +1,49 @@
+\documentclass[5p,times]{elsarticle}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb,booktabs,graphicx,tabularx,array}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\biboptions{sort&compress}
+
+\journal{Mechatronics}
+
+\begin{document}
+
+\begin{frontmatter}
+\title{Object-Conditioned Cross-Channel Mechatronic Parameter Reconfiguration for Haptic Teleoperation of Heterogeneous Objects}
+
+\author[a]{Fengjie Ma}
+\author[b]{Chuang Cao}
+\author[a]{Hua Zhang\corref{cor1}}
+\ead{huazhang@yeah.net}
+\author[b]{Qixin Cao}
+\author[a]{Yilin Zhou}
+\cortext[cor1]{Corresponding author}
+
+\affiliation[a]{organization={School of Mechanical and Automotive Engineering, Shanghai University of Engineering Science},
+addressline={333 Longteng Road}, city={Shanghai}, postcode={201620}, country={China}}
+\affiliation[b]{organization={School of Mechanical Engineering, Shanghai Jiao Tong University},
+addressline={800 Dongchuan Road}, city={Shanghai}, postcode={200240}, country={China}}
+
+\begin{abstract}
+Fixed teleoperation settings cannot readily accommodate objects with different fragility, geometry, and grasping requirements. Existing object-conditioned approaches primarily adapt slave-side impedance, while coordinated configuration of the slave response, operator-facing haptic interface, and gripper execution remains less explored. This paper presents an object-conditioned framework that maps object semantics to a common operational strategy and jointly configures these three mechatronic subsystems. Low-rate visual perception is integrated with a nominal 200-Hz supervisory loop through asynchronous, non-blocking communication, and the first valid detection triggers a one-shot parameter update that remains fixed for the trial. Three operators completed 135 grasp-and-transfer trials involving six objects and five control modes. Compared with impedance-only scheduling, the fully coordinated mode reduced mean completion time by 1.79 s, corresponding to 8.5\%, with a matched-block bootstrap 95\% confidence interval of [1.10, 2.51] s. The direction of the difference was consistent across all operators and objects, while the coordinated mode also showed the highest observed success rate and the lowest Raw NASA-TLX score. These results provide system-level evidence that jointly configuring the haptic interface and gripper with slave-side impedance can improve heterogeneous-object teleoperation under the present experimental conditions.
+
+\end{abstract}
+
+\begin{keyword}
+haptic teleoperation \sep impedance control \sep telemanipulation \sep object-conditioned parameter reconfiguration \sep cross-channel parameter coordination \sep human-in-the-loop evaluation
+\end{keyword}
+\end{frontmatter}
+
+\input{01_introduction}
+\input{02_methods}
+\input{03_experimental_design}
+\input{04_results}
+\input{05_discussion}
+\input{06_conclusion}
+
+\input{declarations}
+
+\bibliographystyle{elsarticle-num}
+\bibliography{references}
+\end{document}

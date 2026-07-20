@@ -1,0 +1,90 @@
+\section{Experimental Design}
+\subsection{Evaluation Objectives and Analysis Plan}
+The primary evaluation objective was to quantify task completion time under the complete cross-channel configuration relative to the planned baselines. Success rate and Raw NASA-TLX were reported as supplementary descriptive evidence of task success and subjective workload. Master-side trajectory length and pause count were included as exploratory process measures. Mode A served as the fixed-control baseline; mode B represented a workflow baseline that included manual object identification and strategy selection after timing began; and mode D represented the visual-semantic-cue baseline. Mode E retained vision-semantic impedance scheduling but not the haptic-interface or gripper settings. The primary C--E comparison therefore evaluated the complete parameter bundle at the system level against impedance-only scheduling; it was not designed to separate the independent contributions of the added parameter groups.
+
+\subsection{Operators and Test Objects}
+Three operators completed the main experiment (P01--P03; 23--24 years old; two male and one female; all right-handed). The Omega.7 was positioned to the operator's left and was operated with the left hand in every trial. All operators had received basic teleoperation training and completed an additional 10--15 min familiarization session before each formal experiment to practice master-device motion, gripper input, and the task procedure. All participants provided written informed consent.
+
+The six objects were selected to represent different contact, grasping, and transfer requirements and were assigned to the fragility-priority, balanced, or stability-priority strategy. These assignments were used solely to determine the parameter settings in this experiment and should not be interpreted as a general classification of material properties.
+
+\begin{table*}[!t]
+\centering
+\caption{Test objects, assigned strategies, and principal task risks.}
+\label{tab:5}
+\small
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1.16}
+\begin{tabularx}{\textwidth}{@{}p{0.14\textwidth}p{0.18\textwidth}p{0.29\textwidth}Y@{}}
+\toprule
+Object & Assigned strategy & Physical profile & Principal task risk \\
+\midrule
+Apple & Fragility-priority & $\sim$200 g; smooth; $\varnothing$70--80 mm & Impact or slip; gentle contact required. \\
+Banana & Fragility-priority & $\sim$120 g; smooth; $20\times180$ mm & Compression-induced deformation and slip. \\
+Paper cup & Balanced & $\sim$5 g; paper; $\varnothing$75$\times$90 mm & Easily deformed; stable grasp required. \\
+Bottle & Balanced & $\sim$30 g; smooth plastic; $\varnothing$65$\times$200 mm & Slip; balance between efficiency and stability. \\
+Mouse & Stability-priority & $\sim$100 g; smooth plastic; $65\times120\times35$ mm & Rigid irregular surface; transfer slip. \\
+Scissors & Stability-priority & $\sim$150 g; metal and plastic; $50\times170\times15$ mm & Rigid elongated geometry; high orientation demand. \\
+\bottomrule
+\end{tabularx}
+\end{table*}
+\subsection{Experimental Modes and Trial Structure}
+The five modes and their comparison logic are defined in Table~\ref{tab:3}. Modes C, D, and E used the same default visual-semantic display. The C--D contrast therefore compares full automatic parameter reconfiguration with displayed semantic information alone, whereas C--E compares full cross-channel reconfiguration with impedance-only reconfiguration while holding the designed interface constant. The D--A contrast assesses the complete visual-semantic cue---class, mapped strategy, confidence, and bounding box---and does not isolate the class label. Mode B required manual object identification and button-based strategy selection after timing had started but before robot motion could begin. Its comparison with mode C therefore includes both automation of the selection workflow and differences in visual-interface presentation; the separate decision time was not logged.
+
+The experiment comprised 27 matched task blocks. Each block was defined by a fixed operator, object, and repetition index and contained one trial in each of modes A--E, yielding $27\times5=135$ trials. Within each operator and strategy category, the two objects were assigned to the three repetitions in a fixed 2:1 ratio. This assignment was held constant across the five modes for a given operator and strategy, preserving the matched comparison, while the 2:1 allocation was reversed across operators. The resulting object counts produced an approximate 5:4 balance within each strategy:
+
+\begin{table}[!t]
+\centering
+\caption{Allocation of matched task blocks and trials by strategy and object.}
+\label{tab:6}
+\footnotesize
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1.16}
+\begin{tabular*}{\columnwidth}{@{\extracolsep{\fill}}lcc@{}}
+\toprule
+Object & Blocks & Trials \\
+\midrule
+\multicolumn{3}{@{}l}{\textit{Fragility-priority}} \\
+Apple & 4 & 20 \\
+Banana & 5 & 25 \\
+\addlinespace[2pt]
+\multicolumn{3}{@{}l}{\textit{Balanced}} \\
+Paper cup & 5 & 25 \\
+Bottle & 4 & 20 \\
+\addlinespace[2pt]
+\multicolumn{3}{@{}l}{\textit{Stability-priority}} \\
+Mouse & 5 & 25 \\
+Scissors & 4 & 20 \\
+\midrule
+Total (six objects) & 27 & 135 \\
+\bottomrule
+\end{tabular*}
+\par\smallskip
+\footnotesize\textit{Note:} Each block contains one trial in each of the five modes.
+\end{table}
+The five mode orders were preassigned at the operator-by-strategy group level using nine different sequences, so no single fixed order was used. The schedule distributed modes across early and late positions but did not constitute a complete Latin-square design. The exact sequences are reported in Supplementary Table S2. With only three operators, order, object, and operator effects could not be fully separated.
+
+\subsection{Task and Procedure}
+Before each trial, the test object was manually placed within a predefined work region and at an approximately prescribed orientation. Small reset errors in position and orientation were therefore unavoidable, but the same placement protocol was used in all modes. Only translational master motion was mapped; the desired Panda end-effector orientation remained fixed throughout the trial.
+
+Each trial comprised reset, approach, grasp, transfer, release, and termination (Fig. 3). In modes C--E, camera acquisition, visual inference, and teleoperation began concurrently at task initiation; visual output did not gate operator motion. In mode B, timing began before object identification and strategy selection, and robot motion was permitted only after the operator completed the button selection. No separate timestamp marked the end of this selection step.
+
+A trial was classified as successful when grasping, transfer, and placement were completed without a drop, observable slip, or visible damage. Complete separation of the object from the gripper was classified as a drop; visible relative motion between object and gripper during grasp or transfer was classified as slip; and a clear indentation, crushing deformation, or other visible damage was classified as damage. A designated researcher applied these predefined criteria in real time. Trials were not systematically video-recorded, and the labels were not independently or blindly re-evaluated.
+
+To maintain a common timing endpoint, failure did not stop the timer immediately. Regrasping after a drop was not permitted; the failure was recorded, and the operator completed the prescribed return-and-termination procedure until the robot and gripper reached the predefined terminal state. The same endpoint was therefore applied to successful and failed trials. The system recorded the master-side trajectory, gripper input, active control parameters, task duration, and outcome.
+
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=\textwidth]{fig3.png}
+\caption{Object-conditioned cross-channel reconfiguration architecture. Color frames acquired at 15 fps are processed asynchronously; the nominal 200-Hz supervisor polls the bounded latest-result queue without waiting for inference. The first threshold-qualified mapped class triggers one strategy event $\Theta(c)$, which updates the enabled slave-impedance, haptic-interface, and gripper settings and is then locked for the trial. No result or confidence below 0.25 retains the initial state, whereas a detected but unmapped class invokes the balanced default strategy. Green paths show asynchronous perception and one-shot updates; the blue loop shows continuous human teleoperation and force/state feedback. Five-mode channel-update logic and comparison roles are given in Table~\ref{tab:3}.}
+\label{fig:3}
+\end{figure*}
+
+\subsection{Evaluation Measures}
+Task completion time was the primary endpoint. Success rate was reported descriptively, and master-side trajectory length and pause count were used as exploratory process measures. Subjective workload was assessed with Raw NASA-TLX \cite{ref27}. Each of the six dimensions was rated from 0 to 100, and their unweighted arithmetic mean was used as the Raw NASA-TLX score.
+
+Each operator completed one questionnaire immediately after the three trials in a given strategy $\times$ mode condition. These trials combined the two objects assigned to that strategy in the operator-specific 2:1 ratio. The workload dataset therefore contained $3$ operators $\times3$ strategies $\times5$ modes $=45$ questionnaires. The resulting scores represent strategy-level workload under each mode and do not support object-specific workload comparisons.
+
+Visual performance was characterized in a separate controlled image test using class accuracy, class-to-strategy mapping accuracy, confidence, and per-image processing time. A pause was defined as a continuous interval during which master-device speed remained below 0.005 m/s for at least 0.30 s. Pauses were detected by differentiating the raw master-side trajectories, which were sampled at approximately 200 Hz.
+
+\subsection{Statistical Analysis}
+Completion time across the five modes was first compared using a Friedman test, with the task block---defined by the same operator, object, and repetition index---as the pairing unit. When the omnibus test was significant, paired Wilcoxon signed-rank tests were performed with Holm--Bonferroni correction for multiple comparisons. For the primary C--E comparison, we report the paired mean difference, relative change, and a 95\% bootstrap confidence interval based on 10,000 resamples of the matched task blocks. We also examined effect direction for each operator and performed a leave-one-operator-out analysis to assess whether a single operator dominated the overall difference. Raw NASA-TLX scores were paired descriptively across nine operator $\times$ strategy units per mode; each score summarized three mixed-object trials, and no bootstrap interval was calculated. Trajectory length and pause count were treated as exploratory measures, whereas success rate was reported descriptively. Because the 27 task blocks were nested within only three operators, the inferential tests characterize repeated-measures differences within the present sample and do not support population-level inference across operators. Results are reported as both median [IQR] and mean $\pm$ SD. Figures 4--9 were generated from frozen data using verified Python/Matplotlib scripts.

@@ -241,7 +241,7 @@ def add_completion_time_significance(ax: plt.Axes) -> None:
         )
 
 
-def draw_nasa_panel(ax: plt.Axes, nasa: pd.DataFrame) -> None:
+def draw_nasa_panel(ax: plt.Axes, nasa: pd.DataFrame, panel_tag: str = "(c)") -> None:
     op_means = (
         nasa.groupby(["operator_id", "mode"], as_index=False)["Raw_NASA_TLX"].mean()
     )
@@ -263,29 +263,9 @@ def draw_nasa_panel(ax: plt.Axes, nasa: pd.DataFrame) -> None:
             zorder=1,
         )
 
-    # Strategy-level units: three small observations for each operator and mode.
-    strategy_offsets = np.array([-0.024, 0.0, 0.024])
-    for mode_x, mode in enumerate(MODE_ORDER, start=1):
-        subset = nasa.loc[nasa["mode"] == mode]
-        for operator in OPERATORS:
-            y = subset.loc[subset["operator_id"] == operator, "Raw_NASA_TLX"].to_numpy()
-            if y.size == 0:
-                continue
-            offsets = strategy_offsets[: y.size]
-            x = mode_x + OPERATOR_OFFSETS[operator] + offsets
-            ax.scatter(
-                x,
-                y,
-                marker=OPERATOR_MARKERS[operator],
-                s=10,
-                facecolors=mode_fill(mode),
-                edgecolors=mode_edge(mode),
-                linewidths=0.40,
-                alpha=0.38,
-                zorder=2,
-            )
-
-    # Operator-level means: larger open markers.
+    # Show one trajectory per operator.  Each marker is the mean of that
+    # operator's three questionnaire units for the corresponding mode; the
+    # individual units remain in the frozen source data and supplement.
     for mode_x, mode in enumerate(MODE_ORDER, start=1):
         for operator in OPERATORS:
             row = op_means.loc[
@@ -309,13 +289,15 @@ def draw_nasa_panel(ax: plt.Axes, nasa: pd.DataFrame) -> None:
     ax.set_xticks(np.arange(1, 6))
     ax.set_xticklabels(MODE_ORDER)
     ax.set_ylabel("Raw NASA-TLX score", fontsize=9)
-    ax.set_ylim(35, 80)
-    ax.set_yticks(np.arange(35, 81, 5))
+    # All observed Raw NASA--TLX scores are at least 44.17; starting at 40
+    # expands the visible variation without truncating any observation.
+    ax.set_ylim(40, 80)
+    ax.set_yticks(np.arange(40, 81, 5))
     format_axes(ax)
-    add_panel_tag(ax, "(c)")
+    add_panel_tag(ax, panel_tag)
 
 
-def draw_success_panel(ax: plt.Axes) -> None:
+def draw_success_panel(ax: plt.Axes, panel_tag: str = "(d)") -> None:
     xs = np.arange(1, 6)
     rates = np.array([SUCCESS_COUNTS[m] / N_ATTEMPTS_PER_MODE * 100 for m in MODE_ORDER])
 
@@ -334,12 +316,12 @@ def draw_success_panel(ax: plt.Axes) -> None:
         )
         ax.text(
             x,
-            rate + 2.5,
+            rate + 3.5,
             f"{SUCCESS_COUNTS[mode]}/{N_ATTEMPTS_PER_MODE}\n({rate:.1f}%)",
             ha="center",
             va="bottom",
-            fontsize=7.4,
-            linespacing=0.95,
+            fontsize=6.7,
+            linespacing=0.90,
         )
 
     ax.set_xlim(0.55, 5.45)
@@ -349,7 +331,7 @@ def draw_success_panel(ax: plt.Axes) -> None:
     ax.set_ylim(0, 112)
     ax.set_yticks([0, 20, 40, 60, 80, 100])
     format_axes(ax)
-    add_panel_tag(ax, "(d)")
+    add_panel_tag(ax, panel_tag)
 
 
 def operator_legend_handles() -> list[Line2D]:

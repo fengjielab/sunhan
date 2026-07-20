@@ -4,16 +4,12 @@ import argparse
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-from matplotlib.lines import Line2D
 import numpy as np
 import pandas as pd
 
 MODE_ORDER = ["A", "B", "C", "D", "E"]
-OPERATORS = ["P01", "P02", "P03"]
-MARKERS = {"P01": "o", "P02": "^", "P03": "s"}
-OFFSETS = {"P01": -0.11, "P02": 0.00, "P03": 0.11}
-BASE_EDGE, BASE_FILL = "#5B8DB8", "#DCEAF5"
-METHOD_EDGE, METHOD_FILL = "#6A3D9A", "#D9C7F0"
+BASE_EDGE = "#5B8DB8"
+METHOD_EDGE = "#6A3D9A"
 
 plt.rcParams.update({"font.family": "sans-serif", "font.sans-serif": ["Arial", "Helvetica", "DejaVu Sans"], "pdf.fonttype": 42, "svg.fonttype": "none"})
 
@@ -21,7 +17,11 @@ plt.rcParams.update({"font.family": "sans-serif", "font.sans-serif": ["Arial", "
 def parse_args():
     here = Path(__file__).resolve().parent
     p = argparse.ArgumentParser()
-    p.add_argument("--trial-file", type=Path, default=here / "all_trials_135.csv")
+    p.add_argument(
+        "--trial-file",
+        type=Path,
+        default=here / "Fig5_final_source_and_outputs" / "mnt" / "data" / "Fig5_final_package" / "all_trials_135.csv",
+    )
     p.add_argument("--output-dir", type=Path, default=here / "outputs")
     p.add_argument("--dpi", type=int, default=600)
     return p.parse_args()
@@ -40,42 +40,49 @@ def format_axes(ax):
 def main():
     args = parse_args()
     df = pd.read_csv(args.trial_file)
-    required = {"operator", "mode", "duration_s"}
+    required = {"mode", "duration_s"}
     if missing := required.difference(df.columns):
         raise ValueError(f"Missing columns: {sorted(missing)}")
 
     fig, ax = plt.subplots(figsize=(3.6, 3.0))
-    values = [df.loc[df["mode"] == m, "duration_s"].dropna().to_numpy() for m in MODE_ORDER]
-    bp = ax.boxplot(values, widths=0.46, patch_artist=True, showfliers=False,
-                    medianprops={"color": "#333333", "linewidth": 1.35},
-                    whiskerprops={"color": "#5A5A5A", "linewidth": 0.8},
-                    capprops={"color": "#5A5A5A", "linewidth": 0.8},
-                    boxprops={"linewidth": 0.9})
-    for mode, patch in zip(MODE_ORDER, bp["boxes"]):
-        patch.set_facecolor(METHOD_FILL if mode == "C" else BASE_FILL)
-        patch.set_edgecolor(METHOD_EDGE if mode == "C" else BASE_EDGE)
-        patch.set_alpha(0.16)
-
     rng = np.random.default_rng(7)
-    for x0, mode in enumerate(MODE_ORDER, start=1):
-        for op in OPERATORS:
-            y = df.loc[(df["mode"] == mode) & (df["operator"] == op), "duration_s"].dropna().to_numpy()
-            x = x0 + OFFSETS[op] + rng.uniform(-0.012, 0.012, size=y.size)
-            edge = METHOD_EDGE if mode == "C" else BASE_EDGE
-            ax.scatter(x, y, marker=MARKERS[op], s=13, facecolors="white", edgecolors=edge,
-                       linewidths=0.65, alpha=0.68, zorder=3)
+    for y, mode in enumerate(MODE_ORDER):
+        values = df.loc[df["mode"] == mode, "duration_s"].dropna().to_numpy(float)
+        q1, median, q3 = np.percentile(values, [25, 50, 75])
+        iqr = q3 - q1
+        lower_fence, upper_fence = q1 - 1.5 * iqr, q3 + 1.5 * iqr
+        inliers = values[(values >= lower_fence) & (values <= upper_fence)]
+        outliers = values[(values < lower_fence) | (values > upper_fence)]
+        whisker_low, whisker_high = float(inliers.min()), float(inliers.max())
+        color = METHOD_EDGE if mode == "C" else BASE_EDGE
 
-    ax.set_xlim(0.55, 5.45)
-    ax.set_xticks(range(1, 6), MODE_ORDER)
-    ax.set_ylabel("Task execution duration (s)", fontsize=9)
-    ax.set_ylim(15, 27)
-    ax.set_yticks([16, 18, 20, 22, 24, 26])
+        # A compact horizontal interval plot: Tukey whisker, IQR, and median.
+        ax.hlines(y, whisker_low, whisker_high, color=color, linewidth=1.15, zorder=1)
+        ax.vlines([whisker_low, whisker_high], y - 0.12, y + 0.12, color=color, linewidth=1.15, zorder=1)
+        ax.hlines(y, q1, q3, color=color, linewidth=5.0, zorder=2)
+        ax.scatter(median, y, s=42, marker="o", facecolors=color, edgecolors="white", linewidths=1.0, zorder=3)
+        if outliers.size:
+            ax.scatter(
+                outliers,
+                y + rng.uniform(-0.10, 0.10, outliers.size),
+                s=22,
+                marker="o",
+                facecolors="white",
+                edgecolors=color,
+                linewidths=0.95,
+                zorder=4,
+            )
+
+    ax.set_xlim(15, 27)
+    ax.set_xticks([16, 18, 20, 22, 24, 26])
+    ax.set_ylim(len(MODE_ORDER) - 0.5, -0.5)
+    ax.set_yticks(range(len(MODE_ORDER)), MODE_ORDER)
+    ax.set_xlabel("Task execution duration (s)", fontsize=9)
+    ax.set_ylabel("Experimental mode", fontsize=9)
     format_axes(ax)
-    ax.text(0.015, 0.985, "(a)", transform=ax.transAxes, ha="left", va="top", fontsize=10.5, fontweight="bold")
-
-    handles = [Line2D([0], [0], marker=MARKERS[o], linestyle="none", markerfacecolor="white",
-                      markeredgecolor="#6B6B6B", markeredgewidth=0.8, markersize=5.2, label=o) for o in OPERATORS]
-    ax.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.5, 1.18), ncol=3, frameon=False, fontsize=8)
+    ax.grid(axis="x", linestyle="--", linewidth=0.5, color="#B7B7B7", alpha=0.35)
+    ax.grid(axis="y", visible=False)
+    fig.tight_layout(pad=0.45)
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
     for ext in ("png", "pdf", "svg"):
