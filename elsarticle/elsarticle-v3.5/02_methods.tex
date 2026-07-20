@@ -1,26 +1,24 @@
 \section{Methods and System Implementation}
 \subsection{Mechatronic System Architecture and Asynchronous Execution}
-The experimental platform comprised an Omega.7 force-feedback master device, a seven-degree-of-freedom Franka Panda robot, a Franka Hand gripper \cite{ref26}, an Intel RealSense D435i camera, and a control computer (Fig. 1). The D435i provided 424 $\times$ 240-pixel color images at 15 fps; the depth stream was not used. The control computer ran visual detection, the nominal 200-Hz supervisory teleoperation update, parameter configuration, haptic rendering, gripper control, and data logging.
+The experimental platform comprised an Omega.7 force-feedback master device, a seven-degree-of-freedom Franka Panda robot, a Franka Hand gripper \cite{ref26}, an Intel RealSense D435i camera, and a control computer (Fig.~\ref{fig:1}). The D435i provided 424 $\times$ 240-pixel color images at 15 fps; the depth stream was not used. The control computer ran visual detection, the nominal 200-Hz supervisory teleoperation update, parameter configuration, haptic rendering, gripper control, and data logging.
 
 \begin{figure}[!t]
 \centering
 \includegraphics[width=\columnwidth]{fig1.png}
-\caption{Figure 1.}
+\caption{Experimental platform comprising the Omega.7 master device, Franka Panda robot and Franka Hand gripper, D435i camera, and control computer. The camera supplied 424 $\times$ 240 color images at 15 fps.}
 \label{fig:1}
 \end{figure}
-\textbf{Fig. 1.} Experimental platform comprising the Omega.7 master device, Franka Panda robot and Franka Hand gripper, D435i camera, and control computer. The camera supplied 424 $\times$ 240 color images at 15 fps.
 
-Figure 2 illustrates the timing relationships within this multi-rate asynchronous software architecture.
+Figure~\ref{fig:2} illustrates the timing relationships within this multi-rate asynchronous software architecture.
 
 \begin{figure*}[!t]
 \centering
 \includegraphics[width=\textwidth]{fig2.png}
-\caption{Figure 2.}
+\caption{Illustrative timing of the asynchronous perception--control implementation. Color frames are acquired at 15 fps and passed through a single-slot frame queue to an independent YOLO11n process; a controlled visual test yielded a mean wall-clock processing time of 48.19 ms per image. Class labels and confidence scores are returned through a two-slot result queue. The nominal 5-ms supervisory update polls this queue without blocking. The first result that reaches the confidence threshold is converted by the class-to-strategy mapping into a one-shot strategy event. Modes C and E update their enabled parameters, whereas mode D retains fixed parameters and presents the semantic result. Translational stiffness, rotational stiffness, and the controller damping-scaling parameter follow an approximately 300-ms smoothstep transition, while the enabled haptic-interface and gripper settings change at the event. Subsequent detections do not change the strategy within the same trial. A low-confidence result or absence of a detection leaves the initialized state unchanged; a detected class without an explicit mapping is assigned to the balanced default strategy.}
 \label{fig:2}
 \end{figure*}
-\textbf{Fig. 2.} Illustrative timing of the asynchronous perception--control implementation. Color frames are acquired at 15 fps and passed through a single-slot frame queue to an independent YOLO11n process; a controlled visual test yielded a mean wall-clock processing time of 48.19 ms per image. Class labels and confidence scores are returned through a two-slot result queue. The nominal 5-ms supervisory update polls this queue without blocking. The first result that reaches the confidence threshold is converted by the class-to-strategy mapping into a one-shot strategy event. Modes C and E update their enabled parameters, whereas mode D retains fixed parameters and presents the semantic result. Translational stiffness, rotational stiffness, and the controller damping-scaling parameter follow an approximately 300-ms smoothstep transition, while the enabled haptic-interface and gripper settings change at the event. Subsequent detections do not change the strategy within the same trial. A low-confidence result or absence of a detection leaves the initialized state unchanged; a detected class without an explicit mapping is assigned to the balanced default strategy.
 
-RGB frames are acquired every 66.7 ms and written to a single-slot queue, preventing stale images from accumulating. YOLO11n runs in an independent process and returns class labels and confidence scores through a two-slot result queue. The nominal 200-Hz supervisory loop polls this queue every 5 ms without waiting for inference, allowing camera acquisition, perception, and operator motion to proceed in parallel. The reported 48.19 ms is the mean wall-clock processing time per image rather than the camera sampling period. Formal trial records included task outcomes and active parameter states, but detailed visual-event histories and synchronized strategy-event--contact timestamps were outside the logging scope.
+RGB frames are acquired every 66.7 ms and written to a single-slot queue, preventing stale images from accumulating. YOLO11n runs in an independent process and returns class labels and confidence scores through a two-slot result queue. The nominal 200-Hz supervisory loop polls this queue every 5 ms without waiting for inference, allowing camera acquisition, perception, and operator motion to proceed in parallel. The reported 48.19 ms is the mean wall-clock processing time per image rather than the camera sampling period.
 
 \begin{table*}[!t]
 \centering
@@ -48,71 +46,80 @@ Gripper command & Button event & Gripper input and command parameters $\rightarr
 \subsection{Master--Slave Mapping and Implementation of the Mechatronic Channels}
 Only translational motion of the Omega.7 was mapped to the Panda. The master-device position increment and desired slave position were updated as
 
-\[
+\begin{equation}
+\label{eq:master-position-increment}
 \Delta\mathbf{p}_m(k)=\mathbf{p}_m(k)-\mathbf{p}_m(k-1),
-\]
+\end{equation}
 
-\[
+\begin{equation}
+\label{eq:desired-slave-position}
 \mathbf{p}_d(k)=\mathbf{p}_d(k-1)+S\mathbf{C}\Delta\mathbf{p}_m(k),
-\]
+\end{equation}
 
 where the position-scaling factor was $S=3.0$ and $\mathbf{C}=\mathrm{diag}(-1,-1,1)$. The desired end-effector orientation $\mathbf{R}_d$ was fixed at its prescribed value throughout each trial; active rotational input from the operator was not mapped. Cartesian impedance control acted on the six-dimensional pose error,
 
-\[
+\begin{equation}
+\label{eq:cartesian-impedance}
 \mathbf{w}_c=\mathbf{K}(c)\mathbf{e}+\mathbf{D}(c)\dot{\mathbf{e}},
-\]
+\end{equation}
 
-\[
+\begin{equation}
+\label{eq:stiffness-matrix}
 \mathbf{K}(c)=\mathrm{diag}(K_t,K_t,K_t,K_r,K_r,K_r),
-\]
+\end{equation}
 
 where $\mathbf{e}$ contains translational error relative to $\mathbf{p}_d$ and rotational error relative to the fixed $\mathbf{R}_d$. Thus, $K_r$ changes resistance to rotational disturbances and the ability to hold the prescribed orientation; it does not scale operator-commanded rotation.
 
 The slave controller internally generated the damping matrix from the active diagonal stiffness matrix and a scalar API parameter denoted by $\zeta$. In the present implementation,
 
-\[
+\begin{equation}
+\label{eq:damping-matrix}
 \mathbf{D}(c)=2\zeta(c)\sqrt{\mathbf{K}(c)},
-\]
+\end{equation}
 
 where the square root is applied elementwise to the diagonal entries. Here, $\zeta$ is the dimensionless damping-scaling parameter used by the controller. We do not interpret it as a Cartesian critical-damping ratio because no effective Cartesian mass or inertia matrix was identified or specified.
 
 For haptic rendering, the Franka internal state estimator provided the slave-side external-force estimate $\mathbf{F}_{\mathrm{ext}}$ in newtons. The baseline master-side force command along direction $i$ was
 
-\[
+\begin{equation}
+\label{eq:baseline-haptic-command}
 u_{h,i}^{\mathrm{base}}=
 \operatorname{sgn}\!\left(K_fF_{\mathrm{ext},i}\right)
 \max\!\left(\left|K_fF_{\mathrm{ext},i}\right|-d,0\right),
 \quad i\in\{x,y,z\},
-\]
+\end{equation}
 
 where $K_f$ is a dimensionless force-scaling factor and $d$ is a per-axis dead-zone threshold in newtons.
 
 A separate positive-$z$ cue was generated solely from the Omega.7 gripper angle $\theta_{\Omega}$:
 
-\[
+\begin{equation}
+\label{eq:gripper-cue-activation}
 \alpha_g=\operatorname{clip}\!\left(
 \frac{\theta_{\max}-\theta_{\Omega}}
 {\theta_{\max}-\theta_{\min}},0,1\right),
-\]
+\end{equation}
 
-\[
+\begin{equation}
+\label{eq:gripper-cue-command}
 u_g=\min\!\left(\alpha_gG_{\mathrm{cue}}F_{\mathrm{cue,max}},F_{\mathrm{cue,max}}\right),
 \qquad
 u_{h,z}=u_{h,z}^{\mathrm{base}}+u_g.
-\]
+\end{equation}
 
 With $G_{\mathrm{cue}}=0.3$ and $F_{\mathrm{cue,max}}=1.0$ N, the cue was $u_g=0.3\alpha_g$ N and therefore remained within $[0,0.3]$ N. It was updated during every nominal 200-Hz supervisory cycle, with a more open Omega.7 gripper producing a larger cue. This signal represents only the Omega.7 gripper aperture; it contains no measurement of Franka Hand aperture, master--slave aperture error, grasp force, or button state.
 
-For gripper execution, $v_g$ was passed as the speed argument of `grasp(width, speed, force, epsilon\_inner, epsilon\_outer)` and was also used by `move(width, speed)` during opening and non-grasp position adjustments. The strategy value $F_g$ specified the requested `force` argument of `grasp()` in newtons; it was not an independently measured fingertip force. The target grasp width was 0 m. After contact and successful entry into the `HOLDING` state, the grasp command was not repeatedly retransmitted; the gripper maintained the grasp internally until `stop()` and the subsequent release or opening command.
+For gripper execution, $v_g$ was passed as the \texttt{speed} argument of the \texttt{grasp} API, whose remaining arguments were \texttt{width}, \texttt{force}, \texttt{epsilon\_inner}, and \texttt{epsilon\_outer}; it was also used by \texttt{move} during opening and non-grasp position adjustments. The strategy value $F_g$ specified the requested \texttt{force} argument of \texttt{grasp()} in newtons; it was not an independently measured fingertip force. The target grasp width was 0 m. After contact and successful entry into the \texttt{HOLDING} state, the grasp command was not repeatedly retransmitted; the gripper maintained the grasp internally until \texttt{stop()} and the subsequent release or opening command.
 
 Together, the three parameter channels act on distinct elements of the teleoperation system. Panda impedance defines the slave-side response to pose error and disturbance, the Omega.7 settings determine how the estimated external force is rendered to the operator, and the Franka Hand settings govern grasp execution. The proposed method assigns these settings in parallel from a single operational strategy. Coordination therefore occurs at the strategy layer through a consistent parameter bundle; no dynamic coupling constraint or master--slave impedance-matching law is derived between channels. Haptic transparency and closed-loop fingertip-force accuracy were not evaluated.
 
 \subsection{Object-Conditioned Cross-Channel Mechatronic Parameter Reconfiguration}
 The framework uses a three-level mapping from detected object class to an operational strategy and then to a joint parameter vector,
 
-\[
+\begin{equation}
+\label{eq:strategy-vector}
 \Theta(c)=\{K_t,K_r,\zeta,K_f,d,v_g,F_g\}.
-\]
+\end{equation}
 
 The strategy classes represent combined grasping risks rather than material softness alone. The apple and banana were assigned to the fragility-priority strategy because lower contact impact, closing speed, and requested grasp force were preferred to limit squeezing and deformation, while their smooth surfaces still posed a risk of slip. The paper cup and bottle were assigned to the balanced strategy. Excessive force can deform a paper cup, whereas overly low settings may produce an insecure grasp; the bottle similarly requires a compromise between gentle handling and slip resistance. The mouse and scissors were assigned to the stability-priority strategy because their smooth or irregular surfaces and transfer demands---and, for the scissors, elongated geometry---placed greater emphasis on pose retention and grasp stability. These assignments were specific to the present objects, platform, and task.
 
@@ -135,9 +142,10 @@ Stability-priority & Mouse, scissors & $K_t=200$ N/m; $K_r=13$ N\,m/rad; $\zeta=
 \end{table*}
 At run time, the first threshold-qualified result read by the supervisory loop triggered a one-time update of the parameters enabled in the active mode, after which the strategy remained locked for the rest of the trial. Translational stiffness, rotational stiffness, and the damping-scaling parameter followed a smoothstep interpolation over approximately $T_s=0.30$ s. With $\tau=\operatorname{clip}((t-t_0)/T_s,0,1)$ and $s(\tau)=3\tau^2-2\tau^3$, each interpolated quantity $q\in\{K_t,K_r,\zeta\}$ was updated as
 
-\[
+\begin{equation}
+\label{eq:smoothstep-update}
 q(t)=q_0+s(\tau)(q_\mathrm{target}-q_0).
-\]
+\end{equation}
 
 The controller recomputed $\mathbf{D}$ from the current $\mathbf{K}$ and $\zeta$ during this transition. Enabled values of $K_f$, $d$, $v_g$, and $F_g$ changed immediately at the strategy event. Because operator motion was not gated by perception, the mechanism is described as a one-shot update after task initiation. The available logs do not allow its timing relative to first contact to be reconstructed for individual trials.
 
@@ -146,9 +154,10 @@ The class-to-strategy mapping is manually engineered. If an existing detector al
 \subsection{Experimental Modes and Parameter Rationale}
 The fixed baseline vector was
 
-\[
+\begin{equation}
+\label{eq:baseline-parameter-vector}
 \Theta_0=(150,\ 10,\ 1.0,\ 0.5,\ 0.3,\ 0.10,\ 20),
-\]
+\end{equation}
 
 with the same element order as $\Theta(c)$. Table 3 summarizes the five experimental conditions and the comparisons they support.
 
@@ -173,7 +182,7 @@ E: Impedance only & Same as C & Auto & --- & --- & Isolates impedance-only recon
 \par\smallskip
 \footnotesize\textit{Note:} Auto denotes a one-shot update after the first valid visual detection; Manual denotes operator selection after timing starts; --- retains the initialized setting. In modes C--E, no detection or confidence below 0.25 retains the initialized state. A detected class without an explicit mapping invokes the balanced strategy; in mode D, only its label is displayed and $\Theta_0$ is retained. Vision is not used in modes A and B.
 \end{table*}
-The camera window could be closed by pressing `q`. Table 3 describes the default software behavior; the window state was not included in the formal trial logs.
+The camera window could be closed by pressing \texttt{q}. Table 3 describes the default software behavior; the window state was not included in the formal trial logs.
 
 The three strategies were represented by discrete operating points. Before the formal experiment, two researchers screened candidate combinations on representative objects and excluded settings associated with sustained oscillation, clear haptic discomfort, grasp failure, or visible object damage. The final values were fixed before the 135 formal trials. The fragility-priority point used 50 N/m translational stiffness, 8 N requested grasp force, and 0.02 m/s gripper speed to reduce contact and gripper-closing severity. The balanced point used 150 N/m, 15 N, and 0.05 m/s to avoid both excessive deformation and unreliable holding. The stability-priority point used 200 N/m, 20 N, and 0.10 m/s to favor pose retention and transfer stability. These operating points were selected qualitatively for the present setup and should not be interpreted as material-specific damage limits.
 
