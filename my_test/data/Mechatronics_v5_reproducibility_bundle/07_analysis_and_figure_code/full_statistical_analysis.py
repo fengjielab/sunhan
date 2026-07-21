@@ -4,33 +4,40 @@ full_statistical_analysis.py — 完整统计分析 (scipy版)
 为论文3.6节提供: Friedman检验, 配对Wilcoxon+Holm, 效应量, Cochran's Q
 
 输入:
-  - all_trials_135.csv (客观指标)
-  - nasa.md (NASA-TLX)
+  - ../01_frozen_tables/all_trials_135.csv (客观指标)
+  - ../04_nasa_tlx/nasa_tlx_results/nasa.md (NASA-TLX)
 输出:
   - 控制台打印论文可用表格及统计结论
 """
 
 import csv, math
+import sys
 from pathlib import Path
 from collections import defaultdict
 from statistics import mean, stdev, median
 
 from scipy.stats import friedmanchisquare, wilcoxon, chi2
 
-DATA_DIR = Path(__file__).resolve().parent
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+
+ROOT = Path(__file__).resolve().parents[1]
+TRIALS_PATH = ROOT / "01_frozen_tables" / "all_trials_135.csv"
+NASA_PATH = ROOT / "04_nasa_tlx" / "nasa_tlx_results" / "nasa.md"
 
 # ─── 数据读取 ───
 
 def read_csv(filename):
     rows = []
-    with open(DATA_DIR / filename, "r", encoding="utf-8-sig") as f:
+    path = TRIALS_PATH if filename == "all_trials_135.csv" else ROOT / filename
+    with open(path, "r", encoding="utf-8-sig") as f:
         for row in csv.DictReader(f):
             rows.append(row)
     return rows
 
 def read_nasa_tlx():
     rows = []
-    with open(DATA_DIR / "nasa_tlx_results" / "nasa.md", "r", encoding="utf-8") as f:
+    with open(NASA_PATH, "r", encoding="utf-8") as f:
         for row in csv.DictReader(f):
             dims = ["mental_demand","physical_demand","temporal_demand",
                     "performance","effort","frustration"]

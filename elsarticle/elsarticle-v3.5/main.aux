@@ -4,31 +4,25 @@
 \citation{ref01,ref02}
 \citation{ref03}
 \citation{ref04,ref05}
-\citation{ref06}
-\citation{ref07,ref08,ref09}
+\citation{ref28}
+\citation{ref06,ref07,ref08,ref09,ref18,ref19,ref20}
+\citation{ref08,ref17,ref22,ref25}
 \citation{ref10}
 \citation{ref11}
 \citation{ref12}
 \citation{ref13}
 \citation{ref14}
-\citation{ref15,ref16}
-\citation{ref17}
-\citation{ref18}
-\citation{ref19}
-\citation{ref20}
-\citation{ref21}
-\citation{ref22}
-\citation{ref23}
-\citation{ref24}
-\citation{ref25}
 \Newlabel{a}{a}
 \Newlabel{b}{b}
 \@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{}\protected@file@percent }
+\citation{ref15,ref16}
+\citation{ref17}
+\citation{ref30}
 \citation{ref26}
-\@writefile{toc}{\contentsline {section}{\numberline {2}Methods and System Implementation}{2}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Mechatronic System Architecture and Asynchronous Execution}{2}{}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Experimental platform comprising the Omega.7 master device, Franka Panda robot and Franka Hand gripper, D435i camera, and control computer. The camera supplied 424 $\times $ 240 color images at 15 fps.}}{3}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Experimental teleoperation platform showing the Omega.7 master device, Franka Panda robot, Intel RealSense D435i camera, host computer, and object workspace. The Franka Hand gripper is mounted at the Panda end effector.}}{3}{}\protected@file@percent }
 \newlabel{fig:1}{{1}{3}{}{figure.1}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {2}Methods and System Implementation}{3}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Mechatronic System Architecture and Asynchronous Execution}{3}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Master--Slave Mapping and Implementation of the Mechatronic Channels}{3}{}\protected@file@percent }
 \newlabel{eq:master-position-increment}{{1}{3}{}{equation.1}{}}
 \newlabel{eq:desired-slave-position}{{2}{3}{}{equation.2}{}}
@@ -38,77 +32,78 @@
 \newlabel{eq:baseline-haptic-command}{{6}{3}{}{equation.6}{}}
 \newlabel{eq:gripper-cue-activation}{{7}{3}{}{equation.7}{}}
 \newlabel{eq:gripper-cue-command}{{8}{3}{}{equation.8}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Object-Conditioned Cross-Channel Mechatronic Parameter Reconfiguration}{3}{}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Illustrative timing of the asynchronous perception--control implementation. Color frames are acquired at 15 fps and passed through a single-slot frame queue to an independent YOLO11n process; a controlled visual test yielded a mean wall-clock processing time of 48.19 ms per image. Class labels and confidence scores are returned through a two-slot result queue. The nominal 5-ms supervisory update polls this queue without blocking. The first result that reaches the confidence threshold is converted by the class-to-strategy mapping into a one-shot strategy event. Modes C and E update their enabled parameters, whereas mode D retains fixed parameters and presents the semantic result. Translational stiffness, rotational stiffness, and the controller damping-scaling parameter follow an approximately 300-ms smoothstep transition, while the enabled haptic-interface and gripper settings change at the event. Subsequent detections do not change the strategy within the same trial. A low-confidence result or absence of a detection leaves the initialized state unchanged; a detected class without an explicit mapping is assigned to the balanced default strategy.}}{4}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Schematic, not-to-scale timing of the asynchronous perception--control implementation. Color frames are acquired at 15 fps and passed through a single-slot frame queue to an independent YOLO11n process. Class labels and confidence scores are returned through a two-slot result queue, which is polled without blocking by the nominal 200-Hz supervisory loop. The first valid mapped result (confidence $\geq 0.25$) triggers a one-shot target update. Translational stiffness, rotational stiffness, and the controller damping-scaling parameter are commanded to follow a smooth transition with a nominal duration of approximately 300 ms. Subsequent detections do not change the target within the same trial, while task execution and operator motion begin immediately. The schematic does not measure end-to-end trigger latency or trigger-to-contact timing.}}{4}{}\protected@file@percent }
 \newlabel{fig:2}{{2}{4}{}{figure.2}{}}
 \@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Runtime characteristics and data flow of the multi-rate mechatronic system.}}{4}{}\protected@file@percent }
 \newlabel{tab:1}{{1}{4}{}{table.1}{}}
-\newlabel{eq:strategy-vector}{{9}{4}{}{equation.9}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Parameter settings for the three operational strategies.}}{5}{}\protected@file@percent }
-\newlabel{tab:2}{{2}{5}{}{table.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Object-Conditioned Strategy-Level Multi-Subsystem Parameter Configuration}{5}{}\protected@file@percent }
+\newlabel{eq:strategy-vector}{{9}{5}{}{equation.9}{}}
 \newlabel{eq:smoothstep-update}{{10}{5}{}{equation.10}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.4}Experimental Modes and Parameter Rationale}{5}{}\protected@file@percent }
 \newlabel{eq:baseline-parameter-vector}{{11}{5}{}{equation.11}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.5}Execution Procedure}{5}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.6}Bounded Fallback and Safety Measures}{5}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Experimental conditions, channel-update logic, and comparison roles for the five modes.}}{6}{}\protected@file@percent }
-\newlabel{tab:3}{{3}{6}{}{table.3}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Parameter design space, engineering constraints, and selected levels.}}{6}{}\protected@file@percent }
-\newlabel{tab:4}{{4}{6}{}{table.4}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Parameter settings for the three operational strategies. $K_t$ is in N/m, $K_r$ in N\,m/rad, $d$ in N, $v_g$ in m/s, and $F_g$ is the requested \texttt  {grasp()} force in N. $\zeta $ and $K_f$ are dimensionless controller/API scaling parameters.}}{6}{}\protected@file@percent }
+\newlabel{tab:2}{{2}{6}{}{table.2}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Object-conditioned strategy-level parameter-bundle architecture. D435i RGB frames are processed asynchronously by YOLO11n and returned as class--confidence results through bounded queues. The 200-Hz teleoperation supervisor polls the result queue without blocking. The first mapped result with confidence $\geq 0.25$ is converted into one strategy event $\Theta (c)$, which atomically assigns the haptic-interface, slave-side impedance, and gripper-execution parameter groups and is locked for the trial. The diagram also shows the retained initial state for no or low-confidence results, the balanced default for an unmapped class, and the continuous operator--robot force/state-feedback loop. This is an implementation architecture; formal trials did not retain event-level trigger histories or synchronized trigger--contact timestamps.}}{6}{}\protected@file@percent }
+\newlabel{fig:3}{{3}{6}{}{figure.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.6}Bounded Fallback and Safety Measures}{6}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {3}Experimental Design}{6}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Evaluation Objectives and Analysis Plan}{6}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Operators and Test Objects}{6}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Experimental Modes and Trial Structure}{6}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Experimental conditions, channel-update logic, and comparison roles for the five modes.}}{7}{}\protected@file@percent }
+\newlabel{tab:3}{{3}{7}{}{table.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Parameter design space, engineering constraints, and selected levels.}}{7}{}\protected@file@percent }
+\newlabel{tab:4}{{4}{7}{}{table.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Operators and Test Objects}{7}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Experimental Modes and Trial Structure}{7}{}\protected@file@percent }
 \citation{ref27}
-\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Test objects, assigned strategies, and principal task risks.}}{7}{}\protected@file@percent }
-\newlabel{tab:5}{{5}{7}{}{table.5}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces Allocation of matched task blocks and trials by strategy and object.}}{7}{}\protected@file@percent }
-\newlabel{tab:6}{{6}{7}{}{table.6}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.4}Task and Procedure}{7}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.5}Evaluation Measures}{7}{}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Object-conditioned cross-channel reconfiguration architecture. Color frames acquired at 15 fps are processed asynchronously; the nominal 200-Hz supervisor polls the bounded latest-result queue without waiting for inference. The first threshold-qualified mapped class triggers one strategy event $\Theta (c)$, which updates the enabled slave-impedance, haptic-interface, and gripper settings and is then locked for the trial. No result or confidence below 0.25 retains the initial state, whereas a detected but unmapped class invokes the balanced default strategy. Green paths show asynchronous perception and one-shot updates; the blue loop shows continuous human teleoperation and force/state feedback. Five-mode channel-update logic and comparison roles are given in Table~\ref {tab:3}.}}{8}{}\protected@file@percent }
-\newlabel{fig:3}{{3}{8}{}{figure.3}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.6}Statistical Analysis}{8}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {4}Results}{8}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Visual Recognition, Semantic Mapping, and Asynchronous Integration}{8}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces Class-wise results of the controlled visual test.}}{9}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Test objects, assigned strategies, and principal task risks.}}{8}{}\protected@file@percent }
+\newlabel{tab:5}{{5}{8}{}{table.5}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces Allocation of matched task blocks and trials by strategy and object.}}{8}{}\protected@file@percent }
+\newlabel{tab:6}{{6}{8}{}{table.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4}Task and Procedure}{8}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.5}Evaluation Measures}{8}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.6}Statistical Analysis}{9}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4}Results}{9}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Controlled Visual Test and Asynchronous Integration}{9}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces Class-wise results of the closed-set controlled visual test.}}{9}{}\protected@file@percent }
 \newlabel{tab:7}{{7}{9}{}{table.7}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Controlled visual classification results for the separate 180-image test (30 images per class). Each cell reports the number of images with the indicated true and predicted class. All observations lie on the diagonal; every prediction mapped to the intended strategy.}}{9}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Confusion matrix for the separate closed-set controlled visual test (180 images; 30 images per class). Each cell gives the number of images for the corresponding true and predicted class. All observations lie on the diagonal under the fixed viewpoint, background, and lighting conditions.}}{9}{}\protected@file@percent }
 \newlabel{fig:4}{{4}{9}{}{figure.4}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Results Across the Five Modes}{9}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Primary Comparison: Full Cross-Channel Versus Impedance-Only Scheduling}{9}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}Exploratory Process Measure: C--E Pause Analysis}{9}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.5}Failure Analysis}{9}{}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Confidence and processing time for the same controlled 180-image test. (a) Class-wise detection confidence: horizontal bars show mean $\pm $ SD; the dotted and dashed vertical lines mark the decision threshold (0.25) and overall mean (0.853). (b) Wall-clock processing time per image: half violins show class-wise distributions, dots show individual images, horizontal segments and open circles show the IQR and median, and the dashed vertical line marks the overall mean (48.19 ms).}}{10}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Detection confidence and per-image inference wall-clock time for the closed-set controlled 180-image visual test ($n=30$ images per class). (a) Class-wise confidence: horizontal bars show mean $\pm $ SD; the dotted and dashed vertical lines mark the decision threshold (0.25) and overall mean (0.853). (b) Per-image processing time: half violins show class-wise distributions, dots show individual images, horizontal segments and open circles show the IQR and median, and the dashed vertical line marks the overall mean (48.19 ms). These timing data are not end-to-end task-trigger latency measurements.}}{10}{}\protected@file@percent }
 \newlabel{fig:5}{{5}{10}{}{figure.5}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {8}{\ignorespaces Results across the five experimental modes.}}{10}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {8}{\ignorespaces Descriptive results across the five experimental modes.}}{10}{}\protected@file@percent }
 \newlabel{tab:8}{{8}{10}{}{table.8}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {9}{\ignorespaces Primary comparison of full cross-channel and impedance-only scheduling.}}{10}{}\protected@file@percent }
-\newlabel{tab:9}{{9}{10}{}{table.9}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {10}{\ignorespaces Observed failures and representative observations by experimental mode.}}{10}{}\protected@file@percent }
-\newlabel{tab:10}{{10}{10}{}{table.10}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Task execution duration across the five modes: fixed parameters (A), operator selection (B), full cross-channel scheduling (C), visual-semantic cue only (D), and impedance-only scheduling (E). Each mode contains 27 matched task blocks. Filled circles show medians, thick horizontal segments show IQRs, and thin horizontal segments with end caps show 1.5 $\times $ IQR Tukey whiskers; small open circles show observations beyond the whiskers. Mode C was lower than modes A, B, D, and E in Holm-adjusted paired Wilcoxon tests (all $p<0.01$).}}{11}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Primary Comparison: Complete Parameter Bundle Versus Impedance-Only Reconfiguration}{10}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {9}{\ignorespaces Within-sample primary comparison of the complete parameter bundle and impedance-only reconfiguration.}}{11}{}\protected@file@percent }
+\newlabel{tab:9}{{9}{11}{}{table.9}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Task execution duration across the five experimental modes: fixed-parameter baseline (A), manual-selection workflow baseline (B), joint parameter-bundle configuration (C), visual-semantic display with fixed parameters (D), and impedance-only reconfiguration (E). Each mode contains 27 matched task blocks. Filled circles show medians, thick horizontal segments show IQRs, thin horizontal segments with end caps show 1.5 $\times $ IQR Tukey whiskers, and small open circles show observations beyond the whiskers. This descriptive distribution plot does not display the block pairing; the primary C--E pairing is shown in Fig.~\ref {fig:8}.}}{11}{}\protected@file@percent }
 \newlabel{fig:6}{{6}{11}{}{figure.6}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {11}{\ignorespaces Mean completion time by object and experimental mode.}}{11}{}\protected@file@percent }
-\newlabel{tab:11}{{11}{11}{}{table.11}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}Exploratory Process Measure: C--E Pause Analysis}{11}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.5}Failure Analysis}{11}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {4.6}Consistency Across Operators and Objects}{11}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {5}Discussion}{11}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Interpreting the Five-Mode Evaluation}{11}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}System-Level Effect of the Complete Parameter Bundle}{11}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces Human workload and observed task success across the five experimental modes. (a) Raw NASA-TLX scores: connected markers show each operator's mean across three strategy-level questionnaire units per mode ($n=9$ questionnaire units per mode); marker shape identifies the operator. (b) Observed successful trials out of 27 for each mode. These panels are descriptive and do not display confidence intervals or inferential tests.}}{12}{}\protected@file@percent }
+\newlabel{fig:7}{{7}{12}{}{figure.7}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {10}{\ignorespaces Observed failures and representative observations by experimental mode.}}{12}{}\protected@file@percent }
+\newlabel{tab:10}{{10}{12}{}{table.10}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces Paired completion-time comparison between modes C and E for 27 matched task blocks across three operators. (a) Each point represents one matched block; points below the identity line have a shorter duration in mode C. (b) Distribution of the paired difference $\Delta T=T_E-T_C$; positive values favor mode C. The violin, horizontal segment, and diamond show the distribution, median, and mean, respectively. The observed mean difference was 1.79 s (matched-block bootstrap 95\% CI, 1.10--2.51 s), and 22/27 blocks favored C; the interval is conditional on the observed blocks.}}{12}{}\protected@file@percent }
+\newlabel{fig:8}{{8}{12}{}{figure.8}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {11}{\ignorespaces Mean completion time by object and experimental mode.}}{12}{}\protected@file@percent }
+\newlabel{tab:11}{{11}{12}{}{table.11}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {9}{\ignorespaces Descriptive mean task duration for modes C and E, stratified by operator and object. Purple and blue points show mean $\pm $ SD for modes C and E, respectively; gray connectors link the paired means. Labels report $\Delta T=T_E-T_C$ and the number of matched blocks favoring mode C (nine per operator and four or five per object). The object-level summaries are descriptive because each contains only four or five blocks.}}{13}{}\protected@file@percent }
+\newlabel{fig:9}{{9}{13}{}{figure.9}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}System-Level Effect of the Complete Parameter Bundle}{13}{}\protected@file@percent }
 \citation{ref06,ref07,ref08,ref09,ref18,ref19,ref20,ref21}
 \citation{ref10,ref11,ref13,ref14}
 \citation{ref12,ref15,ref16,ref23,ref24}
-\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces Human workload and observed task success across the five modes. (a) Raw NASA-TLX: connected markers show each operator's mean across three questionnaire units per mode; marker shape identifies the operator. (b) Observed successful trials out of 27. Mode C had the lowest Raw NASA-TLX score and the highest observed success rate; these results are descriptive within the tested sample.}}{12}{}\protected@file@percent }
-\newlabel{fig:7}{{7}{12}{}{figure.7}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces Paired completion-time comparison between modes C and E (27 matched blocks across three operators). (a) Points below the identity line indicate a shorter duration in mode C. (b) Paired improvement, $\Delta T=T_E-T_C$; positive values favor mode C. The violin, horizontal segment, and diamond show the distribution, median, and mean improvement (1.79 s; bootstrap 95\% CI [1.10, 2.51] s), respectively.}}{12}{}\protected@file@percent }
-\newlabel{fig:8}{{8}{12}{}{figure.8}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Asynchronous Perception--Control Integration}{12}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.4}Variation Across Operators and Objects}{12}{}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {9}{\ignorespaces Paired C--E mean task duration by operator and object. Purple and blue points show modes C and E (mean $\pm $ SD), and gray connectors link the paired means. In every displayed stratum, mode C has the lower mean duration. Labels give $\Delta T=T_E-T_C$ and the number of matched blocks favoring C (9 per operator; 4--5 per object). Results are descriptive.}}{13}{}\protected@file@percent }
-\newlabel{fig:9}{{9}{13}{}{figure.9}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.5}Relation to Previous Work and Mechatronic Design Implications}{13}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.6}Limitations and Future Work}{13}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {6}Conclusion}{14}{}\protected@file@percent }
+\citation{ref30}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Asynchronous Perception--Control Integration}{14}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.4}Variation Across Operators and Objects}{14}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.5}Relation to Previous Work and Mechatronic Design Implications}{14}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.6}Limitations and Future Work}{14}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {6}Conclusion}{15}{}\protected@file@percent }
 \bibstyle{elsarticle-num}
 \bibdata{references}
 \bibcite{ref01}{{1}{}{{}}{{}}}
@@ -116,27 +111,29 @@
 \bibcite{ref03}{{3}{}{{}}{{}}}
 \bibcite{ref04}{{4}{}{{}}{{}}}
 \bibcite{ref05}{{5}{}{{}}{{}}}
-\bibcite{ref06}{{6}{}{{}}{{}}}
-\bibcite{ref07}{{7}{}{{}}{{}}}
-\bibcite{ref08}{{8}{}{{}}{{}}}
-\bibcite{ref09}{{9}{}{{}}{{}}}
-\bibcite{ref10}{{10}{}{{}}{{}}}
-\bibcite{ref11}{{11}{}{{}}{{}}}
-\bibcite{ref12}{{12}{}{{}}{{}}}
-\bibcite{ref13}{{13}{}{{}}{{}}}
-\bibcite{ref14}{{14}{}{{}}{{}}}
-\bibcite{ref15}{{15}{}{{}}{{}}}
-\bibcite{ref16}{{16}{}{{}}{{}}}
-\bibcite{ref17}{{17}{}{{}}{{}}}
-\bibcite{ref18}{{18}{}{{}}{{}}}
-\bibcite{ref19}{{19}{}{{}}{{}}}
-\bibcite{ref20}{{20}{}{{}}{{}}}
-\bibcite{ref21}{{21}{}{{}}{{}}}
-\bibcite{ref22}{{22}{}{{}}{{}}}
-\bibcite{ref23}{{23}{}{{}}{{}}}
-\bibcite{ref24}{{24}{}{{}}{{}}}
-\bibcite{ref25}{{25}{}{{}}{{}}}
-\bibcite{ref26}{{26}{}{{}}{{}}}
-\bibcite{ref27}{{27}{}{{}}{{}}}
+\bibcite{ref28}{{6}{}{{}}{{}}}
+\bibcite{ref06}{{7}{}{{}}{{}}}
+\bibcite{ref07}{{8}{}{{}}{{}}}
+\bibcite{ref08}{{9}{}{{}}{{}}}
+\bibcite{ref09}{{10}{}{{}}{{}}}
+\bibcite{ref18}{{11}{}{{}}{{}}}
+\bibcite{ref19}{{12}{}{{}}{{}}}
+\bibcite{ref20}{{13}{}{{}}{{}}}
+\bibcite{ref17}{{14}{}{{}}{{}}}
+\bibcite{ref22}{{15}{}{{}}{{}}}
+\bibcite{ref25}{{16}{}{{}}{{}}}
+\bibcite{ref10}{{17}{}{{}}{{}}}
+\bibcite{ref11}{{18}{}{{}}{{}}}
+\bibcite{ref12}{{19}{}{{}}{{}}}
+\bibcite{ref13}{{20}{}{{}}{{}}}
+\bibcite{ref14}{{21}{}{{}}{{}}}
+\bibcite{ref15}{{22}{}{{}}{{}}}
+\bibcite{ref16}{{23}{}{{}}{{}}}
+\bibcite{ref30}{{24}{}{{}}{{}}}
+\bibcite{ref26}{{25}{}{{}}{{}}}
+\bibcite{ref27}{{26}{}{{}}{{}}}
+\bibcite{ref21}{{27}{}{{}}{{}}}
+\bibcite{ref23}{{28}{}{{}}{{}}}
+\bibcite{ref24}{{29}{}{{}}{{}}}
 \providecommand\NAT@force@numbers{}\NAT@force@numbers
-\gdef \@abspage@last{16}
+\gdef \@abspage@last{17}

@@ -35,6 +35,7 @@ def resolve_trial_file(user_path: str | None = None) -> Path:
     if user_path:
         candidates.append(Path(user_path))
     candidates.extend([
+        Path(__file__).resolve().parents[1] / "01_frozen_tables" / "all_trials_135.csv",
         Path("../data/all_trials_135.csv"),
         Path("data/all_trials_135.csv"),
         Path("all_trials_135.csv"),

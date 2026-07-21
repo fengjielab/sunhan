@@ -3,25 +3,31 @@
 bootstrap_ci_ce.py — C–E 配对差值分析
 用于 Mechatronics 版论文统计表
 
-输入: all_trials_135.csv, nasa.md
+输入: ../01_frozen_tables/all_trials_135.csv, ../04_nasa_tlx/nasa_tlx_results/nasa.md
 输出:
   - 完成时间/轨迹：median [IQR] + 匹配任务块级 Bootstrap 95% CI
   - Raw NASA-TLX：9 个 operator×strategy 单元的描述性统计，不报告 CI
 """
 import csv, math, random
+import sys
 from pathlib import Path
 from collections import defaultdict
 from statistics import mean, stdev, median
 import numpy as np
 
-DATA_DIR = Path(__file__).resolve().parent
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+
+ROOT = Path(__file__).resolve().parents[1]
+TRIALS_PATH = ROOT / "01_frozen_tables" / "all_trials_135.csv"
+NASA_PATH = ROOT / "04_nasa_tlx" / "nasa_tlx_results" / "nasa.md"
 random.seed(42)
 np.random.seed(42)
 
 # ─── 数据读取 ───
 def read_all_trials():
     rows = []
-    with open(DATA_DIR / "all_trials_135.csv", "r", encoding="utf-8-sig") as f:
+    with open(TRIALS_PATH, "r", encoding="utf-8-sig") as f:
         for row in csv.DictReader(f):
             row["duration_s"] = float(row["duration_s"])
             row["traj_length_m"] = float(row["traj_length_m"])
@@ -30,8 +36,7 @@ def read_all_trials():
 
 def read_nasa_tlx():
     rows = []
-    nasa_path = DATA_DIR / "nasa_tlx_results" / "nasa.md"
-    with open(nasa_path, "r", encoding="utf-8") as f:
+    with open(NASA_PATH, "r", encoding="utf-8") as f:
         for row in csv.DictReader(f):
             dims = ["mental_demand","physical_demand","temporal_demand",
                     "performance","effort","frustration"]

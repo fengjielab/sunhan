@@ -42,20 +42,21 @@ plt.rcParams.update(
 
 def parse_args() -> argparse.Namespace:
     here = Path(__file__).resolve().parent
+    root = here.parents[0]
     parser = argparse.ArgumentParser(
         description="Generate the final four-panel Fig. 5 for the Mechatronics manuscript."
     )
     parser.add_argument(
         "--trial-file",
         type=Path,
-        default=here / "all_trials_135.csv",
-        help="CSV containing task-level data (default: all_trials_135.csv beside this script).",
+        default=root / "01_frozen_tables" / "all_trials_135.csv",
+        help="CSV containing task-level data (default: ../01_frozen_tables/all_trials_135.csv).",
     )
     parser.add_argument(
         "--nasa-file",
         type=Path,
-        default=here / "nasa.md",
-        help="CSV-formatted NASA-TLX file (default: nasa.md beside this script).",
+        default=root / "04_nasa_tlx" / "nasa_tlx_results" / "nasa.md",
+        help="CSV-formatted NASA-TLX file (default: ../04_nasa_tlx/nasa_tlx_results/nasa.md).",
     )
     parser.add_argument(
         "--output-dir",

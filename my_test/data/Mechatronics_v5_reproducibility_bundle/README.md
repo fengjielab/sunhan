@@ -1,38 +1,54 @@
-# Mechatronics v5 数据与复现归档
+# Reproducibility bundle: Object-Conditioned Strategy-Level Joint Parameter-Bundle Configuration for Haptic Teleoperation
 
-本目录只锁定 `Mechatronics_full_English_targeted_refinement_v5.md` 实际引用或用于复核的去标识化数据、结果表和分析代码快照；未把旧版视觉结果混入其中。
+This bundle preserves the de-identified data, analysis material, figure sources, and manuscript snapshot supporting the associated haptic-teleoperation study.  It is organised so that a reviewer can reproduce the manuscript-aligned core checks without relying on historical scripts whose assumptions no longer match the revised paper.
 
-## 目录说明
+## Quick start
 
-- `01_frozen_tables/all_trials_135.csv`：135 条冻结试验记录；除时长和主端轨迹长度外，已从 S1 合并 `matched_block_id`、`outcome` 和 `outcome_source`。同目录的 `all_trials_135_objective_only_original.csv` 保留合并前的客观指标原表。
-- `02_objective_trial_sources/`：CSV 的 135 个 `source_file` 所指向的原始 JSON 汇总文件，保留原相对路径。
-- `02_raw_trajectory_csv/`：与 135 条冻结记录一一对应的原始 master-trajectory CSV（`time,x,y,z,...`），保留 soft/medium/hard 的原相对路径。
-- `03_outcome_registry/`：完整的 27-block / 135-trial Supplementary Table S1（Markdown 和 XLSX）。这是当前可用的成功/失败登记来源；`all_trials_135.csv` 本身没有 outcome 列。
-- `04_nasa_tlx/`：Raw NASA-TLX 的输入和汇总文件。
-- `05_vision_validation_final_48_19ms/`：冻结的 180-image 视觉验证数据、汇总结果和图像。`results/vision_validation_per_image.csv` 的平均推理时间为 48.192906 ms，对应正文的 48.19 ms。
-- `06_cycle_timing/`：现有的控制周期日志与原说明文件。
-- `07_analysis_and_figure_code/`：统计、bootstrap 和 Fig. 4--7 的代码快照。
-- `08_manuscript_snapshot/`：本次审核所对应的文稿快照。
+From the bundle root, use Python 3.10 or newer:
 
-## 已验证的复现结果
+```powershell
+python -m pip install -r requirements.txt
+python run_core_reproduction.py
+```
 
-`bootstrap_ci_ce.py` 固定 `random.seed(42)` 和 `np.random.seed(42)`，对 27 个 matched blocks 重抽样 10,000 次，得到：
+The entry point runs `verify_bundle.py` and the manuscript-aligned paired C--E bootstrap analysis.  Expected core outputs are a C--E completion-time difference of 1.795 s and a 95% percentile-bootstrap interval of [1.104, 2.508] s, displayed in the manuscript as 1.79 s and [1.10, 2.51] s.
 
-| 指标 | 未舍入的 95% percentile bootstrap CI | 正文显示值 |
-|:--|--:|--:|
-| 完成时间 E-C (s) | [1.104, 2.508] | [1.10, 2.51] |
-| 轨迹长度 E-C (m) | [-0.0142, 0.0591] | [-0.014, 0.059] |
+## Contents
 
-`all_trials_135.csv` 中的 27 个 block 由 `operator + object_attr + group_num` 确定，每一 block 均具有 A--E 五个模式。S1 的 135 个时长/轨迹条目均能唯一匹配到该冻结 CSV（分别按 0.01 s 和 0.001 m 的展示精度）；S1 成功数为 A=22、B=21、C=26、D=24、E=24，与 Fig. 5 的硬编码计数相同。
+- `01_frozen_tables/`: the 135 de-identified trial records. `all_trials_135.csv` includes matched-block identifiers, completion time, trajectory length, success/failure outcome, and outcome provenance. `all_trials_135_objective_only_original.csv` is retained as the pre-merge objective-metric table.
+- `02_objective_trial_sources/`: the 135 source JSON summaries referenced by the frozen table.
+- `02_raw_trajectory_csv/`: one master-trajectory CSV for each frozen trial.
+- `03_outcome_registry/`: Supplementary Table S1 (outcomes) and Tables S2--S3 (mode sequences and evidence boundaries).
+- `04_nasa_tlx/`: raw NASA-TLX records and summaries. `nasa.md` is comma-separated data despite its historical extension.
+- `05_vision_validation_final_48_19ms/`: frozen 180-image closed-set vision-validation inputs, results, and images. The mean per-image inference time in `vision_validation/results/vision_validation_per_image.csv` is 48.192906 ms.
+- `06_cycle_timing/`: retained cycle-timing traces and their original notes. They are not used to support the revised manuscript's online-latency or hard-real-time claims.
+- `07_analysis_and_figure_code/`: core analysis entry points, preserved figure-source scripts, and explicit notes distinguishing current from legacy scripts.
+- `08_manuscript_snapshot/`: historical manuscript snapshot retained for provenance only.
+- `09_current_manuscript_snapshot/`: current submission snapshot, including LaTeX source, bibliography/style files, figures, and compiled PDF.
 
-## 已知限制与处理原则
+`DATA_DICTIONARY.md` defines the data fields and `FIGURE_SOURCE_MAP.md` maps manuscript figures to the available source material.
 
-- v5 文稿已嵌入完整的 S1 27 行表格；相同的 Markdown 和 XLSX 文件也保留在 `03_outcome_registry`，供投稿时作为补充文件提交。
-- 成功/失败已从 S1 合并到 `all_trials_135.csv`；其来源是人工登记的 S1，而非原始 JSON 的机读状态字段。后续采集仍应直接记录 `outcome`（及失败类型）。
-- 原始逐采样轨迹 CSV 已归档，且 `complete_checklist_analysis.py` 等历史分析脚本也已保留。它们证明 pause count 的输入数据存在；但以这些脚本中公开的逐差分速度阈值规则直接重算，尚不能得到正文的 C=2.74 ± 1.23、E=3.41 ± 1.67。因此，pause 的原始数据可追溯，最终计算版本/平滑规则仍需确认。
-- `control_loop_profile_vision.csv` 的中位数可复算为 5.072 ms，但它来自 mock profiling，且现有说明文件宣称的 591,554 cycles 与目录内两份 CSV 共 44,475 行不一致。该数值未用于当前 v5 文稿；原始日志仍保留在归档中，供后续独立性能测试使用。
-- Fig. 5(a) 绘图代码没有画 Holm 显著性括号/星号；Fig. 6 代码没有显示 p 值或 bootstrap CI。正文的统计报告存在，但这两项属于图内信息呈现待补，而不是已发现的统计数值错误。
+## Verified data relationships
 
-## 核验方式
+- The frozen table has 135 trials: 27 matched blocks, each containing modes A--E.
+- S1 has 135 entries and matches the frozen records at the displayed precision for completion time and trajectory length.
+- Observed success counts are A=22, B=21, C=26, D=24, and E=24.
+- The primary C--E analysis resamples the 27 matched blocks, not 135 trials independently.
 
-从本目录运行 `python verify_bundle.py` 可检查关键文件哈希、记录数、S1--CSV 数值映射、bootstrap CI、视觉均值和 cycle-time 中位数。该脚本不会修改任何数据。
+## Scope and evidence boundaries
+
+This package supports the paper's system-level, within-sample evidence for the tested closed object set. It does **not** establish independent haptic/gripper effects, their interaction, unknown-object generalisation, verified pre-contact configuration, end-to-end triggering latency, or hard-real-time performance. The formal trials did not retain synchronized per-trial visual class/confidence, trigger timestamp, strategy-assignment timestamp, or contact timestamp. Video and a detailed failure taxonomy were likewise not retained. These items cannot be reconstructed from the archived files.
+
+The cycle-time notes contain an internal discrepancy (the stated cycle total does not equal the CSV row total); therefore those traces are provided as provenance rather than a current performance claim. The archived trajectory inputs are available, but the historical pause-count smoothing/threshold rule cannot yet reproduce the reported pause values exactly; pause results should remain exploratory until that implementation is recovered.
+
+## Current versus legacy code
+
+Use only `run_core_reproduction.py`, `verify_bundle.py`, and `07_analysis_and_figure_code/bootstrap_ci_ce.py` to check the manuscript-aligned core result. `07_analysis_and_figure_code/LEGACY_SCRIPTS.md` documents scripts retained for provenance that must not be used as the reproduction authority, because they contain historical paths or analyses/conclusions no longer used in the revised manuscript.
+
+## Release actions required before public deposition
+
+1. Choose and add a repository `LICENSE` (the authors/depositor must make this legal choice).
+2. Deposit this exact directory to a public repository such as Zenodo or Figshare and add its DOI to the manuscript data-availability statement and `CITATION.cff`.
+3. Confirm that all required consent/ethics and de-identification conditions permit the chosen license and public release.
+
+No DOI or license is claimed in this local working copy.
