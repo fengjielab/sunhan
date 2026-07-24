@@ -37,7 +37,7 @@ Gripper command & Button event & Gripper input and command parameters $\rightarr
 
 \begin{figure*}[!t]
 \centering
-\includegraphics[width=\textwidth]{fig2.png}
+\includegraphics[width=\textwidth]{fig2.pdf}
 \caption{Not-to-scale timing schematic of the asynchronous perception--control architecture. Frames and inference results were exchanged through bounded queues, while the nominal 200-Hz supervisory loop polled the result queue without blocking. The first threshold-qualified result ($\geq 0.25$ confidence) triggered a single strategy-level update, after which the selected strategy remained locked for the trial; impedance parameters transitioned over approximately 300 ms. The schematic shows nominal module timing; end-to-end trigger latency was not measured.}
 \label{fig:2}
 \end{figure*}
@@ -188,7 +188,7 @@ The class-to-strategy mapping was defined manually for the known object classes 
 Figure~\ref{fig:3} summarizes the two-stage object-class-to-strategy-to-parameter mapping, the one-shot strategy event, and the three parameter channels.
 \begin{figure*}[!t]
 \centering
-\includegraphics[width=\textwidth]{fig3.png}
+\includegraphics[width=\textwidth]{fig3.pdf}
 \caption{Object-conditioned strategy-level parameter-configuration architecture. D435i RGB frames were processed asynchronously by YOLO11n, and object-class labels and confidence scores were returned through bounded queues. The nominal 200-Hz supervisory loop polled the result queue without blocking. The first result with confidence $\geq0.25$ triggered the object-class-to-strategy mapping and a one-shot update of the enabled slave-side impedance, master-side haptic, and gripper-execution parameter channels. The selected strategy remained locked for the trial. When no threshold-qualified result was available, the initialized parameter state was retained; a detected class without an explicit mapping invoked the balanced default strategy. The continuous operator--robot motion and force-feedback loop remained active throughout task execution.}
 \label{fig:3}
 \end{figure*}
