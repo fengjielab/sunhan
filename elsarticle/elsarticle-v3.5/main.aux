@@ -27,11 +27,11 @@
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {2.2.3}Master-side haptic rendering}{3}{}\protected@file@percent }
 \newlabel{eq:baseline-haptic-command}{{6}{3}{}{equation.6}{}}
 \newlabel{eq:gripper-cue-activation}{{7}{3}{}{equation.7}{}}
+\newlabel{eq:gripper-cue-command}{{8}{3}{}{equation.8}{}}
 \@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Timing, triggers, and data flow of the multi-rate mechatronic system.}}{4}{}\protected@file@percent }
 \newlabel{tab:1}{{1}{4}{}{table.1}{}}
 \@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Not-to-scale timing schematic of the asynchronous perception--control architecture. Frames and inference results were exchanged through bounded queues, while the nominal 200-Hz supervisory loop polled the result queue without blocking. The first threshold-qualified result ($\geq 0.25$ confidence) triggered a single strategy-level update, after which the selected strategy remained locked for the trial; impedance parameters transitioned over approximately 300 ms. The schematic shows nominal module timing; end-to-end trigger latency was not measured.}}{4}{}\protected@file@percent }
 \newlabel{fig:2}{{2}{4}{}{figure.2}{}}
-\newlabel{eq:gripper-cue-command}{{8}{4}{}{equation.8}{}}
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {2.2.4}Gripper-execution channel}{4}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Object-Conditioned Strategy-Level Parameter Configuration}{5}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {2.3.1}Object-class-to-strategy and strategy-to-parameter mapping}{5}{}\protected@file@percent }
@@ -40,11 +40,11 @@
 \newlabel{eq:smoothstep-update}{{10}{5}{}{equation.10}{}}
 \@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Strategy-level parameter settings and assigned objects. $K_t$ is reported in N/m, $K_r$ in N\,m/rad, $d$ in N, and $v_g$ in m/s. $F_g$ denotes the requested-force input to \texttt  {grasp()} in newtons. The damping-scaling parameter $\zeta $ and force-scaling factor $K_f$ are dimensionless.}}{6}{}\protected@file@percent }
 \newlabel{tab:2}{{2}{6}{}{table.2}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Object-conditioned strategy-level parameter-configuration architecture. D435i RGB frames were processed asynchronously by YOLO11n, and object-class labels and confidence scores were returned through bounded queues. The nominal 200-Hz supervisory loop polled the result queue without blocking. The first result with confidence $\geq 0.25$ triggered the object-class-to-strategy mapping and a one-shot update of the enabled slave-side impedance, master-side haptic, and gripper-execution parameter channels. The selected strategy remained locked for the trial. When no threshold-qualified result was available, the initialized parameter state was retained; a detected class without an explicit mapping invoked the balanced default strategy. The continuous operator--robot motion and force-feedback loop remained active throughout task execution.}}{6}{}\protected@file@percent }
+\newlabel{fig:3}{{3}{6}{}{figure.3}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.4}Parameter Sets and Initialization}{6}{}\protected@file@percent }
 \newlabel{eq:baseline-parameter-vector}{{11}{6}{}{equation.11}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.5}Mode-Dependent Runtime Procedure}{6}{}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Object-conditioned strategy-level parameter-configuration architecture. D435i RGB frames were processed asynchronously by YOLO11n, and object-class labels and confidence scores were returned through bounded queues. The nominal 200-Hz supervisory loop polled the result queue without blocking. The first result with confidence $\geq 0.25$ triggered the object-class-to-strategy mapping and a one-shot update of the enabled slave-side impedance, master-side haptic, and gripper-execution parameter channels. The selected strategy remained locked for the trial. When no threshold-qualified result was available, the initialized parameter state was retained; a detected class without an explicit mapping invoked the balanced default strategy. The continuous operator--robot motion and force-feedback loop remained active throughout task execution.}}{7}{}\protected@file@percent }
-\newlabel{fig:3}{{3}{7}{}{figure.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.5}Mode-Dependent Runtime Procedure}{7}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.6}Fallback Logic and Operational Safeguards}{7}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {3}Experimental Design}{7}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Experimental Objectives, Comparisons, and Outcome Hierarchy}{7}{}\protected@file@percent }
@@ -66,9 +66,9 @@
 \newlabel{fig:4}{{4}{11}{}{figure.4}{}}
 \@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces Descriptive task-performance and workload results across the five experimental modes.}}{11}{}\protected@file@percent }
 \newlabel{tab:8}{{6}{11}{}{table.6}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces Primary within-sample comparison of complete multi-channel configuration and impedance-only reconfiguration.}}{11}{}\protected@file@percent }
+\newlabel{tab:9}{{7}{11}{}{table.7}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Primary C--E Comparison and Exploratory Process Measures}{11}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces Primary within-sample comparison of complete multi-channel configuration and impedance-only reconfiguration.}}{12}{}\protected@file@percent }
-\newlabel{tab:9}{{7}{12}{}{table.7}{}}
 \@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Task completion time across the five experimental modes ($n=27$ matched task blocks per mode). Filled circles, thick horizontal segments, whiskers, and open circles indicate medians, IQRs, 1.5$\times $IQR ranges, and outliers, respectively. This descriptive panel displays marginal mode distributions; the paired C--E observations are shown in Fig.~\ref {fig:7}.}}{12}{}\protected@file@percent }
 \newlabel{fig:5}{{5}{12}{}{figure.5}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {4.4}Observed Failure Outcomes}{12}{}\protected@file@percent }
