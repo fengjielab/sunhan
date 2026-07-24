@@ -13,7 +13,7 @@
 \begin{document}
 
 \begin{frontmatter}
-\title{Object-Conditioned Strategy-Level Joint Parameter-Bundle Configuration for Haptic Teleoperation}
+\title{Object-Conditioned Strategy-Level Parameter Configuration for Haptic Teleoperation of Heterogeneous Objects}
 
 \author[a]{Fengjie Ma}
 \author[b]{Chuang Cao}
@@ -29,11 +29,11 @@ addressline={333 Longteng Road}, city={Shanghai}, postcode={201620}, country={Ch
 addressline={800 Dongchuan Road}, city={Shanghai}, postcode={200240}, country={China}}
 
 \begin{abstract}
-Fixed teleoperation settings are difficult to tune across objects with different fragility, geometry, and grasping requirements. Existing object-conditioned methods primarily adapt slave-side impedance, whereas coordinated configuration of slave-side impedance, operator-facing haptic feedback, and gripper execution remains underexplored. This paper proposes an object-conditioned strategy-layer framework that maps each detected object class to one of three operational strategies and jointly assigns parameter bundles to these subsystems. Low-rate visual perception is asynchronously integrated with a 200-Hz supervisory loop. The first confidence-qualified detection triggers a one-shot configuration, while strategy locking prevents repeated switching within a trial. Three operators completed 27 matched task blocks, yielding 135 grasp-and-transfer trials across six objects and five control modes. Compared with impedance-only reconfiguration, the joint parameter-bundle mode reduced mean completion time by 1.79 s (8.5\%; matched-block bootstrap 95\% CI, 1.10--2.51 s). The reduction was directionally consistent across all operators and objects. Descriptively, this mode also achieved the highest observed success rate and the lowest Raw NASA-TLX score. These findings indicate a system-level advantage of bundled configuration under the tested conditions, but do not isolate the effects of individual channels. Overall, the framework provides an interpretable, one-shot configuration approach for heterogeneous-object haptic teleoperation.
+Fixed teleoperation parameters may not provide suitable interaction behavior across objects with different fragility, geometry, and grasping requirements. Existing object-conditioned approaches mainly adjust slave-side impedance, whereas joint configuration of slave-side impedance, master-side haptic feedback, and gripper execution parameters has received limited attention. To address this issue, this paper proposes an object-conditioned strategy-level parameter-configuration framework for haptic teleoperation of heterogeneous objects. Each detected object class is mapped to one of three manipulation strategies, which jointly specify the parameter settings of the three channels. Low-rate visual perception is integrated asynchronously with a nominal 200-Hz supervisory loop. The first mapped detection satisfying the confidence threshold triggers a one-shot parameter update, and the selected strategy remains locked for the remainder of the trial. The framework was evaluated in a human-in-the-loop experiment involving three operators, six objects, five control modes, and 135 grasp-and-transfer trials arranged in 27 matched blocks. Compared with impedance-only reconfiguration, the complete joint configuration reduced mean task completion time by 1.79 s (8.5\%; matched-block bootstrap 95\% CI, 1.10--2.51 s). The mean C--E difference favored the complete configuration for each operator and object category. This mode also yielded the highest observed success rate and the lowest Raw NASA-TLX score; these secondary outcomes were interpreted descriptively. These results support an additional system-level benefit of joint multi-channel configuration under the tested conditions, while the individual contributions of the added channels remain to be isolated. Overall, the proposed framework provides an interpretable one-shot configuration approach for haptic teleoperation of heterogeneous objects.
 \end{abstract}
 
 \begin{keyword}
-haptic teleoperation \sep impedance control \sep telemanipulation \sep object-conditioned parameter configuration \sep strategy-level joint parameter-bundle configuration \sep human-in-the-loop evaluation
+haptic teleoperation \sep heterogeneous objects \sep impedance control \sep object-conditioned configuration \sep haptic feedback \sep human-in-the-loop evaluation
 \end{keyword}
 \end{frontmatter}
 

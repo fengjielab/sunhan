@@ -17,8 +17,8 @@ Parameter & Low-to-high operational effect & Engineering constraint & Selected l
  Slave impedance: $K_t$ & Lower $K_t$ $\rightarrow$ greater translational compliance and lower impact; higher $K_t$ $\rightarrow$ greater positional resistance. & No sustained oscillation during qualitative screening. & 50 / 150 / 200 N/m \\
  Slave impedance: $K_r$ & Lower $K_r$ $\rightarrow$ greater rotational compliance; higher $K_r$ $\rightarrow$ greater orientation retention against rotational disturbance. & No sustained oscillation during qualitative screening. & 5 / 10 / 13 N\,m/rad \\
  Slave impedance: $\zeta$ & Increasing $\zeta$ $\rightarrow$ increasing normalized controller damping action for fixed $\mathbf{K}$; it is not a physical critical-damping ratio. & Avoid sustained oscillation and excessive sluggishness. & 0.8 / 1.0 / 1.2 \\
- Haptic interface: $K_f$ & Lower $K_f$ $\rightarrow$ weaker rendered external-force cue; higher $K_f$ $\rightarrow$ stronger cue. & Acceptable Omega.7 response. & 0.2 / 0.5 / 0.7 \\
- Haptic interface: $d$ & Lower $d$ $\rightarrow$ greater sensitivity to small forces; higher $d$ $\rightarrow$ greater suppression of small signals. & Haptic-interface jitter and noise. & 0.3 / 0.4 / 0.5 N \\
+ Master haptic: $K_f$ & Lower $K_f$ $\rightarrow$ weaker rendered external-force cue; higher $K_f$ $\rightarrow$ stronger cue. & Acceptable Omega.7 response. & 0.2 / 0.5 / 0.7 \\
+ Master haptic: $d$ & Lower $d$ $\rightarrow$ greater sensitivity to small forces; higher $d$ $\rightarrow$ greater suppression of small signals. & Master-side haptic jitter and noise. & 0.3 / 0.4 / 0.5 N \\
  Gripper: $v_g$ & Lower $v_g$ $\rightarrow$ slower and lower-impact closing; higher $v_g$ $\rightarrow$ faster grasp establishment. & Franka Hand execution range. & 0.02 / 0.05 / 0.10 m/s \\
  Gripper: $F_g$ & Lower requested $F_g$ $\rightarrow$ gentler grasp; higher $F_g$ $\rightarrow$ larger requested grasp force. & Franka Hand force setting. & 8 / 15 / 20 N \\
 \bottomrule
@@ -241,7 +241,7 @@ Scissors & 21.79 & 20.70 & \textbf{18.84} & 21.83 & 21.70 \\
 \toprule
 Claim & Direct evidence in the present study & Supported interpretation \\
 \midrule
-The complete parameter bundle reduces completion time relative to impedance-only reconfiguration. & The paired C--E mean difference was 1.79 s (bootstrap 95\% CI, 1.10--2.51 s); 22 of 27 matched blocks favored mode C. & Supported as a system-level, within-sample result under the tested conditions. \\
+Complete multi-channel configuration was associated with a lower mean task completion time than impedance-only reconfiguration. & The paired C--E mean difference was 1.79 s (matched-block bootstrap 95\% CI, 1.10--2.51 s); 22 of 27 matched blocks favored mode C. & Supported as a system-level, within-sample result under the tested conditions. \\
 \addlinespace[2pt]
 Mode C has a higher success rate. & Observed success was 26/27 in C and 24/27 in E. The paired outcomes were 23 both-success blocks, three C-success/E-failure blocks, and one C-failure/E-success block; the exact two-sided McNemar test gave $p=0.625$. & Descriptive only; the paired success comparison did not establish a mode effect. \\
 \addlinespace[2pt]
@@ -249,7 +249,7 @@ Mode C reduces workload. & Raw NASA-TLX was lower in C in all nine operator $\ti
 \addlinespace[2pt]
 The time benefit results from a shorter path or fewer pauses. & The trajectory-length bootstrap interval crossed zero. Pause-count medians were equal, and no threshold-sensitivity analysis was available. & Not established; these measures are exploratory and do not identify a mechanism. \\
 \addlinespace[2pt]
-The haptic and gripper settings each contribute independently, or their combination is synergistic. & Modes C and E changed the haptic-interface and gripper parameter groups together; no factorial channel-ablation design was included. & Not tested. \\
+The master-side haptic and gripper-execution channels each contribute independently, or their combination is synergistic. & Modes C and E changed the master-side haptic and gripper-execution parameter channels together; no factorial channel-ablation design was included. & Not tested. \\
 \addlinespace[2pt]
 Configuration was completed before contact in every trial, or the implementation is hard real-time. & Formal trials lacked synchronized trigger--contact timestamps, and hard real-time performance was not evaluated. & Not verified. \\
 \bottomrule

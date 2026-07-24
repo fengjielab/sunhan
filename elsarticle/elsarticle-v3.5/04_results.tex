@@ -1,27 +1,29 @@
 \section{Results}
-\subsection{Controlled Visual Test and Asynchronous Integration}
-The separate closed-set visual test comprised 180 photographs (30 per class) acquired under fixed viewpoint, background, and lighting conditions. All images were classified correctly and mapped to the intended strategy; mean confidence was 0.853 and mean per-image inference time was 48.19 ms (Fig.~\ref{fig:4}; class-wise results and the confusion matrix are provided in Supplementary Table~S5 and Fig.~S1). These results characterize the six known object instances under controlled conditions and do not assess online trigger correctness, trigger-to-contact timing, or performance on untested objects.
+\subsection{Controlled Visual Test and Supervisory-Loop Timing}
+The separate controlled closed-set visual test used 180 photographs, with 30 images per object class, acquired under fixed viewpoint, background, and lighting conditions. All 180 images were classified correctly and mapped to the intended manipulation strategy. The mean confidence score was 0.853, and the mean per-image processing time was 48.19 ms (Fig.~\ref{fig:4}). Class-wise results and the confusion matrix are provided in Supplementary Table~S3 and Supplementary Fig.~S1.
+
+These results characterize closed-set recognition and strategy mapping for the six tested object instances under the specified controlled imaging conditions. They do not quantify the correctness of online strategy triggering, trigger-to-contact timing, or performance on untested objects.
 
 \begin{figure*}[!t]
 \centering
 \includegraphics[width=\textwidth]{fig4.png}
-\caption{Confidence and per-image inference time in the closed-set visual test ($n=30$ per class). Bars show mean $\pm$ SD; half violins, dots, segments, and open circles show distributions, observations, IQRs, and medians. Reference lines mark the 0.25 threshold and overall means (0.853; 48.19 ms). Timing is not end-to-end task-trigger latency.}
+\caption{Confidence scores and per-image processing time in the controlled closed-set visual test ($n=30$ images per object class). Bars indicate mean $\pm$ SD; half violins, points, segments, and open circles indicate distributions, individual observations, IQRs, and medians, respectively. Reference lines indicate the confidence threshold of 0.25 and the overall means for confidence (0.853) and processing time (48.19 ms). The reported processing time does not represent end-to-end task-trigger latency.}
 \label{fig:4}
 \end{figure*}
 
-The median logged supervisory-cycle duration was 5.07 ms.
+The median logged duration of the nominal 200-Hz supervisory cycle was 5.07 ms.
 
-\subsection{Results Across the Five Modes}
+\subsection{Overall Results Across the Five Modes}
 \begin{table*}[!t]
 \centering
-\caption{Descriptive results across the five experimental modes.}
+\caption{Descriptive task-performance and workload results across the five experimental modes.}
 \label{tab:8}
 \small
 \setlength{\tabcolsep}{5pt}
 \renewcommand{\arraystretch}{1.16}
 \begin{tabularx}{\textwidth}{@{}p{0.11\textwidth}YYYp{0.15\textwidth}@{}}
 \toprule
-Mode & Completion time (s) & Trajectory length (m) & Success rate & Raw NASA-TLX \\
+Mode & Task completion time (s) & Master-side trajectory length (m) & Observed success, $n/N$ (\%) & Raw NASA-TLX \\
 \midrule
 A & 21.18 [20.62, 22.08] & 0.757 [0.693, 0.816] & 22/27 (81.5\%) & 62.50 [59.67, 64.50] \\
 B & 20.89 [20.12, 21.83] & 0.787 [0.721, 0.861] & 21/27 (77.8\%) & 56.17 [55.00, 59.33] \\
@@ -31,92 +33,94 @@ E & 20.73 [19.95, 22.25] & 0.732 [0.678, 0.799] & 24/27 (88.9\%) & 53.67 [51.83,
 \bottomrule
 \end{tabularx}
 \par\smallskip
-\footnotesize\textit{Note:} Values are median [IQR], except success rate. Completion time, trajectory length, and success rate use $n=27$ trials per mode; Raw NASA-TLX uses $n=9$ strategy-level questionnaire units per mode. Mode definitions are given in Table~\ref{tab:3}; trial-level performance data are provided in Supplementary Table S1.
+\footnotesize\textit{Note:} Continuous outcomes are reported as median [IQR], whereas observed success is reported as successful trials/total trials (\%). Task completion time, master-side trajectory length, and observed success use $n=27$ trial-level observations per mode. Raw NASA-TLX uses $n=9$ operator $\times$ strategy questionnaire units per mode. Mode definitions are provided in Table~\ref{tab:3}, and the trial-level task-performance data are provided in Supplementary Table~S4.
 \end{table*}
-Across the five modes, C had the lowest median completion time, the highest observed success rate, the lowest Raw NASA-TLX score, and the lowest median master-side trajectory length (Table~\ref{tab:8} and Figs.~\ref{fig:5} and \ref{fig:6}). Using the trial-level values in Supplementary Table S1, mean completion time in mode C (19.28 $\pm$ 1.30 s) was lower than in modes A (21.42 $\pm$ 1.58 s), B (21.01 $\pm$ 1.61 s), D (20.91 $\pm$ 1.10 s), and E (21.07 $\pm$ 1.56 s) by 10.0\%, 8.2\%, 7.8\%, and 8.5\%, respectively. As prespecified, inferential analyses focused on completion time as the primary endpoint.
+Across the five modes, mode C showed the lowest median completion time, the highest observed success rate, the lowest median Raw NASA-TLX score, and the lowest median master-side trajectory length (Table~\ref{tab:8} and Figs.~\ref{fig:5}--\ref{fig:6}). Using the trial-level data in Supplementary Table~S4, the mean completion time was 19.28 $\pm$ 1.30 s in mode C, compared with 21.42 $\pm$ 1.58 s in mode A, 21.01 $\pm$ 1.61 s in mode B, 20.91 $\pm$ 1.10 s in mode D, and 21.07 $\pm$ 1.56 s in mode E. With each comparison mode used as the reference, the corresponding mean reductions for mode C were 10.0\%, 8.2\%, 7.8\%, and 8.5\%, respectively. Consistent with the predefined outcome hierarchy, inferential analyses focused on task completion time as the primary endpoint.
 
-Treating the 27 operator-nested matched task blocks as within-sample repeated-measures units, the Friedman test indicated differences in completion time among the five modes ($\chi^2(4)=30.904$, $p<0.001$). Holm-adjusted paired Wilcoxon tests showed lower completion times in mode C than in modes A, B, D, and E (all $p<0.01$). These $p$ values provide conditional evidence for the observed sample and are not population-level participant inference. Descriptively, mode C also had the lowest Raw NASA-TLX score in all nine operator $\times$ strategy units.
+Using the 27 operator-nested matched task blocks as repeated-measures units, the Friedman test indicated an overall difference in completion time across the five modes ($\chi^2(4)=30.904$, $p<0.001$). Holm-adjusted Wilcoxon signed-rank tests indicated lower completion times in mode C than in modes A, B, D, and E, with all adjusted $p$-values below 0.01. These comparisons were interpreted as conditional repeated-measures evidence for the observed three-operator sample. Descriptively, mode C yielded the lowest Raw NASA-TLX score within each of the nine operator $\times$ strategy questionnaire units.
 
 \begin{figure}[!t]
 \centering
 \includegraphics[width=\columnwidth]{fig5.png}
-\caption{Task duration across the five modes ($n=27$ matched blocks per mode). Filled circles, thick segments, whiskers, and open circles show medians, IQRs, 1.5 $\times$ IQR ranges, and outliers. This descriptive plot does not show block pairing; the primary C--E pairing is shown in Fig.~\ref{fig:7}.}
+\caption{Task completion time across the five experimental modes ($n=27$ matched task blocks per mode). Filled circles, thick horizontal segments, whiskers, and open circles indicate medians, IQRs, 1.5$\times$IQR ranges, and outliers, respectively. This descriptive panel displays marginal mode distributions; the paired C--E observations are shown in Fig.~\ref{fig:7}.}
 \label{fig:5}
 \end{figure}
 
 \begin{figure*}[!t]
 \centering
 \includegraphics[width=\textwidth]{fig6.png}
-\caption{Human workload and observed task success across the five experimental modes. (a) Raw NASA-TLX scores: connected markers show each operator's mean across three strategy-level questionnaire units per mode ($n=9$ questionnaire units per mode); marker shape identifies the operator. (b) Observed successful trials out of 27 for each mode. These panels are descriptive and do not display confidence intervals or inferential tests.}
+\caption{Descriptive workload and observed task-success results across the five experimental modes. (a) Raw NASA-TLX scores: connected markers show each operator's mean across the three strategy-level questionnaire units within each mode ($n=9$ operator $\times$ strategy units per mode), and marker shape identifies the operator. (b) Number of successful trials out of 27 trials per mode. Both panels are descriptive; no confidence intervals or primary inferential tests are shown.}
 \label{fig:6}
 \end{figure*}
 
 \subsection{Primary C--E Comparison and Exploratory Process Measures}
-The primary C--E comparison is summarized in Table~\ref{tab:9} and Fig.~\ref{fig:7}.
+The primary paired comparison between modes C and E is summarized in Table~\ref{tab:9} and Fig.~\ref{fig:7}.
 
 \begin{table*}[!t]
 \centering
-\caption{Within-sample primary comparison of the complete parameter bundle and impedance-only reconfiguration.}
+\caption{Primary within-sample comparison of complete multi-channel configuration and impedance-only reconfiguration.}
 \label{tab:9}
 \small
 \setlength{\tabcolsep}{5pt}
 \renewcommand{\arraystretch}{1.16}
 \begin{tabularx}{\textwidth}{@{}p{0.18\textwidth}YYYp{0.20\textwidth}@{}}
 \toprule
-Measure & C, median [IQR] & E, median [IQR] & Mean $\Delta$ (E--C), 95\% CI & Operator direction \\
+Outcome & Mode C, median [IQR] & Mode E, median [IQR] & Mean paired difference $\Delta$ (E--C) [95\% CI] & Operator-level direction \\
 \midrule
-Completion time (s) & 19.57 [18.41, 20.05] & 20.73 [19.95, 22.25] & 1.79 [1.10, 2.51] & 3/3 favored C \\
-Trajectory length (m) & 0.697 [0.660, 0.769] & 0.732 [0.678, 0.799] & 0.024 [-0.014, 0.059] & Mixed \\
-Raw NASA-TLX & 48.67 [47.67, 51.83] & 53.67 [51.83, 57.83] & 4.87 [not calculated] & 3/3 favored C \\
+Task completion time (s) & 19.57 [18.41, 20.05] & 20.73 [19.95, 22.25] & 1.79 [1.10, 2.51] & 3/3 favored C \\
+Master-side trajectory length (m) & 0.697 [0.660, 0.769] & 0.732 [0.678, 0.799] & 0.024 [-0.014, 0.059] & Mixed \\
+Raw NASA-TLX & 48.67 [47.67, 51.83] & 53.67 [51.83, 57.83] & 4.87 [---] & 3/3 favored C \\
 \bottomrule
 \end{tabularx}
 \par\smallskip
-\footnotesize\textit{Note:} Positive $\Delta$ values favor mode C. Completion time and trajectory length use $n=27$ matched task blocks; Raw NASA-TLX uses $n=9$ questionnaire units per mode. Intervals are matched-task-block bootstrap 95\% CIs from 10,000 resamples and quantify uncertainty across the observed blocks, not a population-level participant effect; no bootstrap interval was calculated for Raw NASA-TLX.
+\footnotesize\textit{Note:} Differences were defined as mode E minus mode C, so positive $\Delta$ values favor mode C for all three outcomes. Task completion time and master-side trajectory length use $n=27$ matched task blocks. Raw NASA-TLX uses $n=9$ paired operator $\times$ strategy questionnaire units per mode. Confidence intervals for completion time and trajectory length are matched-block bootstrap 95\% intervals based on 10{,}000 resamples and are conditional on the observed block structure. No bootstrap confidence interval was calculated for Raw NASA-TLX.
 \end{table*}
-The median completion times were 19.57 s in mode C and 20.73 s in mode E. With $\Delta T=T_E-T_C$, the mean paired difference was 1.79 s (matched-block bootstrap 95\% CI, [1.10, 2.51] s), corresponding to a mean reduction of 8.5\%. Completion time was lower in mode C in 22 of the 27 matched blocks. The mean differences for P01, P02, and P03 were 1.66, 2.56, and 1.16 s, respectively. Across the six objects, the relative differences ranged from 3.3\% to 13.2\%.
+Median task completion time was 19.57 s in mode C and 20.73 s in mode E. Defining the block-level difference as $\Delta T=T_E-T_C$, the mean paired difference was 1.79 s, with a matched-block bootstrap 95\% confidence interval of 1.10--2.51 s. Relative to the mean completion time in mode E, this difference corresponded to an 8.5\% reduction in mode C. Mode C had a lower completion time than mode E in 22 of the 27 matched task blocks.
 
-As a post hoc sensitivity analysis, the C--E completion-time comparison was repeated after retaining only the 23 matched blocks in which both trials were successful. The mean paired difference was 1.80 s, and 19 of the 23 blocks favored mode C; this estimate was similar in magnitude to the primary analysis.
+In a post hoc sensitivity analysis, the C--E completion-time comparison was repeated using the 23 matched blocks in which both mode trials were successful. The mean paired difference in this subset was 1.80 s, and mode C was faster in 19 of the 23 blocks. The estimated difference was similar in magnitude to the 1.79-s primary estimate.
 
-For paired success outcomes, 23 blocks succeeded in both modes, three succeeded in mode C and failed in mode E, one failed in mode C and succeeded in mode E, and none failed in both modes. With only four discordant pairs, the exact two-sided McNemar test did not establish a difference ($p=0.625$). The observed success-rate difference is therefore interpreted as supplementary descriptive evidence rather than as a confirmed mode effect.
+For the paired success outcomes, 23 matched blocks were successful in both modes, three were successful in mode C only, one was successful in mode E only, and none failed in both modes. The exact two-sided McNemar test yielded $p=0.625$ and, given only four discordant pairs, did not provide clear evidence of a mode-related difference in observed success. Accordingly, the observed success-rate difference was treated as supplementary descriptive evidence.
 
-The median master-side trajectory lengths were 0.697 m in mode C and 0.732 m in mode E. The mean paired difference was 0.024 m, with a bootstrap 95\% CI of [-0.014, 0.059] m; the interval included zero. Pause counts were lower on average in mode C but had the same median in modes C and E.
+Median master-side trajectory length was 0.697 m in mode C and 0.732 m in mode E. With $\Delta L=L_E-L_C$, the mean paired trajectory-length difference was 0.024 m, with a matched-block bootstrap 95\% confidence interval of -0.014 to 0.059 m. Because the interval included zero, the data did not provide clear evidence of a C--E difference in master-side trajectory length. Pause counts were lower on average in mode C, although the two modes had the same median pause count.
 
 \begin{figure}[!t]
 \centering
 \includegraphics[width=\columnwidth]{fig7.png}
-\caption{Paired C--E completion time across 27 matched blocks. Points below the identity line and positive $\Delta T=T_E-T_C$ favor C. The violin, segment, and diamond show the distribution, median, and mean. Mean $\Delta T$ was 1.79 s (matched-block bootstrap 95\% CI, 1.10--2.51 s); 22/27 blocks favored C.}
+\caption{Paired task completion times for modes C and E across 27 matched task blocks. Points below the identity line indicate shorter completion time in mode C. For the paired difference $\Delta T=T_E-T_C$, positive values favor mode C. The violin, horizontal segment, and diamond show the distribution, median, and mean of the paired differences, respectively. The mean paired difference was 1.79 s (matched-block bootstrap 95\% CI, 1.10--2.51 s), and 22 of 27 blocks favored mode C.}
 \label{fig:7}
 \end{figure}
 
-For the exploratory pause measure, using the prespecified definition in Section~3.3, mode C had a median pause count of 3 [2, 3.5] and a mean of 2.74 $\pm$ 1.23, whereas mode E had a median of 3 and a mean of 3.41 $\pm$ 1.67. Mode C had a lower mean in each strategy class, but the two modes had the same overall median. No formal hypothesis test was prespecified or performed for pause count, and no threshold-sensitivity analysis was available.
+Using the predefined pause criterion in Section~3.3, mode C had a median [IQR] pause count of 3 [2, 3.5] and a mean of 2.74 $\pm$ 1.23, whereas mode E had a median pause count of 3 and a mean of 3.41 $\pm$ 1.67. The mean pause count was lower in mode C within each of the three manipulation strategies, while the overall median remained 3 in both modes. Pause count was treated descriptively, and no formal hypothesis test was performed. The robustness of the result to alternative speed or duration thresholds was not evaluated.
 
-\subsection{Failure Analysis}
-Eighteen failures occurred across the 135 trials: 5, 6, 1, 3, and 3 in modes A--E, respectively. The failures included object drops, observable slip, and visible damage, as summarized in Table~\ref{tab:10}. One designated researcher recorded outcomes in real time using the predefined criteria in Section~3.3; no systematic video recording or independent re-rating was available.
+\subsection{Observed Failure Outcomes}
+Across the 135 trials, 18 were classified as failures: 5, 6, 1, 3, and 3 in modes A--E, respectively. The observed failure outcomes involved object drops, observable slip, or visible damage according to the predefined criteria in Section~3.3. Table~\ref{tab:10} summarizes the mode-level failure counts and representative trial observations.
 
 \begin{table*}[!t]
 \centering
-\caption{Observed failures and representative observations by experimental mode.}
+\caption{Observed failure counts and representative trial observations by experimental mode.}
 \label{tab:10}
 \small
 \setlength{\tabcolsep}{6pt}
 \renewcommand{\arraystretch}{1.16}
 \begin{tabularx}{\textwidth}{@{}p{0.19\textwidth}p{0.14\textwidth}Y@{}}
 \toprule
-Mode & Failures/total & Representative observations \\
+Mode & Observed failures, $n/N$ & Representative trial observations \\
 \midrule
-A & 5/27 & Paper-cup deformation and unstable positioning of the scissors. \\
-B & 6/27 & The available real-time records did not support attribution of a specific failure cause. \\
-\textbf{C} & \textbf{1/27} & Mouse slip during transfer. \\
-D & 3/27 & Object drops or loss of grasp during holding. \\
+A & 5/27 & Paper-cup deformation and difficulty maintaining the scissors' pose were noted in failed trials. \\
+B & 6/27 & No consistent failure pattern could be assigned from the retained trial records. \\
+\textbf{C} & \textbf{1/27} & Observable mouse slip during transfer. \\
+D & 3/27 & Object drops or loss of grasp after grasp establishment. \\
 E & 3/27 & Observed drops, slip, or visible damage during grasp establishment or transfer. \\
 \bottomrule
 \end{tabularx}
 \par\smallskip
-\footnotesize\textit{Note:} Mode definitions are given in Table~\ref{tab:3}. Observations are descriptive and were recorded in real time.
+\footnotesize\textit{Note:} Mode definitions are provided in Table~\ref{tab:3}. Failure labels were assigned during the experiment using the predefined criteria in Section~3.3. The listed observations are representative rather than exhaustive. Systematic video recording and independent blinded re-evaluation were not performed; the observations should not be interpreted as confirmed root-cause classifications.
 \end{table*}
-Mode C had one failure in 27 trials, the lowest observed count among the five modes under the present experimental conditions.
+Among the five modes, mode C had the lowest observed failure count, with 1 failure in 27 trials.
 
-\subsection{Consistency Across Operators and Objects}
-The paired C--E differences were directionally consistent across operators and objects. At the operator level, the mean paired differences $\Delta T=T_E-T_C$ for P01, P02, and P03 were 1.66, 2.56, and 1.16 s, respectively. The corresponding median [IQR] differences were 1.91 [0.60, 3.14], 2.63 [2.19, 3.34], and 1.60 [-0.53, 1.73] s. Mode C was faster in 7/9, 9/9, and 6/9 task blocks, respectively. After P01, P02, and P03 were excluded in turn, the mean differences in the remaining blocks were 1.86, 1.41, and 2.11 s, respectively; all continued to favor mode C.
+\subsection{Directional Consistency Across Operators and Objects}
+The mean paired C--E completion-time difference favored mode C for each of the three operators and each of the six tested objects.
 
-At the object level, mode C had the shortest mean completion time among the five modes for each of the six objects (Supplementary Table~S6). Relative to mode E, the reductions ranged from 3.3\% for the bottle to 13.2\% for the scissors; the direction was consistent across objects, although the magnitude varied.
+At the operator level, the mean paired differences $\Delta T=T_E-T_C$ were 1.66, 2.56, and 1.16 s for P01, P02, and P03, respectively. The corresponding operator-specific median [IQR] differences were 1.91 [0.60, 3.14], 2.63 [2.19, 3.34], and 1.60 [-0.53, 1.73] s, respectively. Mode C had a shorter completion time in 7/9, 9/9, and 6/9 matched task blocks for P01, P02, and P03, respectively. In the leave-one-operator-out sensitivity analysis, P01, P02, and P03 were excluded in turn. The mean paired differences in the remaining blocks were 1.86, 1.41, and 2.11 s, respectively, and all remained positive.
+
+At the object level, mode C had the lowest mean task completion time among the five modes for each of the six tested objects (Supplementary Table~S5). Relative to mode E, the mean completion-time reduction in mode C ranged from 3.3\% for the bottle to 13.2\% for the scissors. The mean C--E difference favored mode C for all six objects, while the magnitude varied across objects.
