@@ -195,4 +195,66 @@ Configuration was completed before contact in every trial, or the implementation
 \bottomrule
 \end{tabular}
 \normalsize
+
+\subsection*{Table S4. Parameter design space, engineering constraints, and selected levels}
+\small
+\renewcommand{\arraystretch}{1.16}
+\begin{longtable}{p{0.16\textwidth}p{0.29\textwidth}p{0.27\textwidth}p{0.14\textwidth}}
+\toprule
+Parameter & Low-to-high operational effect & Engineering constraint & Selected levels \\
+\midrule
+Slave impedance: $K_t$ & Greater translational compliance and lower impact $\rightarrow$ greater positional stability. & No sustained oscillation during qualitative screening. & 50 / 150 / 200 N/m \\
+Slave impedance: $K_r$ & Greater rotational compliance about the fixed desired orientation $\rightarrow$ greater resistance to rotational disturbance. & No sustained oscillation during qualitative screening. & 5 / 10 / 13 N\,m/rad \\
+Slave impedance: $\zeta$ & Increasing $\zeta$ $\rightarrow$ increasing normalized controller damping action (for fixed $\mathbf{K}$). & Avoid sustained oscillation and excessive sluggishness. & 0.8 / 1.0 / 1.2 \\
+Haptic interface: $K_f$ & Weaker $\rightarrow$ stronger rendered external-force cue. & Acceptable Omega.7 response. & 0.2 / 0.5 / 0.7 \\
+Haptic interface: $d$ & Greater sensitivity to small forces $\rightarrow$ greater suppression of small signals. & Haptic-interface jitter and noise. & 0.3 / 0.4 / 0.5 N \\
+Gripper: $v_g$ & Lower-impact motion $\rightarrow$ faster grasp establishment. & Franka Hand execution range. & 0.02 / 0.05 / 0.10 m/s \\
+Gripper: $F_g$ & Lower $\rightarrow$ higher requested grasp force. & Franka Hand force setting. & 8 / 15 / 20 N \\
+\bottomrule
+\end{longtable}
+\normalsize
+
+\subsection*{Table S5. Class-wise results of the closed-set controlled visual test}
+\small
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+Object & Images & Mean confidence & Mean time (ms) \\
+\midrule
+Apple & 30 & 0.771 & 49.89 \\
+Banana & 30 & 0.948 & 48.02 \\
+Bottle & 30 & 0.726 & 48.57 \\
+Paper cup & 30 & 0.820 & 46.62 \\
+Mouse & 30 & 0.914 & 46.79 \\
+Scissors & 30 & 0.938 & 49.27 \\
+\bottomrule
+\end{tabular}
+\end{center}
+\noindent All 180 images were classified correctly and mapped to the intended strategy under the fixed viewpoint, background, and lighting conditions.
+\normalsize
+
+\subsection*{Table S6. Mean completion time by object and experimental mode}
+\small
+\begin{center}
+\begin{tabular}{lccccc}
+\toprule
+Object & A & B & \textbf{C} & D & E \\
+\midrule
+Apple & 20.46 & 21.40 & \textbf{19.25} & 20.81 & 20.94 \\
+Banana & 20.07 & 20.85 & \textbf{19.49} & 21.06 & 20.64 \\
+Paper cup & 22.36 & 20.27 & \textbf{18.69} & 20.38 & 21.17 \\
+Bottle & 22.11 & 22.14 & \textbf{19.63} & 20.78 & 20.30 \\
+Mouse & 21.74 & 20.93 & \textbf{19.75} & 20.74 & 21.64 \\
+Scissors & 21.79 & 20.70 & \textbf{18.84} & 21.83 & 21.70 \\
+\bottomrule
+\end{tabular}
+\end{center}
+\noindent Values are mean completion time in seconds; bold indicates the lowest mean in each row.
+\normalsize
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.72\textwidth]{fig4.png}
+\small\noindent\textbf{Figure S1.} Confusion matrix for the separate closed-set controlled visual test (180 images; 30 images per class). All observations lie on the diagonal under the fixed viewpoint, background, and lighting conditions.
+\end{figure}
 \end{document}

@@ -1,0 +1,125 @@
+\relax 
+\emailauthor{huazhang@yeah.net}{Hua Zhang\corref {cor1}}
+\Newlabel{cor1}{1}
+\citation{ref01,ref02}
+\citation{ref03}
+\citation{ref04,ref05}
+\citation{ref06,ref07,ref08,ref09,ref18,ref19,ref20,ref21}
+\citation{ref10,ref11,ref12,ref13,ref14,ref15,ref16}
+\citation{ref17,ref22,ref25,ref30}
+\Newlabel{a}{a}
+\Newlabel{b}{b}
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{}\protected@file@percent }
+\citation{ref26}
+\@writefile{toc}{\contentsline {section}{\numberline {2}Methods and System Implementation}{2}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}System Overview and Multi-Rate Architecture}{2}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Teleoperation and Mechatronic Control Channels}{3}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.2.1}Master--slave motion mapping}{3}{}\protected@file@percent }
+\newlabel{eq:master-position-increment}{{1}{3}{}{equation.1}{}}
+\newlabel{eq:desired-slave-position}{{2}{3}{}{equation.2}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.2.2}Slave-side Cartesian impedance}{3}{}\protected@file@percent }
+\newlabel{eq:cartesian-impedance}{{3}{3}{}{equation.3}{}}
+\newlabel{eq:stiffness-matrix}{{4}{3}{}{equation.4}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Experimental teleoperation platform showing the Omega.7 master device, Franka Panda robot, Intel RealSense D435i camera, host computer, and object workspace. The Franka Hand gripper is mounted at the Panda end effector.}}{3}{}\protected@file@percent }
+\newlabel{fig:1}{{1}{3}{}{figure.1}{}}
+\newlabel{eq:damping-matrix}{{5}{3}{}{equation.5}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.2.3}Master-side haptic rendering}{3}{}\protected@file@percent }
+\newlabel{eq:baseline-haptic-command}{{6}{3}{}{equation.6}{}}
+\newlabel{eq:gripper-cue-activation}{{7}{3}{}{equation.7}{}}
+\newlabel{eq:gripper-cue-command}{{8}{3}{}{equation.8}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.2.4}Gripper-execution channel}{3}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Runtime characteristics and data flow of the multi-rate mechatronic system.}}{4}{}\protected@file@percent }
+\newlabel{tab:1}{{1}{4}{}{table.1}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Schematic, not-to-scale timing of the asynchronous perception--control implementation. Frames and results are exchanged through bounded queues while the nominal 200-Hz supervisory loop polls without blocking. The first valid mapped result ($\geq 0.25$ confidence) initiates one locked update; impedance parameters transition over approximately 300 ms. This schematic shows nominal timing, not measured end-to-end latency.}}{4}{}\protected@file@percent }
+\newlabel{fig:2}{{2}{4}{}{figure.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Object-Conditioned Joint Parameter Configuration}{4}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.3.1}Class-to-strategy and strategy-to-parameter mapping}{4}{}\protected@file@percent }
+\newlabel{eq:strategy-vector}{{9}{5}{}{equation.9}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.3.2}One-shot triggering, locking, and parameter transition}{5}{}\protected@file@percent }
+\newlabel{eq:smoothstep-update}{{10}{5}{}{equation.10}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.4}Parameter Design and Initial State}{5}{}\protected@file@percent }
+\newlabel{eq:baseline-parameter-vector}{{11}{5}{}{equation.11}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.4.1}Engineering rationale for operating points}{5}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.5}Runtime Procedure}{5}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.6}Bounded Fallback and Safety Measures}{5}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Parameter settings for the three operational strategies. $K_t$ is in N/m, $K_r$ in N\,m/rad, $d$ in N, $v_g$ in m/s, and $F_g$ is the requested \texttt  {grasp()} force in N. $\zeta $ and $K_f$ are dimensionless controller/API scaling parameters.}}{6}{}\protected@file@percent }
+\newlabel{tab:2}{{2}{6}{}{table.2}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Object-conditioned joint parameter-configuration architecture. D435i RGB frames are processed asynchronously by YOLO11n and returned as class--confidence results through bounded queues. The 200-Hz teleoperation supervisor polls the result queue without blocking. The first mapped result with confidence $\geq 0.25$ is converted into one strategy event $\Theta (c)$, which assigns the haptic-interface, slave-side impedance, and gripper-execution parameter groups and is locked for the trial. The diagram also shows the retained initial state for no or low-confidence results, the balanced default for an unmapped class, and the continuous operator--robot force/state-feedback loop.}}{6}{}\protected@file@percent }
+\newlabel{fig:3}{{3}{6}{}{figure.3}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {3}Experimental Design}{6}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Experimental Objectives and Conditions}{6}{}\protected@file@percent }
+\citation{ref27}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Operators, Objects, and Matched Block Design}{7}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Task Procedure and Outcome Measures}{7}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Experimental modes, channel-update logic, and comparison roles.}}{8}{}\protected@file@percent }
+\newlabel{tab:3}{{3}{8}{}{table.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Test objects, assigned strategies, and principal task risks.}}{8}{}\protected@file@percent }
+\newlabel{tab:5}{{4}{8}{}{table.4}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Allocation of matched task blocks and trials by strategy and object.}}{8}{}\protected@file@percent }
+\newlabel{tab:6}{{5}{8}{}{table.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4}Statistical Analysis}{8}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4}Results}{9}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Controlled Visual Test and Asynchronous Integration}{9}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Results Across the Five Modes}{9}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Primary C--E Comparison and Exploratory Process Measures}{9}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}Failure Analysis}{9}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.5}Consistency Across Operators and Objects}{9}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Confidence and per-image inference time in the closed-set visual test ($n=30$ per class). Bars show mean $\pm $ SD; half violins, dots, segments, and open circles show distributions, observations, IQRs, and medians. Reference lines mark the 0.25 threshold and overall means (0.853; 48.19 ms). Timing is not end-to-end task-trigger latency.}}{10}{}\protected@file@percent }
+\newlabel{fig:5}{{4}{10}{}{figure.4}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces Descriptive results across the five experimental modes.}}{10}{}\protected@file@percent }
+\newlabel{tab:8}{{6}{10}{}{table.6}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces Within-sample primary comparison of the complete parameter bundle and impedance-only reconfiguration.}}{10}{}\protected@file@percent }
+\newlabel{tab:9}{{7}{10}{}{table.7}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {8}{\ignorespaces Observed failures and representative observations by experimental mode.}}{10}{}\protected@file@percent }
+\newlabel{tab:10}{{8}{10}{}{table.8}{}}
+\citation{ref06,ref07,ref08,ref09,ref18,ref19,ref20,ref21}
+\citation{ref10,ref11,ref13,ref14}
+\citation{ref12,ref15,ref16,ref23,ref24}
+\citation{ref30}
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Task duration across the five modes ($n=27$ matched blocks per mode). Filled circles, thick segments, whiskers, and open circles show medians, IQRs, 1.5 $\times $ IQR ranges, and outliers. This descriptive plot does not show block pairing; the primary C--E pairing is shown in Fig.~\ref {fig:8}.}}{11}{}\protected@file@percent }
+\newlabel{fig:6}{{5}{11}{}{figure.5}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {5}Discussion}{11}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Principal Findings and Interpretation of the Five-Mode Design}{11}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Asynchronous Perception--Control Integration}{11}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Variation Across Operators and Objects}{11}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.4}Relation to Previous Work and Mechatronic Design Implications}{11}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Human workload and observed task success across the five experimental modes. (a) Raw NASA-TLX scores: connected markers show each operator's mean across three strategy-level questionnaire units per mode ($n=9$ questionnaire units per mode); marker shape identifies the operator. (b) Observed successful trials out of 27 for each mode. These panels are descriptive and do not display confidence intervals or inferential tests.}}{12}{}\protected@file@percent }
+\newlabel{fig:7}{{6}{12}{}{figure.6}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces Paired C--E completion time across 27 matched blocks. Points below the identity line and positive $\Delta T=T_E-T_C$ favor C. The violin, segment, and diamond show the distribution, median, and mean. Mean $\Delta T$ was 1.79 s (matched-block bootstrap 95\% CI, 1.10--2.51 s); 22/27 blocks favored C.}}{12}{}\protected@file@percent }
+\newlabel{fig:8}{{7}{12}{}{figure.7}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.5}Limitations and Future Work}{12}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces Mean C--E task duration by operator and object. Points and error bars show mean $\pm $ SD; connectors link paired means. Labels give $\Delta T=T_E-T_C$ and blocks favoring C. Object-level summaries are descriptive ($n=4$ or 5 blocks).}}{13}{}\protected@file@percent }
+\newlabel{fig:9}{{8}{13}{}{figure.8}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {6}Conclusion}{13}{}\protected@file@percent }
+\bibstyle{elsarticle-num}
+\bibdata{references}
+\bibcite{ref01}{{1}{}{{}}{{}}}
+\bibcite{ref02}{{2}{}{{}}{{}}}
+\bibcite{ref03}{{3}{}{{}}{{}}}
+\bibcite{ref04}{{4}{}{{}}{{}}}
+\bibcite{ref05}{{5}{}{{}}{{}}}
+\bibcite{ref06}{{6}{}{{}}{{}}}
+\bibcite{ref07}{{7}{}{{}}{{}}}
+\bibcite{ref08}{{8}{}{{}}{{}}}
+\bibcite{ref09}{{9}{}{{}}{{}}}
+\bibcite{ref18}{{10}{}{{}}{{}}}
+\bibcite{ref19}{{11}{}{{}}{{}}}
+\bibcite{ref20}{{12}{}{{}}{{}}}
+\bibcite{ref21}{{13}{}{{}}{{}}}
+\bibcite{ref10}{{14}{}{{}}{{}}}
+\bibcite{ref11}{{15}{}{{}}{{}}}
+\bibcite{ref12}{{16}{}{{}}{{}}}
+\bibcite{ref13}{{17}{}{{}}{{}}}
+\bibcite{ref14}{{18}{}{{}}{{}}}
+\bibcite{ref15}{{19}{}{{}}{{}}}
+\bibcite{ref16}{{20}{}{{}}{{}}}
+\bibcite{ref17}{{21}{}{{}}{{}}}
+\bibcite{ref22}{{22}{}{{}}{{}}}
+\bibcite{ref25}{{23}{}{{}}{{}}}
+\bibcite{ref30}{{24}{}{{}}{{}}}
+\bibcite{ref26}{{25}{}{{}}{{}}}
+\bibcite{ref27}{{26}{}{{}}{{}}}
+\bibcite{ref23}{{27}{}{{}}{{}}}
+\bibcite{ref24}{{28}{}{{}}{{}}}
+\providecommand\NAT@force@numbers{}\NAT@force@numbers
+\gdef \@abspage@last{15}

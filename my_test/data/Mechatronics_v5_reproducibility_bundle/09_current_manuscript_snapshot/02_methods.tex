@@ -2,21 +2,14 @@
 \subsection{System Overview and Multi-Rate Architecture}
 The experimental platform comprised an Omega.7 force-feedback master device, a seven-degree-of-freedom Franka Panda robot, a Franka Hand gripper \cite{ref26}, an Intel RealSense D435i camera, and a control computer (Fig.~\ref{fig:1}). The D435i provided 424 $\times$ 240-pixel color images at 15 fps; the depth stream was not used. The control computer ran visual detection, the nominal 200-Hz supervisory teleoperation update, parameter configuration, haptic rendering, gripper control, and data logging.
 
-\begin{figure}[!t]
+\begin{figure}[!b]
 \centering
-\includegraphics[width=\columnwidth]{fig1.png}
+\includegraphics[width=\columnwidth]{fig1.jpg}
 \caption{Experimental teleoperation platform showing the Omega.7 master device, Franka Panda robot, Intel RealSense D435i camera, host computer, and object workspace. The Franka Hand gripper is mounted at the Panda end effector.}
 \label{fig:1}
 \end{figure}
 
 Figure~\ref{fig:2} illustrates the timing relationships within this multi-rate asynchronous software architecture.
-
-\begin{figure*}[!t]
-\centering
-\includegraphics[width=\textwidth]{fig2.png}
-\caption{Schematic, not-to-scale timing of the asynchronous perception--control implementation. Color frames are acquired at 15 fps and passed through a single-slot frame queue to an independent YOLO11n process. Class labels and confidence scores are returned through a two-slot result queue, which is polled without blocking by the nominal 200-Hz supervisory loop. The first valid mapped result (confidence $\geq 0.25$) triggers a one-shot target update. Translational stiffness, rotational stiffness, and the controller damping-scaling parameter follow a nominal approximately 300-ms transition. Subsequent detections do not change the target within the same trial, while task execution and operator motion begin immediately. The schematic illustrates data flow and nominal timing rather than a measured end-to-end latency.}
-\label{fig:2}
-\end{figure*}
 
 RGB frames were acquired every 66.7 ms and written to a single-slot queue, preventing stale images from accumulating. YOLO11n ran in an independent process and returned class labels and confidence scores through a two-slot result queue. The nominal 200-Hz supervisory loop polled this queue every 5 ms without waiting for inference, allowing camera acquisition, perception, and operator motion to proceed in parallel. Per-image processing time was characterized separately in a controlled image test. Table~\ref{tab:1} summarizes the update timing, triggers, and data flow of the system modules.
 
@@ -43,6 +36,13 @@ Gripper command & Button event & Gripper input and command parameters $\rightarr
 \par\smallskip
 \footnotesize\textit{Note:} YOLO11n inference is executed in an independent process and does not block the supervisory loop.
 \end{table*}
+
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=\textwidth]{fig2.png}
+\caption{Schematic, not-to-scale timing of the asynchronous perception--control implementation. Frames and results are exchanged through bounded queues while the nominal 200-Hz supervisory loop polls without blocking. The first valid mapped result ($\geq 0.25$ confidence) initiates one locked update; impedance parameters transition over approximately 300 ms. This schematic shows nominal timing, not measured end-to-end latency.}
+\label{fig:2}
+\end{figure*}
 \subsection{Teleoperation and Mechatronic Control Channels}
 \subsubsection{Master--slave motion mapping}
 Only translational motion of the Omega.7 was mapped to the Panda. The master-device position increment and desired slave position were updated as
@@ -115,7 +115,7 @@ u_{h,z}=u_{h,z}^{\mathrm{base}}+u_g.
 With $G_{\mathrm{cue}}=0.3$ and $F_{\mathrm{cue,max}}=1.0$ N, the cue was $u_g=0.3\alpha_g$ N and therefore remained within $[0,0.3]$ N. It was updated during every nominal 200-Hz supervisory cycle, with a more open Omega.7 gripper producing a larger cue. This cue was derived solely from the Omega.7 gripper aperture and did not encode slave-gripper aperture or measured grasp force.
 
 \subsubsection{Gripper-execution channel}
-For gripper execution, $v_g$ was passed as the \texttt{speed} argument of the \texttt{grasp} API, whose remaining arguments were \texttt{width}, \texttt{force}, \texttt{epsilon\_inner}, and \texttt{epsilon\_outer}; it was also used by \texttt{move} during opening and non-grasp position adjustments. The strategy value $F_g$ specified the requested \texttt{force} argument of \texttt{grasp()} in newtons; it was not an independently measured fingertip force. The target grasp width was 0 m. After contact and successful entry into the \texttt{HOLDING} state, the grasp command was not repeatedly retransmitted; the gripper maintained the grasp internally until \texttt{stop()} and the subsequent release or opening command.
+For gripper execution, $v_g$ was passed as the \texttt{speed} argument of the \texttt{grasp} API, whose remaining arguments were \texttt{width}, \texttt{force}, \texttt{epsilon\_inner}, and \texttt{epsilon\_outer}; it was also used by \texttt{move} during opening and non-grasp position adjustments. The strategy value $F_g$ specified the requested \texttt{force} argument of \texttt{grasp()} in newtons; it was not an independently measured fingertip force. The target grasp width was 0 m. In the experimental implementation, \texttt{epsilon\_inner} was 0.005 m and \texttt{epsilon\_outer} was 0.080 m (the maximum gripper aperture); these fixed tolerances defined the inner and outer width bounds used by the \texttt{grasp()} success criterion and did not vary by strategy. After contact and successful entry into the \texttt{HOLDING} state, the grasp command was not repeatedly retransmitted; the gripper maintained the grasp internally until \texttt{stop()} and the subsequent release or opening command.
 
 The three channels act on distinct parts of the teleoperation system: Panda impedance determines the slave-side response to pose error and disturbance, Omega.7 settings render the estimated external force to the operator, and Franka Hand settings govern grasp execution. The proposed framework coordinates them through a common strategy-level parameter bundle.
 
@@ -180,29 +180,7 @@ The fixed baseline vector was
 with the same element order as $\Theta(c)$. The three strategy-level parameter sets were fixed before the formal experiment and were retained as the initial state whenever no automatic update occurred.
 
 \subsubsection{Engineering rationale for operating points}
-The three strategies were represented by discrete, engineering-selected operating points. Before formal data collection, two researchers qualitatively screened candidate settings on representative objects. Settings associated with sustained oscillation, noticeable haptic discomfort, grasp failure, or visible object damage were excluded, and the three final operating points were fixed before the 135 formal trials. The fragility-priority point used 50 N/m translational stiffness, 8 N requested gripper force, and 0.02 m/s gripper speed to reduce contact and gripper-closing severity. The balanced point used 150 N/m, 15 N, and 0.05 m/s to balance deformation risk and reliable holding. The stability-priority point used 200 N/m, 20 N, and 0.10 m/s to favor pose retention and transfer stability. Table~\ref{tab:4} summarizes the parameter effects, engineering constraints, and selected levels. These settings were qualitatively screened for the present setup; they are not optimized values or material-specific damage limits.
-
-\begin{table*}[!t]
-\centering
-\caption{Parameter design space, engineering constraints, and selected levels.}
-\label{tab:4}
-\small
-\setlength{\tabcolsep}{5pt}
-\renewcommand{\arraystretch}{1.16}
-\begin{tabularx}{\textwidth}{@{}p{0.18\textwidth}Yp{0.27\textwidth}p{0.16\textwidth}@{}}
-\toprule
-Parameter & Low-to-high operational effect & Engineering constraint & Selected levels \\
-\midrule
-Slave impedance: $K_t$ & Greater translational compliance and lower impact $\rightarrow$ greater positional stability. & No sustained oscillation during qualitative screening. & 50 / 150 / 200 N/m \\
-Slave impedance: $K_r$ & Greater rotational compliance about the fixed desired orientation $\rightarrow$ greater resistance to rotational disturbance. & No sustained oscillation during qualitative screening. & 5 / 10 / 13 N\,m/rad \\
-Slave impedance: $\zeta$ & Lower $\rightarrow$ higher controller damping scaling. & Avoid sustained oscillation and excessive sluggishness. & 0.8 / 1.0 / 1.2 \\
-Haptic interface: $K_f$ & Weaker $\rightarrow$ stronger rendered external-force cue. & Acceptable Omega.7 response. & 0.2 / 0.5 / 0.7 \\
-Haptic interface: $d$ & Greater sensitivity to small forces $\rightarrow$ greater suppression of small signals. & Haptic-interface jitter and noise. & 0.3 / 0.4 / 0.5 N \\
-Gripper: $v_g$ & Lower-impact motion $\rightarrow$ faster grasp establishment. & Franka Hand execution range. & 0.02 / 0.05 / 0.10 m/s \\
-Gripper: $F_g$ & Lower $\rightarrow$ higher requested grasp force. & Franka Hand force setting. & 8 / 15 / 20 N \\
-\bottomrule
-\end{tabularx}
-\end{table*}
+The three engineering-selected operating points were qualitatively screened on representative objects before formal data collection. Settings associated with sustained oscillation, noticeable haptic discomfort, grasp failure, or visible damage were excluded. The final settings in Table~\ref{tab:2} were fixed before the 135 trials and should not be interpreted as optimized values or material-specific damage limits; the design rationale is reported in Supplementary Table~S4.
 \subsection{Runtime Procedure}
 \textbf{Algorithm 1: Object-conditioned joint-parameter scheduling}
 
