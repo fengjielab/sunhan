@@ -58,7 +58,7 @@ Only the translational motion of the Omega.7 was mapped to the Panda end effecto
 where $\mathbf{p}_m(k)\in\mathbb{R}^3$ denotes the measured Omega.7 position, $\Delta\mathbf{p}_m(k)\in\mathbb{R}^3$ is its incremental displacement, and $\mathbf{p}_d(k)\in\mathbb{R}^3$ denotes the desired Panda end-effector position at supervisory step $k$. The position-scaling factor was $S=3.0$, and $\mathbf{C}=\mathrm{diag}(-1,-1,1)$ defined the axis-direction mapping between the master and slave coordinate conventions. The desired end-effector orientation $\mathbf{R}_d$ was held at a prescribed value throughout each trial; operator-commanded rotational motion was not mapped to the Panda.
 
 \subsubsection{Slave-side Cartesian impedance control}
-For a compact task-space representation, the slave-side Cartesian impedance action was written as
+Following the standard impedance-control formulation \cite{ref03}, a compact task-space representation of the slave-side Cartesian impedance action was written as
 
 \begin{equation}
 \label{eq:cartesian-impedance}
@@ -79,7 +79,7 @@ The slave-controller API constructed an internal damping quantity $\mathbf{D}_{\
 \mathbf{D}_{\mathrm{API}}(c)=2\zeta(c)\sqrt{\mathbf{K}(c)},
 \end{equation}
 
-The square root in Eq.~\eqref{eq:damping-matrix} was applied elementwise to the diagonal entries of $\mathbf{K}(c)$. Accordingly, $\mathbf{D}_{\mathrm{API}}(c)$ represents the API's internal damping construction, and $\zeta(c)$ is treated as the dimensionless damping-scaling parameter exposed by the controller. Because no effective Cartesian inertia matrix was identified, $\mathbf{D}_{\mathrm{API}}(c)$ is not reported as a physical damping matrix in SI units, and $\zeta(c)$ is not interpreted as a Cartesian critical-damping ratio.
+The square root in Eq.~\eqref{eq:damping-matrix} was applied elementwise to the diagonal entries of $\mathbf{K}(c)$. $\mathbf{D}_{\mathrm{API}}(c)$ represents the controller-internal damping construction; because no effective Cartesian inertia matrix was identified, $\zeta(c)$ is treated as a dimensionless parameter and is not interpreted as a critical-damping ratio.
 
 \subsubsection{Master-side haptic rendering}
 For master-side haptic rendering, the Franka internal state estimator provided a slave-side external-force estimate; its three translational components $\mathbf{F}_{\mathrm{ext}}$, in newtons, were used as inputs to the force-feedback calculation. The baseline force-feedback command along Cartesian axis $i$ was computed as
@@ -110,14 +110,10 @@ u_g=\min\!\left(\alpha_gG_{\mathrm{cue}}F_{\mathrm{cue,max}},F_{\mathrm{cue,max}
 u_{h,z}=u_{h,z}^{\mathrm{base}}+u_g.
 \end{equation}
 
-Here, $\alpha_g\in[0,1]$ is the normalized Omega.7 gripper-aperture variable, and $\theta_{\min}$ and $\theta_{\max}$ denote the lower and upper gripper-angle bounds used for normalization. The quantities $G_{\mathrm{cue}}$ and $F_{\mathrm{cue,max}}$ denote the cue gain and cue-force limit, respectively, and $u_g$ is the additional positive-$z$ cue added to the baseline command $u_{h,z}^{\mathrm{base}}$. With $G_{\mathrm{cue}}=0.3$ and $F_{\mathrm{cue,max}}=1.0$ N, Eq.~\eqref{eq:gripper-cue-command} reduced to $u_g=0.3\alpha_g$ N, yielding an additional cue within $[0,0.3]$ N. The cue was updated during each nominal 200-Hz supervisory cycle and increased as the Omega.7 gripper moved toward the more-open state. It served as a master-side aperture cue based on the Omega.7 gripper aperture. No slave-gripper aperture or independently measured grasp-force signal entered the cue calculation.
+Here, $\alpha_g\in[0,1]$ is the normalized Omega.7 gripper-aperture variable. With $G_{\mathrm{cue}}=0.3$ and $F_{\mathrm{cue,max}}=1.0$ N, $u_g=0.3\alpha_g$ N, yielding an aperture cue within $[0,0.3]$ N along the positive $z$-axis. The cue increased as the Omega.7 gripper moved toward the more-open state and was updated each supervisory cycle. No slave-gripper aperture or independently measured grasp-force signal entered the cue calculation.
 
 \subsubsection{Gripper-execution channel}
-For grasp execution, $v_g$ was passed as the \texttt{speed} argument to the \texttt{grasp()} API, whose other inputs were target width, requested force, \texttt{epsilon\_inner}, and \texttt{epsilon\_outer}. The same $v_g$ value was supplied to \texttt{move()} during gripper opening and non-grasp position adjustments. The strategy-dependent value $F_g$ specified the requested-force input to \texttt{grasp()} in newtons. No independent fingertip-force measurement was used for this variable.
-
-The target-width argument supplied to \texttt{grasp()} was fixed at 0 m for all strategies. In the experimental implementation, \texttt{epsilon\_inner} and \texttt{epsilon\_outer} were fixed at 0.005 and 0.080 m, respectively, with 0.080 m corresponding to the maximum gripper aperture. Together with the target-width argument, these tolerances defined the width bounds used by the API-level \texttt{grasp()} acceptance criterion and remained unchanged across strategies.
-
-After contact and successful entry into the \texttt{HOLDING} state, the \texttt{grasp()} command was not retransmitted during each supervisory cycle. The gripper maintained the grasp through its internal controller until \texttt{stop()} was issued, followed by the prescribed release or opening command.
+For grasp execution, $v_g$ specified the gripper closing and opening speed, and $F_g$ specified the requested-force input to the Franka Hand \texttt{grasp()} API. The target-width argument was fixed at 0 m, and the tolerance parameters \texttt{epsilon\_inner} (0.005 m) and \texttt{epsilon\_outer} (0.080 m) remained constant across strategies. After contact and entry into the \texttt{HOLDING} state, the gripper maintained the grasp through its internal controller until the prescribed release command. $F_g$ is the requested-force input to the API and does not represent an independently measured fingertip force.
 
 The three parameter channels acted on distinct components of the teleoperation system: slave-side impedance regulated the Panda response to pose error and disturbances, master-side haptic settings mapped the external-force estimate and master-side aperture cue to the Omega.7 force command, and Franka Hand settings specified gripper execution. The proposed framework coordinated these channels through a common strategy-level parameter bundle.
 
@@ -136,13 +132,7 @@ K_t(s) \\ K_r(s) \\ \zeta(s) \\ K_f(s) \\ d(s) \\ v_g(s) \\ F_g(s)
 
 Here, $c$ denotes the detected object class, and $s\in\mathcal{S}$ is the corresponding manipulation strategy. The strategy set $\mathcal{S}$ comprised the fragility-priority, balanced, and stability-priority strategies. The parameter vector $\boldsymbol{\Theta}(s)$ contains the slave-side impedance parameters $\{K_t,K_r,\zeta\}$, the master-side haptic parameters $\{K_f,d\}$, and the gripper-execution parameters $\{v_g,F_g\}$. For compact notation in the preceding control-channel equations, quantities indexed by $c$ denote values selected through this two-stage mapping.
 
-The three strategies summarized task-relevant interaction priorities involving deformation sensitivity, contact impact, slip risk, pose retention, and grasp stability. The apple and banana were assigned to the fragility-priority strategy because lower stiffness, gripper-closing speed, and requested grasp force were selected to reduce contact impact, squeezing, and deformation. Their smooth surfaces were also considered because they introduced a potential slip risk during grasping and transfer.
-
-The paper cup and bottle were assigned to the balanced strategy because both required a compromise between gentle contact and stable grasping. For the paper cup, excessive force could produce visible deformation, whereas overly low settings could reduce grasp security. For the bottle, sufficiently stable grasping was required to limit slip during transfer without using unnecessarily aggressive settings.
-
-The mouse and scissors were assigned to the stability-priority strategy because their surface geometry and transfer requirements placed greater emphasis on pose retention and grasp stability. The elongated geometry of the scissors introduced an additional requirement for orientation retention during transfer.
-
-These strategy assignments were defined for the six tested objects, the present teleoperation platform, and the specified grasp-and-transfer task. The corresponding strategy-level parameter settings are listed in Table~\ref{tab:2}.
+The three strategies reflected task-relevant interaction priorities---deformation sensitivity, contact impact, slip risk, pose retention, and grasp stability---that motivated the two-object assignment per strategy (Table~\ref{tab:2}). The assignments were operational labels for the present platform and task, not a general material classification. Parameter-level design rationale is provided in Supplementary Table~S1.
 
 \begin{table*}[!t]
 \centering
@@ -164,24 +154,15 @@ Stability-priority & Mouse, scissors & $K_t=200$ N/m; $K_r=13$ N\,m/rad; $\zeta=
 \footnotesize\textit{Note:} $F_g$ is the requested-force input to the Franka Hand \texttt{grasp()} API and does not represent an independently measured fingertip force.
 \end{table*}
 \subsubsection{One-shot triggering, strategy locking, and parameter transition}
-At runtime, the first result with confidence $\geq0.25$ retrieved by the supervisory loop triggered a one-shot update of the parameter channels enabled in the active experimental mode. The selected strategy was then locked for the remainder of the trial. The translational stiffness $K_t$, rotational stiffness $K_r$, and damping-scaling parameter $\zeta$ were transitioned using smoothstep interpolation over a nominal transition duration of $T_s=0.30$ s. Defining the normalized transition time and smoothstep function as
-
-\begin{equation*}
-\tau=\operatorname{clip}\!\left(\frac{t-t_0}{T_s},0,1\right),
-\qquad
-h(\tau)=3\tau^2-2\tau^3,
-\end{equation*}
-
-each parameter $q\in\{K_t,K_r,\zeta\}$ was updated according to
+At runtime, the first result with confidence $\geq0.25$ retrieved by the supervisory loop triggered a one-shot update of the parameter channels enabled in the active experimental mode. The selected strategy was then locked for the remainder of the trial. Impedance parameters $K_t$, $K_r$, and $\zeta$ were transitioned over $T_s=0.30$ s using standard smoothstep interpolation ($h(\tau)=3\tau^2-2\tau^3$):
 
 \begin{equation}
 \label{eq:smoothstep-update}
-q(t)=q_0+h(\tau)\left(q_\mathrm{target}-q_0\right).
+q(t)=q_0+h(\tau)\left(q_\mathrm{target}-q_0\right),\qquad
+q\in\{K_t,K_r,\zeta\}.
 \end{equation}
 
-Here, $t_0$ is the strategy-event time, $q_0$ is the parameter value at $t_0$, and $q_\mathrm{target}$ is the value specified by the selected strategy. The smoothstep function generated continuous parameter trajectories with zero slope at the beginning and end of the transition. The interpolation was introduced as a command-smoothing mechanism to avoid abrupt changes in the impedance parameters. No formal transient-stability analysis of the complete teleoperation system was performed.
-
-During the transition, the controller recomputed $\mathbf{D}_{\mathrm{API}}$ from the current values of $\mathbf{K}$ and $\zeta$. By contrast, the enabled haptic-interface parameters $\{K_f,d\}$ and gripper-execution parameters $\{v_g,F_g\}$ were updated immediately when the strategy event occurred.
+The smoothstep interpolation served as command smoothing to avoid abrupt impedance changes \cite{ref04,ref28}. During the transition, $\mathbf{D}_{\mathrm{API}}$ was recomputed from the current values of $\mathbf{K}$ and $\zeta$. The enabled haptic parameters $\{K_f,d\}$ and gripper parameters $\{v_g,F_g\}$ were updated immediately upon the strategy event.
 
 The class-to-strategy mapping was defined manually for the known object classes used in this study. Each recognized class invoked one of the three predefined strategies, providing a bounded and repeatable parameter configuration across the slave robot, haptic interface, and gripper. Online estimation of object physical properties was not included in the mapping. Extending the framework to a new object requires a detector label with reliable recognition and an explicit assignment to one of the predefined strategies before the corresponding parameter vector can be invoked.
 
@@ -194,38 +175,16 @@ Figure~\ref{fig:3} summarizes the two-stage object-class-to-strategy-to-paramete
 \end{figure*}
 
 \subsection{Parameter Sets and Initialization}
-The fixed baseline parameter vector was defined as
+The initialized baseline parameter vector was
 
-\begin{equation}
-\label{eq:baseline-parameter-vector}
-\boldsymbol{\Theta}_0=
-\begin{bmatrix}
-150 & 10 & 1.0 & 0.5 & 0.3 & 0.10 & 20
-\end{bmatrix}^{\mathsf{T}},
-\end{equation}
+\begin{equation*}
+\boldsymbol{\Theta}_0=[\,150,\;10,\;1.0,\;0.5,\;0.3,\;0.10,\;20\,]^{\mathsf{T}},
+\end{equation*}
 
-Its elements followed the order $[K_t,K_r,\zeta,K_f,d,v_g,F_g]^{\mathsf{T}}$ defined in Eq.~\eqref{eq:strategy-vector}. The three strategy-level parameter vectors listed in Table~\ref{tab:2} were fixed before formal data collection. The baseline vector $\boldsymbol{\Theta}_0$ served as the initialized parameter state and remained active unless it was replaced by a manual or automatic strategy update specified by the experimental mode. In modes with automatic scheduling, the absence of a result or a confidence value below 0.25 retained $\boldsymbol{\Theta}_0$, whereas a threshold-qualified class without an explicit mapping invoked the balanced strategy vector.
+following the order $[K_t,K_r,\zeta,K_f,d,v_g,F_g]^{\mathsf{T}}$ defined in Eq.~\eqref{eq:strategy-vector}. $\boldsymbol{\Theta}_0$ was retained unless replaced by a strategy update; in automatic modes, a threshold-qualified class without an explicit mapping invoked the balanced strategy vector (Table~\ref{tab:2}).
 
-The three strategy-level operating points were selected through qualitative engineering screening on representative objects before formal data collection. Candidate settings were excluded when they were associated with sustained oscillation, noticeable haptic discomfort, grasp failure, or visible object damage. The final settings listed in Table~\ref{tab:2} were fixed before the 135 formal trials. They represent screened operating points for the present platform, objects, and task, rather than optimized values or material-specific damage limits. The parameter-level design rationale is provided in Supplementary Table~S1.
+The strategy-level operating points were selected through engineering screening before formal data collection: candidate settings were excluded when associated with sustained oscillation, noticeable haptic discomfort, grasp failure, or visible object damage. They represent screened operating points for the present platform, objects, and task, not optimized values or damage limits. Parameter-level rationale is provided in Supplementary Table~S1.
 \subsection{Mode-Dependent Runtime Procedure}
-Algorithm~1 summarizes the mode-dependent runtime procedure, including initialization, strategy-event generation, channel-specific parameter updating, strategy locking, data logging, and trial reset. The common supervisory loop executed teleoperation, master-side haptic rendering, gripper control, and data logging in all modes. Visual inference and the visual-semantic display were enabled only in modes C--E, whereas mode B used manual strategy selection after trial timing had begun. Parameter updating was restricted to the channels enabled by the active experimental mode.
-
-\textbf{Algorithm 1: Mode-dependent runtime procedure for object-conditioned strategy-level parameter configuration}
-
-\begin{enumerate}
-\item Load the initialized parameter state specified by the active experimental mode and start the nominal 200-Hz supervisory loop. Launch the visual-inference process only in modes C--E.
-\item Execute teleoperation, master-side haptic rendering, and gripper control continuously within the supervisory loop. In modes C--E, poll the visual-result queue without blocking and update the visual-semantic display using the latest available result.
-\item In mode B, begin trial timing before manual object identification and button-based strategy selection. After the operator selects a strategy, generate a manual strategy event and permit robot motion.
-\item In modes C and E, while the automatic strategy state remains unlocked, retain the initialized parameter state when no result is available or the confidence is below 0.25. For the first threshold-qualified result, select the strategy explicitly mapped to the detected object class; when no explicit mapping exists, select the balanced default strategy.
-\item In mode D, use the visual result only to update the visual-semantic display and retain the initialized parameter vector $\boldsymbol{\Theta}_0$ throughout the trial.
-\item Upon a manual or automatic strategy event, update only the parameter channels enabled by the active experimental mode. Transition $K_t$, $K_r$, and $\zeta$ using smoothstep interpolation over the nominal duration $T_s=0.30$ s, and update the enabled master-side haptic parameters $\{K_f,d\}$ and gripper-execution parameters $\{v_g,F_g\}$ immediately.
-\item For modes with an active strategy update (B, C, and E), lock the selected strategy for the remainder of the trial. In modes C and E, continue the visual-semantic display where enabled, but ignore subsequent detection results for parameter reconfiguration.
-\item Continue the prescribed return-and-termination procedure until the robot and gripper reach the predefined terminal state; a recorded failure does not terminate timing early.
-\item Log the master-side trajectory, gripper input, active parameter state, and task duration, record the trial outcome, and reset the system for the next trial.
-\end{enumerate}
-
-\noindent\textit{Note:} Mode A retained the initialized parameter state without visual inference or strategy updating. Mode B used a manually generated strategy event. Mode C updated all three parameter channels automatically. Mode D displayed visual-semantic information while retaining $\boldsymbol{\Theta}_0$. Mode E automatically updated only the slave-side impedance channel.
+The supervisory loop executed teleoperation, haptic rendering, gripper control, and data logging across all five modes. Visual inference and the visual-semantic display were enabled only in modes C--E, while mode B used manual strategy selection after trial timing began. Upon a strategy event (automatic in modes C and E, manual in mode B), only the parameter channels enabled by the active mode were updated: mode C updated all three channels, mode E updated only the slave-side impedance channel, and mode B updated all channels manually. Mode D displayed the visual-semantic output while retaining $\boldsymbol{\Theta}_0$ throughout the trial. In modes B, C, and E, the selected strategy was locked after the first update, teleoperation continued regardless of trial outcome, and the master-side trajectory, gripper input, active parameter state, and task duration were logged. Mode definitions and channel-update logic are summarized in Table~\ref{tab:3}.
 \subsection{Fallback Logic and Operational Safeguards}
-A threshold-qualified misclassification as another known object class invoked the strategy assigned to the predicted class. A threshold-qualified object label without an explicit class-to-strategy mapping invoked the balanced default strategy. When no result was available or confidence was below 0.25, no strategy event was generated and the initialized parameter state was retained. Fallback selection was therefore restricted to retaining the initialized state or invoking one of the three predefined strategy targets; only the parameter channels enabled by the active experimental mode were updated. This restriction prevented the visual module from generating unrestricted parameter targets online, although the suitability of a selected strategy still depended on correct object classification.
-
-In addition to the software fallback logic, operational safeguards included the robot collision-detection function, configured Franka Hand force-command settings, zero-force commands on controller exit, a standardized initial pose, and a manually accessible emergency stop. The Omega.7 was operated using its standard device driver and the hardware configuration used throughout the experiment. The additional master-gripper-aperture cue $u_g$, applied along the positive $z$ direction, was explicitly limited to 0.3~N. This limit applied only to $u_g$; the baseline force-feedback command $u_{h,i}^{\mathrm{base}}$ was transmitted without an additional application-layer saturation. No saturation-status signal was recorded. Accordingly, the retained data characterize the commanded haptic signal but do not establish whether saturation occurred within the driver or device.
+When no threshold-qualified result was available, the initialized parameter state was retained. A result with confidence $\geq0.25$ but without an explicit class-to-strategy mapping invoked the balanced default strategy. Fallback selection was restricted to these predefined targets and only parameter channels enabled by the active mode were updated. Operational safeguards included the robot collision-detection function, zero-force commands on controller exit, a standardized initial pose, and a manually accessible emergency stop. The master-gripper-aperture cue $u_g$ was limited to 0.3 N along the positive $z$-axis. The baseline force-feedback command was transmitted without an additional application-layer saturation layer.
