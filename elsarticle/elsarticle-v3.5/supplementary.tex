@@ -1,26 +1,27 @@
 \documentclass[11pt]{article}
 \usepackage[a4paper,margin=1.6cm]{geometry}
-\usepackage{booktabs,longtable,graphicx}
+\usepackage{booktabs,longtable,graphicx,array}
+\newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
 \makeatletter
 \setlength{\@fptop}{0pt}
 \makeatother
 \begin{document}
 \section*{Supplementary Material}
 \subsection*{Table S1. Parameter design space, engineering constraints, and selected levels}
-The selected levels were engineering operating points chosen after qualitative screening, not optimized values or formal physical safety limits. Their intended directions describe the controller or API behavior used in this platform and task; they should not be interpreted as independently identified material properties or fingertip-force measurements.
+The selected levels were engineering operating points chosen after qualitative screening rather than optimized values or formal physical safety limits. Their intended directional effects describe the controller or API behavior on this platform and in this task; they should not be interpreted as independently identified material properties or fingertip-force measurements.
 \small
 \renewcommand{\arraystretch}{1.16}
-\begin{longtable}{p{0.16\textwidth}p{0.29\textwidth}p{0.27\textwidth}p{0.14\textwidth}}
+\begin{longtable}{P{0.16\textwidth}P{0.29\textwidth}P{0.27\textwidth}P{0.14\textwidth}}
 \toprule
 Parameter & Low-to-high operational effect & Engineering constraint & Selected levels \\
 \midrule
- Slave impedance: $K_t$ & Lower $K_t$ $\rightarrow$ greater translational compliance and lower impact; higher $K_t$ $\rightarrow$ greater positional resistance. & No sustained oscillation during qualitative screening. & 50 / 150 / 200 N/m \\
- Slave impedance: $K_r$ & Lower $K_r$ $\rightarrow$ greater rotational compliance; higher $K_r$ $\rightarrow$ greater orientation retention against rotational disturbance. & No sustained oscillation during qualitative screening. & 5 / 10 / 13 N\,m/rad \\
- Slave impedance: $\zeta$ & Increasing $\zeta$ $\rightarrow$ increasing normalized controller damping action for fixed $\mathbf{K}$; it is not a physical critical-damping ratio. & Avoid sustained oscillation and excessive sluggishness. & 0.8 / 1.0 / 1.2 \\
- Master haptic: $K_f$ & Lower $K_f$ $\rightarrow$ weaker rendered external-force cue; higher $K_f$ $\rightarrow$ stronger cue. & Acceptable Omega.7 response. & 0.2 / 0.5 / 0.7 \\
- Master haptic: $d$ & Lower $d$ $\rightarrow$ greater sensitivity to small forces; higher $d$ $\rightarrow$ greater suppression of small signals. & Master-side haptic jitter and noise. & 0.3 / 0.4 / 0.5 N \\
- Gripper: $v_g$ & Lower $v_g$ $\rightarrow$ slower and lower-impact closing; higher $v_g$ $\rightarrow$ faster grasp establishment. & Franka Hand execution range. & 0.02 / 0.05 / 0.10 m/s \\
- Gripper: $F_g$ & Lower requested $F_g$ $\rightarrow$ gentler grasp; higher $F_g$ $\rightarrow$ larger requested grasp force. & Franka Hand force setting. & 8 / 15 / 20 N \\
+Slave impedance: $K_t$ & Lower $K_t$ $\rightarrow$ greater translational compliance and lower impact; higher $K_t$ $\rightarrow$ greater positional resistance. & No sustained oscillation during qualitative screening. & 50 / 150 / 200 N/m \\
+Slave impedance: $K_r$ & Lower $K_r$ $\rightarrow$ greater rotational compliance; higher $K_r$ $\rightarrow$ greater orientation retention against rotational disturbance. & No sustained oscillation during qualitative screening. & 5 / 10 / 13 N\,m/rad \\
+Slave impedance: $\zeta$ & Increasing $\zeta$ $\rightarrow$ increasing normalized controller damping action for fixed $\mathbf{K}$; it is not a physical critical-damping ratio. & Avoid sustained oscillation and excessive sluggishness. & 0.8 / 1.0 / 1.2 \\
+Master haptic: $K_f$ & Lower $K_f$ $\rightarrow$ weaker rendered external-force cue; higher $K_f$ $\rightarrow$ stronger cue. & Acceptable Omega.7 response. & 0.2 / 0.5 / 0.7 \\
+Master haptic: $d$ & Lower $d$ $\rightarrow$ greater sensitivity to small forces; higher $d$ $\rightarrow$ greater suppression of small signals. & Limit master-side haptic jitter and noise. & 0.3 / 0.4 / 0.5 N \\
+Gripper: $v_g$ & Lower $v_g$ $\rightarrow$ slower, lower-impact closing; higher $v_g$ $\rightarrow$ faster grasp establishment. & Franka Hand execution range. & 0.02 / 0.05 / 0.10 m/s \\
+Gripper: $F_g$ & Lower requested $F_g$ $\rightarrow$ gentler grasping; higher $F_g$ $\rightarrow$ greater requested grasp force. & Franka Hand force setting. & 8 / 15 / 20 N \\
 \bottomrule
 \end{longtable}
 \normalsize
@@ -231,13 +232,13 @@ Scissors & 21.79 & 20.70 & \textbf{18.84} & 21.83 & 21.70 \\
 \bottomrule
 \end{tabular}
 \end{center}
-\noindent Values are mean completion time in seconds; bold indicates the lowest mean in each row.
+\noindent Values are mean completion times in seconds; bold indicates the lowest mean in each row.
 \normalsize
 
 \subsection*{Table S6. Evidence-boundary overview}
 \small
 \renewcommand{\arraystretch}{1.18}
-\begin{tabular}{p{0.28\textwidth}p{0.39\textwidth}p{0.25\textwidth}}
+\begin{tabular}{P{0.28\textwidth}P{0.39\textwidth}P{0.25\textwidth}}
 \toprule
 Claim & Direct evidence in the present study & Supported interpretation \\
 \midrule
