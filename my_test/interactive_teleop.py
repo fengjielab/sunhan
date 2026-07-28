@@ -276,7 +276,7 @@ PRESETS = {
     "medium_obj": {
         "name": "📦 中物体手感",
         "desc": "人工正确选择 medium 策略，与视觉 medium 前馈参数一致",
-        "K_trans": 150.0, "K_rot": 10.0,
+        "K_trans": 120.0, "K_rot": 8.0,
         "damping_ratio": 1.0, "K_fb": 0.5, "deadband": 0.4,
         "scale": 3.0, "gripper_speed": GRIPPER_SPEED, "gripper_force": 15.0,
     },
@@ -312,7 +312,7 @@ PRESETS = {
     "vision_medium": {
         "name": "👁️ 视觉中等物体",
         "desc": "实验 D/E/F 的 medium 视觉前馈基线",
-        "K_trans": 150.0, "K_rot": 10.0,
+        "K_trans": 120.0, "K_rot": 8.0,
         "damping_ratio": 1.0, "K_fb": 0.5, "deadband": 0.4,
         "scale": 3.0, "gripper_speed": GRIPPER_SPEED, "gripper_force": 15.0,
     },
@@ -369,11 +369,11 @@ FUSION_POSTERIOR_POLICY = {
         "K_max": 90.0,          # 自由空间保持vision_soft基线刚度，不影响跟踪
     },
     "medium": {
-        "gain": -0.25,          # 中等物体小幅顺应
+        "gain": -0.30,          # 中等物体接触后降到约85 N/m
         "force_deadband": 0.8,
         "force_sat": 6.0,
         "smooth_factor": 0.25,
-        "K_min": 90.0,
+        "K_min": 85.0,
         "K_max": 130.0,
     },
     "hard": {
