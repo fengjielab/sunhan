@@ -364,7 +364,7 @@ FUSION_POSTERIOR_POLICY = {
         "gain": -0.25,          # 更大幅度降低刚度
         "force_deadband": 0.3,  # 更早进入微调，减轻接触冲击
         "force_sat": 2.5,       # 更低饱和阈值，提升视觉柔顺效果
-        "smooth_factor": 0.30,
+        "smooth_factor": 0.40,
         "K_min": 30.0,          # 接触时允许降到更低刚度 (原来55)
         "K_max": 90.0,          # 自由空间保持vision_soft基线刚度，不影响跟踪
     },
