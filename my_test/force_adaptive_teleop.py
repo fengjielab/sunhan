@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-force_adaptive_teleop.py — 力自适应阻抗遥操作（实验模式 E）
+force_adaptive_teleop.py — 力自适应阻抗遥操作（实验模式 G 独立调试版）
 ============================================================
 基于接触外力的刚度在线缩放：自由运动高刚度，接触后自动降刚度。
 作为论文对比实验的基线方法（力反馈反应式策略 vs 视觉语义前馈式策略）。
@@ -173,7 +173,7 @@ class GripperState(Enum):
 
 class ForceAdaptiveTeleop:
     """
-    力自适应遥操作控制器（实验模式 E）
+    力自适应遥操作控制器（实验模式 G 独立调试版）
 
     核心设计:
         - 200Hz 主循环: 读Omega → 力自适应阻抗 → 力反馈 → 发Franka
@@ -1170,7 +1170,7 @@ class ForceAdaptiveTeleop:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="力自适应遥操作 — 接触力驱动刚度在线缩放（实验模式 E）"
+        description="力自适应遥操作 — 接触力驱动刚度在线缩放（实验模式 G 独立调试版）"
     )
     parser.add_argument("--K-base", type=float, default=DEFAULT_K_BASE,
                         help=f"基线平动刚度 N/m (默认: {DEFAULT_K_BASE})")

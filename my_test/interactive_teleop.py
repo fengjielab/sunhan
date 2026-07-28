@@ -22,13 +22,16 @@ interactive_teleop.py — 交互式遥操作：实时调节阻尼/刚度/力反�
        - RealSense D435i 相机 + YOLO 子进程 (独立 GIL)
        - 视觉识别结果仅在屏幕上显示，不自动映射手感参数
        -  键盘手动参数调节可用（与 default 模式相同）
-    5. F 模式 / Vision-Force 模式: 视觉语义前馈 + 接触力反馈微调
+    5. G 模式 / Force-Only 模式: 无视觉，仅接触力驱动在线变阻抗
+       - Panda 外力估计 → K_trans/K_rot 有界在线缩放
+       - 与 E/F 使用相同的阶段计时、数据记录和自动结束协议
+    6. F 模式 / Vision-Force 模式: 视觉语义前馈 + 接触力反馈微调
        - 接触前: YOLO → soft/medium/hard → 多参数策略库
        - 接触后: Panda 外力估计 → 有界修正 K_trans/K_rot
        - 运行入口: --mode f 或 --mode vision_force
-    6. 预设手感场景切换（一键切换多组参数）
-    7. Omega.7 力反馈实时渲染（从端外力 → 主端力觉）
-    8. Omega.7 夹钳 → Franka 夹爪控制
+    7. 预设手感场景切换（一键切换多组参数）
+    8. Omega.7 力反馈实时渲染（从端外力 → 主端力觉）
+    9. Omega.7 夹钳 → Franka 夹爪控制
 
 手感维度:
     ┌──────────────┬──────────────────────────────────────┐
@@ -83,6 +86,9 @@ interactive_teleop.py — 交互式遥操作：实时调节阻尼/刚度/力反�
 
     # vision 模式 — YOLO 视觉自动映射物体手感
     python3 my_test/interactive_teleop.py --mode vision
+
+    # G 模式 — 纯外力在线变阻抗（无视觉）
+    python3 my_test/interactive_teleop.py --mode g
 
     # F 模式 — 视觉前馈 + 力反馈微调融合
     python3 my_test/interactive_teleop.py --mode f
@@ -195,6 +201,8 @@ TRAJECTORY_CSV_HEADER = [
     "gripper_speed", "gripper_force", "grasp_success",
     "vision_class", "vision_label", "vision_confidence", "vision_locked",
     "fusion_delta_K", "fusion_active", "control_dt",
+    "force_adapt_target_K", "force_adapt_ratio", "force_adapt_active",
+    "force_adapt_delta_K",
     "force_baseline_mean", "force_baseline_std", "force_threshold",
 ]
 
@@ -336,6 +344,17 @@ OMEGA_FAIL_RECOVERY_THRESHOLD = 120  # 连续失败多少次后触发相机暂�
 # Vision + Force 融合模式配置（实验模式 F）
 FUSION_IMPD_UPDATE_INTERVAL = 0.05   # 力反馈微调阻抗更新频率: 20Hz
 
+# Force-Only 在线变阻抗模式配置（实验模式 G）
+# 保持 force_adaptive_teleop.py 的核心参数和公式，
+# 但接入 interactive_teleop.py 的统一实验协议与数据记录。
+G_K_BASE = 200.0
+G_ALPHA = 0.5
+G_F_SAT = 5.0
+G_ADAPT_DEADBAND = 1.0
+G_K_ROT_RATIO = 0.065
+G_DAMPING_RATIO = 1.2
+G_IMPD_SMOOTH_FACTOR = 0.3
+
 # 视觉后验微调策略:
 #   视觉前验由 PRESETS 给出 K_base(c)、K_rot(c)、K_fb(c)、deadband(c)。
 #   接触后再按下表为不同类别使用不同的力阈值、饱和值、修正方向和刚度边界。
@@ -472,12 +491,13 @@ class InteractiveTeleop:
                  object_id: str = "unknown", trial_id: str = "unknown",
                  auto_stop: bool = True):
         # ── 运行模式 ──
-        self.mode = mode  # "default" | "vision" | PRESETS key
+        self.mode = mode  # "default" | "force_only" | "vision" | PRESETS key
         self._experiment_condition = {
             "default": "A", "experiment_fixed_a": "A",
             "soft_obj": "B", "medium_obj": "B", "hard_obj": "B",
             "vision_observe": "C", "vision_stiffness": "D",
             "vision": "E", "vision_force": "F",
+            "force_only": "G",
         }.get(mode, mode)
 
         # ── 运行状态 ──
@@ -493,6 +513,7 @@ class InteractiveTeleop:
         self._experiment_parameters_locked = mode in (
             "experiment_fixed_a", "soft_obj", "medium_obj", "hard_obj",
             "vision_observe", "vision_stiffness", "vision", "vision_force",
+            "force_only",
         )
 
         # ── Vision 模式状态 ──
@@ -500,6 +521,7 @@ class InteractiveTeleop:
         self._vision_auto_map = (mode in ("vision", "vision_stiffness", "vision_force"))
         self._vision_stiffness_only = (mode == "vision_stiffness")
         self._vision_force_fusion = (mode == "vision_force")
+        self._force_only_adaptive = (mode == "force_only")
         self._init_preset = mode if mode in PRESETS else None  # 命令行指定的初始预设
         self._vision_lock = threading.Lock()
         self._vision_detection = None       # 最新 YOLO 检测结果 dict
@@ -514,6 +536,17 @@ class InteractiveTeleop:
         self._fusion_last_update = 0.0
         self._fusion_delta_K = 0.0
         self._fusion_active = False
+
+        # ── G 模式：纯外力在线变阻抗状态 ──
+        self._force_adapt_last_update = 0.0
+        self._force_adapt_base_K = G_K_BASE
+        self._force_adapt_alpha = G_ALPHA
+        self._force_adapt_F_sat = G_F_SAT
+        self._force_adapt_deadband = G_ADAPT_DEADBAND
+        self._force_adapt_target_K = G_K_BASE
+        self._force_adapt_ratio = 0.0
+        self._force_adapt_active = False
+        self._force_adapt_delta_K = 0.0
         self._vision_active = False         # 视觉线程是否已启动
         self._vision_thread = None
         self._vision_yolo_proc = None       # YOLO 子进程句柄
@@ -548,6 +581,12 @@ class InteractiveTeleop:
         self._deadband_cur = DEFAULT_DEADBAND
         self._scale_cur = DEFAULT_SCALE
         self._nullspace_cur = DEFAULT_NULLSPACE
+
+        # G 模式沿用 force_adaptive_teleop.py 的接触前基线和阻尼参数。
+        if self._force_only_adaptive:
+            self._K_trans_cur = self._force_adapt_base_K
+            self._K_rot_cur = self._force_adapt_base_K * G_K_ROT_RATIO
+            self._damping_ratio_cur = G_DAMPING_RATIO
 
         # ── 过渡状态 ──
         self._transition_active = False
@@ -975,6 +1014,52 @@ class InteractiveTeleop:
         self._K_rot_cur += smooth_factor * (target_K_rot - self._K_rot_cur)
         self._fusion_delta_K = self._K_trans_cur - self._vision_base_K_trans
         self._fusion_active = force_ratio > 0.0
+
+        if self.ctrl is not None and abs(self._K_trans_cur - prev_K) > 0.5:
+            K_6x6 = self._build_stiffness(self._K_trans_cur, self._K_rot_cur)
+            self.ctrl.set_impedance(K_6x6)
+
+    def _update_force_only_adaptive_impedance(self, now: float):
+        """G 模式：复用 force_adaptive_teleop.py 的纯外力在线变阻抗。
+
+        该模式不使用视觉。外力超过自适应死区后，按线性饱和律
+        将当前平动/旋转刚度从固定基线平滑降低：
+
+            K_t = K_base * (1 - alpha * clip((|F|-F_db)/(F_sat-F_db), 0, 1))
+
+        G 与 E/F 共用同一主循环、ExperimentTimeline、CSV 和事件 JSON，
+        便于进行 A/E/G/F 的匹配比较。
+        """
+        if not self._force_only_adaptive:
+            return
+        if now - self._force_adapt_last_update < FUSION_IMPD_UPDATE_INTERVAL:
+            return
+        self._force_adapt_last_update = now
+
+        f_mag = float(np.linalg.norm(self._F_ext_current[:3]))
+        effective_force = max(f_mag - self._force_adapt_deadband, 0.0)
+        force_span = max(
+            self._force_adapt_F_sat - self._force_adapt_deadband, 0.1
+        )
+        ratio = float(np.clip(effective_force / force_span, 0.0, 1.0))
+        target_K = self._force_adapt_base_K * (
+            1.0 - self._force_adapt_alpha * ratio
+        )
+        target_K = max(target_K, K_TRANS_MIN)
+        target_K_rot = target_K * G_K_ROT_RATIO
+
+        prev_K = self._K_trans_cur
+        self._K_trans_cur += G_IMPD_SMOOTH_FACTOR * (
+            target_K - self._K_trans_cur
+        )
+        self._K_rot_cur += G_IMPD_SMOOTH_FACTOR * (
+            target_K_rot - self._K_rot_cur
+        )
+
+        self._force_adapt_target_K = target_K
+        self._force_adapt_ratio = ratio
+        self._force_adapt_active = ratio > 0.0
+        self._force_adapt_delta_K = self._K_trans_cur - self._force_adapt_base_K
 
         if self.ctrl is not None and abs(self._K_trans_cur - prev_K) > 0.5:
             K_6x6 = self._build_stiffness(self._K_trans_cur, self._K_rot_cur)
@@ -1613,7 +1698,25 @@ class InteractiveTeleop:
 
     def _print_help(self):
         """打印按键帮助"""
-        if self._vision_enabled and hasattr(self, '_vision_auto_map') and self._vision_auto_map:
+        if self._force_only_adaptive:
+            print("\n" + "=" * 65)
+            print("  🟣 G Force-Only 模式 — 纯外力在线变阻抗")
+            print("=" * 65)
+            print("  无视觉；接触外力超过自适应死区后在线降低阻抗刚度")
+            print(
+                f"  K_t = {G_K_BASE:.0f} · "
+                f"(1 − {G_ALPHA:.2f} · clip((|F|−{G_ADAPT_DEADBAND:.1f})/"
+                f"({G_F_SAT:.1f}−{G_ADAPT_DEADBAND:.1f}), 0, 1))"
+            )
+            print("  参数已锁定，使用与 E/F 相同的实验阶段和数据记录")
+            print("  ┌──────────┬──────────────────────────────────────┐")
+            print("  │ h        │ 打印此帮助                            │")
+            print("  │ v        │ 保存参数到 ~/teleop_params.json       │")
+            print("  │ b        │ 从 ~/teleop_params.json 加载参数      │")
+            print("  │ Ctrl+C   │ 安全退出                              │")
+            print("  └──────────┴──────────────────────────────────────┘")
+            print("=" * 65)
+        elif self._vision_enabled and hasattr(self, '_vision_auto_map') and self._vision_auto_map:
             print("\n" + "=" * 65)
             if self._vision_force_fusion:
                 print("  👁️+F Vision-Force 模式 — 视觉前馈 + 力反馈微调")
@@ -1748,6 +1851,13 @@ class InteractiveTeleop:
         if self._omega_read_fail_count > 0:
             status += f" ⚠️OmegaFail={self._omega_read_fail_count}"
 
+        if self._force_only_adaptive:
+            active = "*" if self._force_adapt_active else ""
+            status += (
+                f" 🟣G ΔK={self._force_adapt_delta_K:+.1f}{active}"
+                f" r={self._force_adapt_ratio:.2f}"
+            )
+
         # Vision 模式下附加检测信息
         if self._vision_enabled:
             lock_str = "🔒" if self._vision_locked else "🔓"
@@ -1805,6 +1915,9 @@ class InteractiveTeleop:
             self._set_preset("experiment_fixed_a")
         elif self.mode == "vision_observe":
             self._set_preset("experiment_observe_d")
+        elif self._force_only_adaptive:
+            # G 模式已在 __init__ 中设置 force_adaptive 基线，不能被 standard 覆盖。
+            pass
         else:
             self._set_preset("standard")
 
@@ -1818,6 +1931,8 @@ class InteractiveTeleop:
         elif self._init_preset:
             p = PRESETS[self._init_preset]
             mode_str = f"🎯 {p['name']} — {p['desc']}"
+        elif self._force_only_adaptive:
+            mode_str = "🟣 G Force-Only 模式 — 纯外力在线变阻抗"
         else:
             mode_str = "🕹️ Default 模式 — 键盘手动调节手感参数"
         print("\n" + "=" * 65)
@@ -2017,7 +2132,10 @@ class InteractiveTeleop:
                         # 锁定后不再更新参数，即使检测结果变化也不响应
                     # 锁定后也不再执行超时回退
 
-                # ── 4b. Fusion 模式：视觉前馈基线 + 力反馈微调 ──
+                # ── 4b. G 模式：纯外力在线变阻抗 ──
+                self._update_force_only_adaptive_impedance(now)
+
+                # ── 4c. F 模式：视觉前馈基线 + 力反馈微调 ──
                 self._update_vision_force_fusion(now)
 
                 # ── 5. 发给 Franka ──
@@ -2147,6 +2265,10 @@ class InteractiveTeleop:
             "vision_confidence": self._vision_confidence,
             "vision_locked": int(self._vision_locked),
             "control_dt": self._control_dt,
+            "force_adapt_target_K": self._force_adapt_target_K,
+            "force_adapt_ratio": self._force_adapt_ratio,
+            "force_adapt_active": int(self._force_adapt_active),
+            "force_adapt_delta_K": self._force_adapt_delta_K,
             "force_baseline_mean": timeline["force_baseline_mean"],
             "force_baseline_std": timeline["force_baseline_std"],
             "force_threshold": timeline["force_threshold"],
@@ -2276,6 +2398,9 @@ class InteractiveTeleop:
             "vision_base_K_trans": self._vision_base_K_trans,
             "vision_base_K_rot": self._vision_base_K_rot,
             "fusion_delta_K_final": self._fusion_delta_K,
+            "force_adapt_target_K_final": self._force_adapt_target_K,
+            "force_adapt_ratio_final": self._force_adapt_ratio,
+            "force_adapt_delta_K_final": self._force_adapt_delta_K,
         }
 
         # ── 模式信息 ──
@@ -2284,6 +2409,7 @@ class InteractiveTeleop:
             "vision_enabled": self._vision_enabled,
             "vision_auto_map": self._vision_auto_map,
             "vision_force_fusion": self._vision_force_fusion,
+            "force_only_adaptive": self._force_only_adaptive,
             "vision_locked": self._vision_locked,
             "vision_label": self._vision_locked_label,
         }
@@ -2296,6 +2422,18 @@ class InteractiveTeleop:
             fusion_config = {
                 "update_interval_s": FUSION_IMPD_UPDATE_INTERVAL,
                 "posterior_policy": FUSION_POSTERIOR_POLICY,
+            }
+
+        force_adapt_config = None
+        if self._force_only_adaptive:
+            force_adapt_config = {
+                "update_interval_s": FUSION_IMPD_UPDATE_INTERVAL,
+                "K_base_N_per_m": self._force_adapt_base_K,
+                "alpha": self._force_adapt_alpha,
+                "F_sat_N": self._force_adapt_F_sat,
+                "force_deadband_N": self._force_adapt_deadband,
+                "K_rot_ratio": G_K_ROT_RATIO,
+                "smooth_factor": G_IMPD_SMOOTH_FACTOR,
             }
 
         summary = {
@@ -2326,6 +2464,7 @@ class InteractiveTeleop:
             },
             "final_params": final_params,
             "fusion_config": fusion_config,
+            "force_adapt_config": force_adapt_config,
             "experiment": self._timeline.to_dict(),
         }
 
@@ -2410,7 +2549,10 @@ class InteractiveTeleop:
 
 def main():
     # 动态从 PRESETS 生成 choices: default + vision + 所有 preset key
-    MODE_CHOICES = ["default", "vision", "vision_observe", "vision_stiffness", "vision_force", "f", "F"] + sorted(PRESETS.keys())
+    MODE_CHOICES = [
+        "default", "vision", "vision_observe", "vision_stiffness",
+        "vision_force", "force_only", "g", "G", "f", "F",
+    ] + sorted(PRESETS.keys())
     parser = argparse.ArgumentParser(description="交互式遥操作：实时调节阻尼/刚度/力反馈")
     parser.add_argument("--mode", "-m", type=str, default="default",
                         choices=MODE_CHOICES,
@@ -2419,6 +2561,7 @@ def main():
                              "vision_observe=SCI模式C视觉仅显示, "
                              "vision_stiffness=SCI模式D视觉仅调阻抗, "
                              "vision=SCI模式E视觉多参数前馈, "
+                             "g/force_only=实验G纯外力在线变阻抗, "
                              "f/vision_force=实验F模式(视觉前馈+力反馈微调融合), "
                              "或直接指定预设: " + ", ".join(sorted(PRESETS.keys())))
     parser.add_argument("--load", "-l", type=str, default=None,
@@ -2435,7 +2578,12 @@ def main():
         help="调试模式：任务完成后不自动退出，按 Ctrl+C 时保存并安全关闭",
     )
     args = parser.parse_args()
-    canonical_mode = "vision_force" if args.mode in ("f", "F") else args.mode
+    if args.mode in ("f", "F"):
+        canonical_mode = "vision_force"
+    elif args.mode in ("g", "G"):
+        canonical_mode = "force_only"
+    else:
+        canonical_mode = args.mode
 
     teleop = InteractiveTeleop(
         mode=canonical_mode,
