@@ -360,7 +360,7 @@ G_IMPD_SMOOTH_FACTOR = 0.3
 #   接触后再按下表为不同类别使用不同的力阈值、饱和值、修正方向和刚度边界。
 FUSION_POSTERIOR_POLICY = {
     "soft": {
-        "gain": -0.50,          # 更大幅度降低刚度
+        "gain": -0.25,          # 更大幅度降低刚度
         "force_deadband": 0.3,  # 更早进入微调，减轻接触冲击
         "force_sat": 2.5,       # 更低饱和阈值，提升视觉柔顺效果
         "smooth_factor": 0.30,
