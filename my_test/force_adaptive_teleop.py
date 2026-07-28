@@ -106,7 +106,7 @@ IMPD_UPDATE_INTERVAL = 0.05  # 阻抗参数更新间隔 (s)（20Hz 足够，避�
 IMPD_SMOOTH_FACTOR = 0.3     # 一阶低通平滑系数 (0=不平滑, 1=不变)
 
 # ── 夹爪 ──
-GRIPPER_SPEED = 0.1
+GRIPPER_SPEED = 0.05
 GRIPPER_FORCE = 20.0
 GRIPPER_MAX = 0.08
 GRIPPER_MIN_WIDTH = 0.0

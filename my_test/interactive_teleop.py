@@ -160,7 +160,7 @@ DEFAULT_DEADBAND = 0.3      # 死区 (N)
 DEFAULT_SCALE = 3.0
 
 # 夹爪
-GRIPPER_SPEED = 0.1         # 夹爪运动速度 (m/s)
+GRIPPER_SPEED = 0.05        # 实验统一夹爪运动速度 (m/s)
 GRIPPER_FORCE = 20.0        # 夹爪夹持力 (N)
 GRIPPER_MAX = 0.08          # 夹爪最大开度 (m)
 GRIPPER_MIN_WIDTH = 0.0     # 夹爪最小开度 (m)
@@ -271,21 +271,21 @@ PRESETS = {
         "desc": "人工正确选择 soft 策略，与视觉 soft 前馈参数一致",
         "K_trans": 50.0, "K_rot": 5.0,
         "damping_ratio": 0.8, "K_fb": 0.2, "deadband": 0.3,
-        "scale": 3.0, "gripper_speed": 0.02, "gripper_force": 8.0,
+        "scale": 3.0, "gripper_speed": GRIPPER_SPEED, "gripper_force": 8.0,
     },
     "medium_obj": {
         "name": "📦 中物体手感",
         "desc": "人工正确选择 medium 策略，与视觉 medium 前馈参数一致",
         "K_trans": 150.0, "K_rot": 10.0,
         "damping_ratio": 1.0, "K_fb": 0.5, "deadband": 0.4,
-        "scale": 3.0, "gripper_speed": 0.05, "gripper_force": 15.0,
+        "scale": 3.0, "gripper_speed": GRIPPER_SPEED, "gripper_force": 15.0,
     },
     "hard_obj": {
         "name": "🪨 硬物体手感",
         "desc": "人工正确选择 hard 策略，与视觉 hard 前馈参数一致",
         "K_trans": 200.0, "K_rot": 13.0,
         "damping_ratio": 1.2, "K_fb": 0.7, "deadband": 0.5,
-        "scale": 3.0, "gripper_speed": 0.10, "gripper_force": 20.0,
+        "scale": 3.0, "gripper_speed": GRIPPER_SPEED, "gripper_force": 20.0,
     },
     # ── 六模式预实验专用参数 ──
     "experiment_fixed_a": {
@@ -307,21 +307,21 @@ PRESETS = {
         "desc": "实验 D/E/F 的 soft 视觉前馈基线",
         "K_trans": 50.0, "K_rot": 5.0,
         "damping_ratio": 0.8, "K_fb": 0.2, "deadband": 0.3,
-        "scale": 3.0, "gripper_speed": 0.02, "gripper_force": 8.0,
+        "scale": 3.0, "gripper_speed": GRIPPER_SPEED, "gripper_force": 8.0,
     },
     "vision_medium": {
         "name": "👁️ 视觉中等物体",
         "desc": "实验 D/E/F 的 medium 视觉前馈基线",
         "K_trans": 150.0, "K_rot": 10.0,
         "damping_ratio": 1.0, "K_fb": 0.5, "deadband": 0.4,
-        "scale": 3.0, "gripper_speed": 0.05, "gripper_force": 15.0,
+        "scale": 3.0, "gripper_speed": GRIPPER_SPEED, "gripper_force": 15.0,
     },
     "vision_hard": {
         "name": "👁️ 视觉硬物体",
         "desc": "实验 D/E/F 的 hard 视觉前馈基线",
         "K_trans": 200.0, "K_rot": 13.0,
         "damping_ratio": 1.2, "K_fb": 0.7, "deadband": 0.5,
-        "scale": 3.0, "gripper_speed": 0.10, "gripper_force": 20.0,
+        "scale": 3.0, "gripper_speed": GRIPPER_SPEED, "gripper_force": 20.0,
     },
 }
 
