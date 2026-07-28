@@ -343,6 +343,7 @@ OMEGA_FAIL_RECOVERY_THRESHOLD = 120  # 连续失败多少次后触发相机暂�
 
 # Vision + Force 融合模式配置（实验模式 F）
 FUSION_IMPD_UPDATE_INTERVAL = 0.05   # 力反馈微调阻抗更新频率: 20Hz
+FUSION_CONTACT_DELAY_S = 0.20        # contact_onset 后延迟启动融合，避免接触前误触发
 
 # Force-Only 在线变阻抗模式配置（实验模式 G）
 # 保持 force_adaptive_teleop.py 的核心参数和公式，
@@ -983,6 +984,16 @@ class InteractiveTeleop:
         其中 s(F) 为 [0, 1] 的接触力归一化强度。
         """
         if not self._vision_force_fusion or not self._vision_locked:
+            return
+        if self._transition_active:
+            self._fusion_active = False
+            return
+        contact_t = self._timeline.event_times.get("contact_onset")
+        if contact_t is None:
+            self._fusion_active = False
+            return
+        if self._timeline.system_time(now) - contact_t < FUSION_CONTACT_DELAY_S:
+            self._fusion_active = False
             return
         if now - self._fusion_last_update < FUSION_IMPD_UPDATE_INTERVAL:
             return
@@ -2421,6 +2432,7 @@ class InteractiveTeleop:
         if self._vision_force_fusion:
             fusion_config = {
                 "update_interval_s": FUSION_IMPD_UPDATE_INTERVAL,
+                "contact_delay_s": FUSION_CONTACT_DELAY_S,
                 "posterior_policy": FUSION_POSTERIOR_POLICY,
             }
 
