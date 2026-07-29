@@ -369,7 +369,7 @@ FUSION_POSTERIOR_POLICY = {
         "K_max": 90.0,          # 自由空间保持vision_soft基线刚度，不影响跟踪
     },
     "medium": {
-        "gain": -0.30,          # 中等物体接触后降到约85 N/m
+        "gain": -0.35,          # 中等物体接触后降到约85 N/m
         "force_deadband": 0.8,
         "force_sat": 6.0,
         "smooth_factor": 0.25,
