@@ -271,21 +271,21 @@ PRESETS = {
         "desc": "人工正确选择 soft 策略，与视觉 soft 前馈参数一致",
         "K_trans": 50.0, "K_rot": 5.0,
         "damping_ratio": 0.8, "K_fb": 0.2, "deadband": 0.3,
-        "scale": 3.0, "gripper_speed": GRIPPER_SPEED, "gripper_force": 8.0,
+        "scale": 3.0, "gripper_force": 8.0,
     },
     "medium_obj": {
         "name": "📦 中物体手感",
         "desc": "人工正确选择 medium 策略，与视觉 medium 前馈参数一致",
         "K_trans": 120.0, "K_rot": 8.0,
         "damping_ratio": 1.0, "K_fb": 0.5, "deadband": 0.4,
-        "scale": 3.0, "gripper_speed": GRIPPER_SPEED, "gripper_force": 15.0,
+        "scale": 3.0, "gripper_force": 15.0,
     },
     "hard_obj": {
         "name": "🪨 硬物体手感",
         "desc": "人工正确选择 hard 策略，与视觉 hard 前馈参数一致",
         "K_trans": 200.0, "K_rot": 13.0,
         "damping_ratio": 1.2, "K_fb": 0.7, "deadband": 0.5,
-        "scale": 3.0, "gripper_speed": GRIPPER_SPEED, "gripper_force": 20.0,
+        "scale": 3.0, "gripper_force": 20.0,
     },
     # ── 六模式预实验专用参数 ──
     "experiment_fixed_a": {
@@ -307,21 +307,21 @@ PRESETS = {
         "desc": "实验 D/E/F 的 soft 视觉前馈基线",
         "K_trans": 50.0, "K_rot": 5.0,
         "damping_ratio": 0.8, "K_fb": 0.2, "deadband": 0.3,
-        "scale": 3.0, "gripper_speed": GRIPPER_SPEED, "gripper_force": 8.0,
+        "scale": 3.0, "gripper_force": 8.0,
     },
     "vision_medium": {
         "name": "👁️ 视觉中等物体",
         "desc": "实验 D/E/F 的 medium 视觉前馈基线",
         "K_trans": 120.0, "K_rot": 8.0,
         "damping_ratio": 1.0, "K_fb": 0.5, "deadband": 0.4,
-        "scale": 3.0, "gripper_speed": GRIPPER_SPEED, "gripper_force": 15.0,
+        "scale": 3.0, "gripper_force": 15.0,
     },
     "vision_hard": {
         "name": "👁️ 视觉硬物体",
         "desc": "实验 D/E/F 的 hard 视觉前馈基线",
         "K_trans": 200.0, "K_rot": 13.0,
         "damping_ratio": 1.2, "K_fb": 0.7, "deadband": 0.5,
-        "scale": 3.0, "gripper_speed": GRIPPER_SPEED, "gripper_force": 20.0,
+        "scale": 3.0, "gripper_force": 20.0,
     },
 }
 
@@ -899,7 +899,7 @@ class InteractiveTeleop:
         self._K_fb_cur = p["K_fb"]
         self._deadband_cur = p["deadband"]
         self._scale_cur = p["scale"]
-        self._gripper_speed_cur = p.get("gripper_speed", GRIPPER_SPEED)
+        self._gripper_speed_cur = GRIPPER_SPEED
         self._gripper_force_cur = p.get("gripper_force", GRIPPER_FORCE)
 
     # ═══════════════════════════════════════════
@@ -2121,7 +2121,7 @@ class InteractiveTeleop:
                                     self._K_fb_cur = p["K_fb"]
                                     self._deadband_cur = p["deadband"]
                                     self._scale_cur = p["scale"]
-                                    self._gripper_speed_cur = p.get("gripper_speed", GRIPPER_SPEED)
+                                    self._gripper_speed_cur = GRIPPER_SPEED
                                     self._gripper_force_cur = p.get("gripper_force", GRIPPER_FORCE)
                                 self._vision_locked_label = getattr(profile, "label", "unknown")
                                 self._vision_base_K_trans = p["K_trans"]
