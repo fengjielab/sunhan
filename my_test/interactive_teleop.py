@@ -290,16 +290,16 @@ PRESETS = {
     # ── 六模式预实验专用参数 ──
     "experiment_fixed_a": {
         "name": "🇦 固定参数模式",
-        "desc": "实验 A — 与旧108次原始数据一致的固定基线",
-        "K_trans": 150.0, "K_rot": 10.0,
-        "damping_ratio": 1.0, "K_fb": 0.5, "deadband": 0.3,
+        "desc": "实验 A — 固定200阻抗基线，用于对比G在线变阻抗",
+        "K_trans": 200.0, "K_rot": 13.0,
+        "damping_ratio": 1.2, "K_fb": 0.5, "deadband": 0.3,
         "scale": 3.0,
     },
     "experiment_observe_d": {
         "name": "🇨 视觉显示模式",
         "desc": "实验 C — 视觉仅提示，与 A 使用相同固定参数",
-        "K_trans": 150.0, "K_rot": 10.0,
-        "damping_ratio": 1.0, "K_fb": 0.5, "deadband": 0.3,
+        "K_trans": 200.0, "K_rot": 13.0,
+        "damping_ratio": 1.2, "K_fb": 0.5, "deadband": 0.3,
         "scale": 3.0,
     },
     "vision_soft": {
