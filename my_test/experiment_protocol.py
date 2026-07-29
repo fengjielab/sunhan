@@ -221,9 +221,6 @@ class ExperimentTimeline:
         return {
             "schema_version": 2,
             "mode": self.mode,
-            "subject_id": self.subject_id,
-            "object_id": self.object_id,
-            "trial_id": self.trial_id,
             "started_at_unix": self.start_wall,
             "phase": self.phase,
             "completed": self.completed,

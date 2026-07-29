@@ -133,7 +133,7 @@ TRAJECTORY_DIR = "data"
 TRAJECTORY_DECIMATION = 1
 TRAJECTORY_CSV_HEADER = [
     "schema_version", "system_time", "operation_time", "phase", "event",
-    "mode", "controller_mode", "subject_id", "object_id", "trial_id",
+    "mode", "controller_mode",
     "omega_x", "omega_y", "omega_z", "omega_valid", "gripper_deg", "button",
     "target_x", "target_y", "target_z", "robot_x", "robot_y", "robot_z",
     "F_ext_x", "F_ext_y", "F_ext_z", "T_ext_x", "T_ext_y", "T_ext_z", "F_ext_mag",
@@ -755,8 +755,6 @@ class ForceAdaptiveTeleop:
             "operation_time": snap["operation_time"], "phase": snap["phase"],
             "event": self._timeline.consume_events(), "mode": "E",
             "controller_mode": "force_adaptive",
-            "subject_id": self._timeline.subject_id, "object_id": self._timeline.object_id,
-            "trial_id": self._timeline.trial_id,
             "omega_x": raw_pos[0], "omega_y": raw_pos[1], "omega_z": raw_pos[2],
             "omega_valid": int(self._omega_read_valid), "gripper_deg": gripper_deg,
             "button": button, "target_x": self._target_pos_current[0],
