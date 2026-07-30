@@ -1,0 +1,189 @@
+{
+  "timestamp": "20260729_163746",
+  "saved_at": "2026-07-29T16:37:46.930180",
+  "mode": {
+    "mode": "vision_force",
+    "vision_enabled": true,
+    "vision_auto_map": true,
+    "vision_force_fusion": true,
+    "force_only_adaptive": false,
+    "vision_locked": true,
+    "vision_label": "medium"
+  },
+  "runtime": {
+    "duration_s": 26.74,
+    "traj_length_m": 0.5186,
+    "mean_speed_ms": 0.0285,
+    "speed_variance": 0.000439,
+    "speed_std_ms": 0.021,
+    "max_speed_ms": 0.1016
+  },
+  "trajectory": {
+    "n_samples": 2452,
+    "pos_x_range_m": [
+      -0.0165,
+      0.0628
+    ],
+    "pos_y_range_m": [
+      -0.0908,
+      0.0342
+    ],
+    "pos_z_range_m": [
+      -0.0281,
+      0.0907
+    ]
+  },
+  "external_force": {
+    "source": "Franka estimated external wrench",
+    "metric": "norm(Fx, Fy, Fz)",
+    "F_ext_peak_N": 6.055,
+    "F_ext_peak_time_s": 20.9146,
+    "F_ext_mean_N": 3.216,
+    "n_samples": 2452
+  },
+  "final_params": {
+    "K_trans": 90.13238631355168,
+    "K_rot": 6.008825754236779,
+    "damping_ratio": 1.0,
+    "K_fb": 0.5,
+    "deadband": 0.4,
+    "scale": 3.0,
+    "vision_base_K_trans": 120.0,
+    "vision_base_K_rot": 8.0,
+    "fusion_delta_K_final": -29.867613686448323,
+    "force_adapt_target_K_final": 200.0,
+    "force_adapt_ratio_final": 0.0,
+    "force_adapt_delta_K_final": 0.0
+  },
+  "fusion_config": {
+    "update_interval_s": 0.05,
+    "contact_delay_s": 0.2,
+    "posterior_policy": {
+      "soft": {
+        "gain": -0.25,
+        "force_deadband": 0.3,
+        "force_sat": 2.5,
+        "smooth_factor": 0.4,
+        "K_min": 30.0,
+        "K_max": 90.0
+      },
+      "medium": {
+        "gain": -0.35,
+        "force_deadband": 0.8,
+        "force_sat": 6.0,
+        "smooth_factor": 0.25,
+        "K_min": 85.0,
+        "K_max": 130.0
+      },
+      "hard": {
+        "gain": -0.15,
+        "force_deadband": 1.2,
+        "force_sat": 8.0,
+        "smooth_factor": 0.2,
+        "K_min": 140.0,
+        "K_max": 170.0
+      },
+      "unknown": {
+        "gain": -0.1,
+        "force_deadband": 1.0,
+        "force_sat": 8.0,
+        "smooth_factor": 0.25,
+        "K_min": 60.0,
+        "K_max": 135.0
+      }
+    }
+  },
+  "force_adapt_config": null,
+  "experiment": {
+    "schema_version": 2,
+    "mode": "F",
+    "started_at_unix": 1785314240.1845841,
+    "phase": "COMPLETE",
+    "completed": true,
+    "incomplete": false,
+    "recognition_time_s": 1.6547205959941493,
+    "operation_time_s": 17.680011361997458,
+    "force_baseline_mean_N": 1.2882919275414582,
+    "force_baseline_std_N": 0.05355470000921744,
+    "force_threshold_N": 1.4489560275691105,
+    "events": [
+      {
+        "event": "system_start",
+        "system_time": 0.0,
+        "phase": "PREP"
+      },
+      {
+        "event": "vision_start",
+        "system_time": 8.166586580991861,
+        "phase": "PREP"
+      },
+      {
+        "event": "force_baseline_ready",
+        "system_time": 8.954406648001168,
+        "phase": "PREP",
+        "mean_N": 1.2882919275414582,
+        "std_N": 0.05355470000921744,
+        "threshold_N": 1.4489560275691105
+      },
+      {
+        "event": "system_ready",
+        "system_time": 8.954406648001168,
+        "phase": "READY"
+      },
+      {
+        "event": "task_start",
+        "system_time": 8.954406648001168,
+        "phase": "APPROACH",
+        "trigger": "system_ready"
+      },
+      {
+        "event": "first_frame",
+        "system_time": 8.98485795900342,
+        "phase": "APPROACH"
+      },
+      {
+        "event": "first_detection",
+        "system_time": 10.639037774002645,
+        "phase": "APPROACH",
+        "confidence": 0.5719439387321472,
+        "detected_class": "cup"
+      },
+      {
+        "event": "vision_lock",
+        "system_time": 10.63957855499757,
+        "phase": "APPROACH",
+        "detected_class": "cup",
+        "semantic_label": "medium",
+        "confidence": 0.5719439387321472
+      },
+      {
+        "event": "contact_onset",
+        "system_time": 11.170610286993906,
+        "phase": "APPROACH",
+        "threshold_N": 1.4489560275691105
+      },
+      {
+        "event": "grasp_start",
+        "system_time": 16.26510686200345,
+        "phase": "GRASP"
+      },
+      {
+        "event": "grasp_success",
+        "system_time": 20.011079399992013,
+        "phase": "TRANSPORT",
+        "grasp_success": true
+      },
+      {
+        "event": "release_start",
+        "system_time": 23.92109636699024,
+        "phase": "RELEASE"
+      },
+      {
+        "event": "task_end",
+        "system_time": 26.634418009998626,
+        "phase": "COMPLETE",
+        "success": true
+      }
+    ]
+  }
+}
