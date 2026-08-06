@@ -51,6 +51,22 @@ python3 my_test/generate_trust_experiment_schedule.py
 python3 my_test/validate_trust_trial.py data/trust_correction/PILOT_V2/trust_experiment_YYYYMMDD_HHMMSS.csv
 ```
 
+若8次预试出现控制长尾，先单独执行一次 `TIMING_DIAG`，不要立即开始12次水瓶诊断：
+
+```bash
+python3 my_test/interactive_teleop.py --mode C0 --actual-object bottle --subject-id TIMING_DIAG --object-id bottle --trial-id TIMING_DIAG_01_bottle_C0 --trajectory-dir data/trust_correction/TIMING_DIAG
+python3 my_test/analyze_control_timing.py data/trust_correction/TIMING_DIAG
+```
+
+定位并解决控制长尾后，如果水瓶C1过度修正或W1收益方向仍不稳定，再按
+`bottle_diagnostic_schedule_12.csv` 完成4条件×3重复的诊断数据；保存目录为
+`data/trust_correction/BOTTLE_DIAG`，不得并入正式统计。新版CSV包含逐模块控制耗时，
+收齐后运行：
+
+```bash
+python3 my_test/analyze_control_timing.py data/trust_correction/BOTTLE_DIAG
+```
+
 正式数据收齐后生成试次指标和预定义对比：
 
 ```bash

@@ -92,6 +92,26 @@ def main() -> None:
     ]
     write_csv(OUT / "pilot_schedule_8.csv", pilot)
 
+    # 水瓶机制诊断：单一非正式实验人员，4条件×3个平衡重复块。
+    # 该数据只用于判断C1过度修正是否可重复，不进入正式统计。
+    diagnostic: list[dict] = []
+    diagnostic_conditions = ["C0", "C1", "W0", "W1"]
+    order = 0
+    for block, sequence in enumerate(williams_rows(4)[:3], start=1):
+        for within_block_order, condition_index in enumerate(sequence, start=1):
+            order += 1
+            row = trial_row(
+                "BOTTLE_DIAG",
+                order,
+                "bottle",
+                diagnostic_conditions[condition_index],
+                "non_formal_bottle_diagnostic",
+            )
+            row["diagnostic_block"] = block
+            row["within_block_order"] = within_block_order
+            diagnostic.append(row)
+    write_csv(OUT / "bottle_diagnostic_schedule_12.csv", diagnostic)
+
     rows = williams_rows(len(TREATMENTS))
     formal: list[dict] = []
     for number in range(1, 11):

@@ -212,6 +212,11 @@ TRAJECTORY_CSV_HEADER = [
     "gripper_speed", "gripper_force", "grasp_success",
     "vision_class", "vision_label", "vision_confidence", "vision_locked",
     "fusion_delta_K", "fusion_active", "control_dt",
+    "timing_profile_version", "prev_omega_io_s", "prev_panda_state_s",
+    "prev_haptic_send_s", "prev_impedance_update_s",
+    "prev_panda_command_s", "prev_gripper_update_s", "prev_record_s",
+    "prev_keyboard_status_s", "prev_loop_work_s",
+    "prev_sleep_requested_s", "prev_sleep_actual_s",
     "force_adapt_target_K", "force_adapt_ratio", "force_adapt_active",
     "force_adapt_delta_K",
     "force_baseline_mean", "force_baseline_std", "force_threshold",
@@ -725,6 +730,18 @@ class InteractiveTeleop:
         self._target_pos_current = np.full(3, np.nan)
         self._omega_read_valid = True
         self._control_dt = float("nan")
+        self._timing_profile_version = 1
+        self._prev_omega_io_s = float("nan")
+        self._prev_panda_state_s = float("nan")
+        self._prev_haptic_send_s = float("nan")
+        self._prev_impedance_update_s = float("nan")
+        self._prev_panda_command_s = float("nan")
+        self._prev_gripper_update_s = float("nan")
+        self._prev_record_s = float("nan")
+        self._prev_keyboard_status_s = float("nan")
+        self._prev_loop_work_s = float("nan")
+        self._prev_sleep_requested_s = float("nan")
+        self._prev_sleep_actual_s = float("nan")
 
         # ── 自动实验计时 / 阶段 ──
         self._timeline = ExperimentTimeline(
@@ -2253,6 +2270,14 @@ class InteractiveTeleop:
         try:
             while self.running:
                 t_start = time.perf_counter()
+                timing_omega_io_s = 0.0
+                timing_panda_state_s = 0.0
+                timing_haptic_send_s = 0.0
+                timing_impedance_update_s = 0.0
+                timing_panda_command_s = 0.0
+                timing_gripper_update_s = 0.0
+                timing_record_s = 0.0
+                timing_keyboard_status_s = 0.0
                 now = time.time()
                 now_perf = t_start
                 self._control_dt = now_perf - last_cycle_perf
@@ -2272,6 +2297,7 @@ class InteractiveTeleop:
                 #    失败时 raw_pos 不会被修改。Vision 模式下 RealSense D435i
                 #    可能抢占 Omega.7 USB 等时传输带宽，导致读取失败。
                 #    解决方案：检查返回值，失败时复用最后有效位置缓存。
+                timing_start = time.perf_counter()
                 raw_pos = self._read_omega_position()
 
                 # ── 1b. 累加主端 Omega.7 轨迹长度 ──
@@ -2309,8 +2335,10 @@ class InteractiveTeleop:
                         # 不依赖逻辑状态，始终 stop 力控后完全张开。
                         self._trigger_release(self._max_width)
                 self._btn0_prev = btn0
+                timing_omega_io_s = time.perf_counter() - timing_start
 
                 # ── 2. 读 Franka 状态 + 外力估计 ──
+                timing_start = time.perf_counter()
                 if self.panda is not None:
                     try:
                         state = self.panda.get_state()
@@ -2322,6 +2350,7 @@ class InteractiveTeleop:
                             self._F_ext_current = self.force_estimator.update(state)
                     except Exception:
                         pass  # Franka 读取失败时继续
+                timing_panda_state_s = time.perf_counter() - timing_start
 
                 # ── 2b. 自动实验生命周期 ──
                 F_mag_now = float(np.linalg.norm(self._F_ext_current[:3]))
@@ -2364,10 +2393,12 @@ class InteractiveTeleop:
                 F_haptic[2] += grip_force_mag
                 self._gripper_force_feedback = grip_force_mag
 
+                timing_start = time.perf_counter()
                 try:
                     dhd.setForce(F_haptic)
                 except Exception:
                     pass
+                timing_haptic_send_s = time.perf_counter() - timing_start
 
                 # ── 4. 位置映射（增量式） ──
                 # 每帧累加 Omega.7 的位移变化量，而非计算相对于固定 home 的偏移。
@@ -2437,6 +2468,7 @@ class InteractiveTeleop:
                     # 锁定后也不再执行超时回退
 
                 # ── 4b. G 模式：纯外力在线变阻抗 ──
+                timing_start = time.perf_counter()
                 self._update_force_only_adaptive_impedance(now)
 
                 # ── 4c. F 模式：视觉前馈基线 + 力反馈微调 ──
@@ -2444,23 +2476,30 @@ class InteractiveTeleop:
 
                 # ── 4d. C1/W1：接触风险驱动的先验可信度修正 ──
                 self._update_prior_trust_correction(now_perf)
+                timing_impedance_update_s = time.perf_counter() - timing_start
 
                 # ── 5. 发给 Franka ──
+                timing_start = time.perf_counter()
                 if self.ctrl is not None:
                     self.ctrl.set_control(target_pos, self._init_ori)
+                timing_panda_command_s = time.perf_counter() - timing_start
 
                 # ── 6. 夹爪控制 (降频) ──
+                timing_start = time.perf_counter()
                 if (now - last_gripper_time) >= dt_gripper:
                     self._update_gripper()
                     last_gripper_time = now
+                timing_gripper_update_s = time.perf_counter() - timing_start
 
                 # ── 6b. 统一原始数据记录（状态更新完成后） ──
+                timing_start = time.perf_counter()
                 if self._trajectory_record:
                     self._traj_cycle += 1
                     if self._traj_cycle % TRAJECTORY_DECIMATION == 0:
                         self._record_trajectory_sample(
                             raw_pos, omega_grip, button, now_perf
                         )
+                timing_record_s = time.perf_counter() - timing_start
 
                 if self._timeline.completed:
                     if self._auto_stop:
@@ -2475,6 +2514,7 @@ class InteractiveTeleop:
                         self._completion_announced = True
 
                 # ── 7. 键盘处理 (降频) ──
+                timing_start = time.perf_counter()
                 if (now - last_kb_time) >= dt_keyboard:
                     self._process_keyboard()
                     last_kb_time = now
@@ -2493,12 +2533,30 @@ class InteractiveTeleop:
                 if self._trajectory_record and self._loop_count % int(CTRL_FREQ * 30) == 0:
                     elapsed = time.time() - self._trajectory_start_time
                     print(f"\n  📝 轨迹录制中: {len(self._trajectory)} 点, {elapsed:.0f}s")
+                timing_keyboard_status_s = time.perf_counter() - timing_start
 
                 # ── 控制周期同步 ──
                 elapsed = time.perf_counter() - t_start
                 sleep_time = dt - elapsed
+                sleep_actual = 0.0
                 if sleep_time > 0:
+                    sleep_start = time.perf_counter()
                     time.sleep(sleep_time)
+                    sleep_actual = time.perf_counter() - sleep_start
+
+                # 下一条CSV中的control_dt正好覆盖本周期，因此耗时字段也延迟
+                # 一行写入，以便逐周期对齐定位长尾来源。
+                self._prev_omega_io_s = timing_omega_io_s
+                self._prev_panda_state_s = timing_panda_state_s
+                self._prev_haptic_send_s = timing_haptic_send_s
+                self._prev_impedance_update_s = timing_impedance_update_s
+                self._prev_panda_command_s = timing_panda_command_s
+                self._prev_gripper_update_s = timing_gripper_update_s
+                self._prev_record_s = timing_record_s
+                self._prev_keyboard_status_s = timing_keyboard_status_s
+                self._prev_loop_work_s = elapsed
+                self._prev_sleep_requested_s = max(0.0, sleep_time)
+                self._prev_sleep_actual_s = sleep_actual
 
         except KeyboardInterrupt:
             print("\n\n⚠️  收到 Ctrl+C，安全停止...")
@@ -2566,6 +2624,18 @@ class InteractiveTeleop:
             "vision_confidence": self._vision_confidence,
             "vision_locked": int(self._vision_locked),
             "control_dt": self._control_dt,
+            "timing_profile_version": self._timing_profile_version,
+            "prev_omega_io_s": self._prev_omega_io_s,
+            "prev_panda_state_s": self._prev_panda_state_s,
+            "prev_haptic_send_s": self._prev_haptic_send_s,
+            "prev_impedance_update_s": self._prev_impedance_update_s,
+            "prev_panda_command_s": self._prev_panda_command_s,
+            "prev_gripper_update_s": self._prev_gripper_update_s,
+            "prev_record_s": self._prev_record_s,
+            "prev_keyboard_status_s": self._prev_keyboard_status_s,
+            "prev_loop_work_s": self._prev_loop_work_s,
+            "prev_sleep_requested_s": self._prev_sleep_requested_s,
+            "prev_sleep_actual_s": self._prev_sleep_actual_s,
             "force_adapt_target_K": self._force_adapt_target_K,
             "force_adapt_ratio": self._force_adapt_ratio,
             "force_adapt_active": int(self._force_adapt_active),
