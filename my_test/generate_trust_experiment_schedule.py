@@ -87,7 +87,7 @@ def main() -> None:
         ("bottle", "W1"), ("bottle", "W0"),
     ]
     pilot = [
-        trial_row("PILOT", idx, obj, cond, "non_formal_experimenter")
+        trial_row("PILOT_V2", idx, obj, cond, "non_formal_experimenter_v2")
         for idx, (obj, cond) in enumerate(pilot_order, start=1)
     ]
     write_csv(OUT / "pilot_schedule_8.csv", pilot)

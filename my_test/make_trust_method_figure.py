@@ -54,17 +54,19 @@ def simulate(prior_K: float, force: float, duration: float = 1.5):
     current = prior_K
     ts, trusts, stiffness = [0.0], [1.0], [prior_K]
     for index in range(1, int(duration / cfg.update_interval_s) + 1):
-        result = update_trust_correction(
-            state,
-            force_mag_N=force,
-            force_threshold_N=1.0,
-            current_K=current,
-            prior_K=prior_K,
-            config=cfg,
-        )
-        state = result.state
-        current = result.command_K
-        ts.append(index * cfg.update_interval_s)
+        sample_time = index * cfg.update_interval_s
+        if cfg.contact_delay_s <= sample_time <= cfg.posterior_window_s:
+            result = update_trust_correction(
+                state,
+                force_mag_N=force,
+                force_threshold_N=1.0,
+                current_K=current,
+                prior_K=prior_K,
+                config=cfg,
+            )
+            state = result.state
+            current = result.command_K
+        ts.append(sample_time)
         trusts.append(state.trust)
         stiffness.append(current)
     return np.asarray(ts), np.asarray(trusts), np.asarray(stiffness)
@@ -105,9 +107,10 @@ def panel_response(ax):
     ax.plot(t_w, k_w, color=RED, linewidth=2.2, label="W1: overstiff prior, 4 N")
     ax.plot(t_c, k_c, color=BLUE, linewidth=2.2, label="C1: bottle prior, 2 N")
     ax.axhline(50, color=GREEN, linewidth=1.2, linestyle="--", label="Safe anchor")
+    ax.axvline(0.80, color=MUTED, linewidth=1.1, linestyle="--", label="Window end")
     ax.set_xlim(0, 1.5)
     ax.set_ylim(45, 205)
-    ax.set_xlabel("Time after posterior activation (s)")
+    ax.set_xlabel("Time after contact onset (s)")
     ax.set_ylabel("Translational stiffness (N/m)")
     ax.grid(axis="y", color="#D1D5DB", linewidth=0.6)
     ax.spines[["top", "right"]].set_visible(False)

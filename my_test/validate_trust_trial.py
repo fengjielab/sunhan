@@ -13,7 +13,7 @@ from typing import Iterable
 
 
 REQUIRED_COLUMNS = {
-    "system_time", "F_ext_mag", "K_trans", "force_threshold",
+    "system_time", "control_dt", "F_ext_mag", "K_trans", "force_threshold",
     "condition_code", "actual_object", "prior_condition",
     "posterior_correction", "prior_K", "prior_trust",
     "contact_risk_ema", "trust_target_K", "trust_config_hash",
@@ -53,6 +53,19 @@ def _event(events: Iterable[dict], name: str) -> dict | None:
     return next((event for event in events if event.get("event") == name), None)
 
 
+def _percentile(values: list[float], probability: float) -> float:
+    ordered = sorted(values)
+    if not ordered:
+        return math.nan
+    position = (len(ordered) - 1) * probability
+    lower = int(math.floor(position))
+    upper = int(math.ceil(position))
+    if lower == upper:
+        return ordered[lower]
+    fraction = position - lower
+    return ordered[lower] * (1.0 - fraction) + ordered[upper] * fraction
+
+
 def validate(csv_path: Path) -> dict:
     with csv_path.open("r", newline="", encoding="utf-8-sig") as handle:
         rows = list(csv.DictReader(handle))
@@ -79,6 +92,26 @@ def validate(csv_path: Path) -> dict:
     )
     condition = next(iter(condition_values)) if len(condition_values) == 1 else ""
     correction_expected = condition in ("C1", "W1")
+
+    control_dt = [
+        value for value in (_number(row["control_dt"]) for row in rows)
+        if math.isfinite(value) and value > 0.0
+    ]
+    median_dt = _percentile(control_dt, 0.50)
+    p99_dt = _percentile(control_dt, 0.99)
+    over_50ms_fraction = (
+        sum(value > 0.050 for value in control_dt) / len(control_dt)
+        if control_dt else math.nan
+    )
+    add(
+        "control_loop_quality",
+        bool(control_dt)
+        and median_dt <= 0.0075
+        and p99_dt <= 0.020
+        and over_50ms_fraction <= 0.001,
+        f"median={median_dt:.6f}s, p99={p99_dt:.6f}s, "
+        f">50ms={over_50ms_fraction:.3%}",
+    )
 
     stiffness = [_number(row["K_trans"]) for row in rows]
     trust = [_number(row["prior_trust"]) for row in rows]
@@ -110,6 +143,7 @@ def validate(csv_path: Path) -> dict:
     prior_event = _event(events, "prior_applied")
     contact_event = _event(events, "contact_onset")
     override_event = _event(events, "posterior_override_start")
+    window_end_event = _event(events, "posterior_window_end")
     safety_event = _event(events, "safety_stop")
     add("prior_event_present", prior_event is not None, str(prior_event))
     add("contact_event_present", contact_event is not None, str(contact_event))
@@ -126,6 +160,47 @@ def validate(csv_path: Path) -> dict:
         )
     else:
         add("override_absent_when_disabled", override_event is None, str(override_event))
+
+    if correction_expected and window_end_event is not None and contact_event is not None:
+        window_latency = _number(window_end_event.get("system_time")) - _number(
+            contact_event.get("system_time")
+        )
+        add(
+            "posterior_window_end_timing",
+            0.80 <= window_latency <= 0.85,
+            f"latency={window_latency:.4f}s",
+        )
+        end_time = _number(window_end_event.get("system_time"))
+        post_rows = [row for row in rows if _number(row["system_time"]) >= end_time]
+        post_stiffness = [_number(row["K_trans"]) for row in post_rows]
+        post_trust = [_number(row["prior_trust"]) for row in post_rows]
+        k_span = (
+            max(post_stiffness) - min(post_stiffness) if post_stiffness else math.inf
+        )
+        trust_span = max(post_trust) - min(post_trust) if post_trust else math.inf
+        add(
+            "posterior_state_frozen_after_window",
+            len(post_rows) >= 2 and k_span <= 1e-6 and trust_span <= 1e-9,
+            f"rows={len(post_rows)}, K_span={k_span:.6g}, "
+            f"trust_span={trust_span:.6g}",
+        )
+    elif correction_expected:
+        add(
+            "posterior_window_end_timing",
+            False,
+            "missing posterior_window_end event",
+        )
+        add(
+            "posterior_state_frozen_after_window",
+            False,
+            "cannot verify without posterior_window_end event",
+        )
+    else:
+        add(
+            "posterior_window_absent_when_disabled",
+            window_end_event is None,
+            str(window_end_event),
+        )
 
     confidences = [_number(row["raw_vision_confidence"]) for row in rows]
     detected = any(math.isfinite(value) for value in confidences)

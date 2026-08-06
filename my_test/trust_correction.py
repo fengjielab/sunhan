@@ -16,9 +16,10 @@ import math
 class TrustCorrectionConfig:
     """固定实验参数；任何字段变化都会改变配置哈希。"""
 
-    version: str = "trust-v1.0"
+    version: str = "trust-v1.1"
     update_interval_s: float = 0.05
     contact_delay_s: float = 0.05
+    posterior_window_s: float = 0.80
     safe_anchor_K: float = 50.0
     K_min: float = 50.0
     K_max: float = 200.0
@@ -65,6 +66,17 @@ def config_hash(config: TrustCorrectionConfig) -> str:
         asdict(config), ensure_ascii=True, sort_keys=True, separators=(",", ":")
     ).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()[:16]
+
+
+def correction_window_open(
+    contact_elapsed_s: float, config: TrustCorrectionConfig
+) -> bool:
+    """Only allow posterior updates inside the prespecified contact window."""
+
+    return (
+        math.isfinite(contact_elapsed_s)
+        and config.contact_delay_s <= contact_elapsed_s <= config.posterior_window_s
+    )
 
 
 def update_trust_correction(

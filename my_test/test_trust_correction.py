@@ -6,6 +6,7 @@ import unittest
 from trust_correction import (
     TrustCorrectionConfig,
     TrustCorrectionState,
+    correction_window_open,
     config_hash,
     update_trust_correction,
 )
@@ -66,6 +67,12 @@ class TrustCorrectionTests(unittest.TestCase):
     def test_config_hash_is_repeatable(self):
         self.assertEqual(config_hash(self.cfg), config_hash(self.cfg))
         self.assertEqual(len(config_hash(self.cfg)), 16)
+
+    def test_correction_window_is_strictly_bounded(self):
+        self.assertFalse(correction_window_open(0.049, self.cfg))
+        self.assertTrue(correction_window_open(0.05, self.cfg))
+        self.assertTrue(correction_window_open(0.80, self.cfg))
+        self.assertFalse(correction_window_open(0.801, self.cfg))
 
 
 if __name__ == "__main__":

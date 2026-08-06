@@ -135,6 +135,7 @@ from experiment_protocol import ExperimentTimeline, PHASE_PREP
 from trust_correction import (
     TrustCorrectionConfig,
     TrustCorrectionState,
+    correction_window_open,
     config_hash as trust_config_hash,
     update_trust_correction,
 )
@@ -651,6 +652,7 @@ class InteractiveTeleop:
         self._trust_active = False
         self._trust_override_marked = False
         self._trust_floor_marked = False
+        self._trust_window_end_marked = False
         self._trust_emergency_candidate = None
 
         if self._trust_experiment:
@@ -708,6 +710,11 @@ class InteractiveTeleop:
         self._gripper_width_actual = float("nan")
         self._gripper_width_valid = False
         self._grasp_success = False
+        # 夹爪 SDK 读取可能阻塞数十毫秒：独立线程采样，并串行化全部夹爪 I/O。
+        self._gripper_io_lock = threading.RLock()
+        self._gripper_measure_stop = threading.Event()
+        self._gripper_measure_thread = None
+        self._gripper_measure_interval_s = 0.10
 
         # ── Franka 状态 ──
         self._init_pos = np.zeros(3)
@@ -1210,7 +1217,21 @@ class InteractiveTeleop:
             self._trust_active = False
             return
         contact_elapsed = self._timeline.system_time(now_perf) - contact_t
-        if contact_elapsed < self._trust_config.contact_delay_s:
+        if contact_elapsed > self._trust_config.posterior_window_s:
+            self._trust_active = False
+            if not self._trust_window_end_marked:
+                self._timeline.mark(
+                    "posterior_window_end",
+                    now_perf,
+                    contact_relative_s=contact_elapsed,
+                    prior_trust=self._trust_state.trust,
+                    command_K_N_per_m=self._K_trans_cur,
+                    target_K_N_per_m=self._trust_target_K,
+                    config_hash=self._trust_config_hash,
+                )
+                self._trust_window_end_marked = True
+            return
+        if not correction_window_open(contact_elapsed, self._trust_config):
             self._trust_active = False
             return
         if now_perf - self._trust_last_update < self._trust_config.update_interval_s:
@@ -1704,11 +1725,12 @@ class InteractiveTeleop:
         return float(np.clip(norm * self._max_width, GRIPPER_MIN_WIDTH, self._max_width))
 
     def _refresh_gripper_measurement(self):
-        """低频读取夹爪实测宽度；失败时不以命令宽度冒充实测值。"""
+        """后台低频读取夹爪实测宽度；失败时不以命令值冒充实测值。"""
         if self.gripper is None:
             return
         try:
-            state = self.gripper.read_once()
+            with self._gripper_io_lock:
+                state = self.gripper.read_once()
             width = float(getattr(state, "width"))
             if np.isfinite(width):
                 self._gripper_width_actual = width
@@ -1718,6 +1740,31 @@ class InteractiveTeleop:
             pass
         self._gripper_width_actual = float("nan")
         self._gripper_width_valid = False
+
+    def _gripper_measurement_loop(self):
+        """在主控制循环之外执行可能阻塞的夹爪状态读取。"""
+        while self.running and not self._gripper_measure_stop.is_set():
+            cycle_start = time.monotonic()
+            if not self._cmd_busy:
+                self._refresh_gripper_measurement()
+            elapsed = time.monotonic() - cycle_start
+            self._gripper_measure_stop.wait(
+                max(0.0, self._gripper_measure_interval_s - elapsed)
+            )
+
+    def _start_gripper_measurement_thread(self):
+        if self.gripper is None:
+            return
+        if (self._gripper_measure_thread is not None
+                and self._gripper_measure_thread.is_alive()):
+            return
+        self._gripper_measure_stop.clear()
+        self._gripper_measure_thread = threading.Thread(
+            target=self._gripper_measurement_loop,
+            name="gripper-measurement",
+            daemon=True,
+        )
+        self._gripper_measure_thread.start()
 
     def _angle_to_width(self, angle_deg: float) -> float:
         """保留的兼容接口：夹钳角度 → 夹爪宽度 (m)"""
@@ -1730,7 +1777,8 @@ class InteractiveTeleop:
         if self.gripper is None:
             return False
         try:
-            self.gripper.stop()
+            with self._gripper_io_lock:
+                self.gripper.stop()
             time.sleep(STOP_SETTLE_TIME)
             return True
         except Exception as e:
@@ -1743,7 +1791,8 @@ class InteractiveTeleop:
             return
         self._cmd_busy = True
         try:
-            self.gripper.move(width, self._gripper_speed_cur)
+            with self._gripper_io_lock:
+                self.gripper.move(width, self._gripper_speed_cur)
             self._last_cmd_width = width
             self._gripper_width_actual = float("nan")
             self._gripper_width_valid = False
@@ -1761,10 +1810,11 @@ class InteractiveTeleop:
             return
         self._cmd_busy = True
         try:
-            success = self.gripper.grasp(
-                width, self._gripper_speed_cur, self._gripper_force_cur,
-                GRIPPER_EPS_INNER, GRIPPER_EPS_OUTER,
-            )
+            with self._gripper_io_lock:
+                success = self.gripper.grasp(
+                    width, self._gripper_speed_cur, self._gripper_force_cur,
+                    GRIPPER_EPS_INNER, GRIPPER_EPS_OUTER,
+                )
             self._last_cmd_width = width
             self._cmd_count += 1
             if success:
@@ -1802,12 +1852,14 @@ class InteractiveTeleop:
             if not self._gripper_stop():
                 raise RuntimeError("stop() 未能释放夹爪力控")
             # 第二步：move 到目标开度
-            moved = self.gripper.move(width, self._gripper_speed_cur)
+            with self._gripper_io_lock:
+                moved = self.gripper.move(width, self._gripper_speed_cur)
             if moved is False:
                 print("  ⚠️ 首次张开被拒绝，再次 stop 后重试...")
                 if not self._gripper_stop():
                     raise RuntimeError("重试前 stop() 失败")
-                moved = self.gripper.move(width, self._gripper_speed_cur)
+                with self._gripper_io_lock:
+                    moved = self.gripper.move(width, self._gripper_speed_cur)
             if moved is False:
                 raise RuntimeError("move() 两次均未能张开夹爪")
             self._last_cmd_width = width
@@ -2145,6 +2197,7 @@ class InteractiveTeleop:
         # 启动键盘线程
         kb_thread = threading.Thread(target=self._keyboard_loop, daemon=True)
         kb_thread.start()
+        self._start_gripper_measurement_thread()
 
         # 显示初始帮助
         self._print_help()
@@ -2192,7 +2245,6 @@ class InteractiveTeleop:
         next_status_time = time.perf_counter()
         last_gripper_time = 0.0
         last_gripper_ctrl_time = 0.0
-        last_gripper_measure_time = 0.0
         last_kb_time = 0.0
         last_cycle_perf = time.perf_counter()
         vision_start_time = time.time() + VISION_START_DELAY
@@ -2401,9 +2453,6 @@ class InteractiveTeleop:
                 if (now - last_gripper_time) >= dt_gripper:
                     self._update_gripper()
                     last_gripper_time = now
-                if (now - last_gripper_measure_time) >= 0.1:
-                    self._refresh_gripper_measurement()
-                    last_gripper_measure_time = now
 
                 # ── 6b. 统一原始数据记录（状态更新完成后） ──
                 if self._trajectory_record:
@@ -2795,6 +2844,10 @@ class InteractiveTeleop:
         """安全关闭所有硬件"""
         self.running = False
         self._transition_stop.set()
+        self._gripper_measure_stop.set()
+        if (self._gripper_measure_thread is not None
+                and self._gripper_measure_thread.is_alive()):
+            self._gripper_measure_thread.join(timeout=0.5)
         if not self._timeline.completed and not self._timeline.incomplete:
             self._timeline.abort("shutdown_before_task_completion")
 

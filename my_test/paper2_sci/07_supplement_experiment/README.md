@@ -15,7 +15,7 @@
 
 ## 执行顺序
 
-1. 先由不进入正式样本的实验人员执行 `pilot_schedule_8.csv`。
+1. 先由不进入正式样本的实验人员执行 `pilot_schedule_8.csv`。当前第二轮预试统一写入 `data/trust_correction/PILOT_V2`，旧 `PILOT` 数据只作诊断，不覆盖也不进入正式统计。
 2. 只有全部通过 `pilot_acceptance_checklist.md`，才冻结参数并开始正式实验。
 3. 正式实验严格按 `formal_schedule_80.csv` 执行：10 人 × 2 物体 × 4 条件，每人 8 次。
 4. 每次运行后立即填写 `trial_outcomes_80_template.csv`。任何失败保留原文件；补测另建 trial_id，并在 `retest_trial_id` 中关联，不能覆盖首测。
@@ -48,7 +48,7 @@ python3 my_test/generate_trust_experiment_schedule.py
 单条预试完成后自动验收：
 
 ```bash
-python3 my_test/validate_trust_trial.py data/trust_correction/PILOT/trust_experiment_YYYYMMDD_HHMMSS.csv
+python3 my_test/validate_trust_trial.py data/trust_correction/PILOT_V2/trust_experiment_YYYYMMDD_HHMMSS.csv
 ```
 
 正式数据收齐后生成试次指标和预定义对比：
