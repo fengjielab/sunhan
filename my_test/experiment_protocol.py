@@ -219,8 +219,11 @@ class ExperimentTimeline:
         if "task_start" in self.event_times and "task_end" in self.event_times:
             operation = self.event_times["task_end"] - self.event_times["task_start"]
         return {
-            "schema_version": 2,
+            "schema_version": 3,
             "mode": self.mode,
+            "subject_id": self.subject_id,
+            "object_id": self.object_id,
+            "trial_id": self.trial_id,
             "started_at_unix": self.start_wall,
             "phase": self.phase,
             "completed": self.completed,

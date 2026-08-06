@@ -26,7 +26,7 @@ SOURCE = ROOT / "data" / "ral_date"
 OUT = ROOT / "paper2_sci"
 
 DIRS = {
-    "selected": OUT / "01_selected_data",
+    "selected": OUT / "01_primary_first_attempt_data",
     "audit": OUT / "02_audit",
     "processed": OUT / "03_processed_data",
     "stats": OUT / "04_statistics",
@@ -155,7 +155,7 @@ def discover_trials() -> list[Trial]:
 
 def write_manifest_and_copy(trials: list[Trial]) -> pd.DataFrame:
     rows = []
-    selected = [t for t in trials if t.selected_latest]
+    selected = [t for t in trials if t.selected_earliest]
     if len(selected) != 180 or len(trials) not in {180, 186}:
         raise RuntimeError(f"Unexpected trial counts: all={len(trials)}, selected={len(selected)}")
     for t in trials:
@@ -173,14 +173,14 @@ def write_manifest_and_copy(trials: list[Trial]) -> pd.DataFrame:
                 "timestamp": t.timestamp,
                 "duplicate_count": t.duplicate_count,
                 "duplicate_rank": t.duplicate_rank,
-                "included_main_latest": int(t.selected_latest),
-                "included_sensitivity_earliest": int(t.selected_earliest),
+                "included_main_first_attempt": int(t.selected_earliest),
+                "included_sensitivity_latest": int(t.selected_latest),
                 "record_role": (
-                    "replacement_selected"
-                    if t.duplicate_count > 1 and t.selected_latest
-                    else "superseded_original"
+                    "first_attempt_selected"
+                    if t.duplicate_count > 1 and t.selected_earliest
+                    else "retest_sensitivity_only"
                     if t.duplicate_count > 1
-                    else "unique_selected"
+                    else "unique_first_attempt"
                 ),
                 "csv_source": rel_files[0],
                 "events_source": rel_files[1],
@@ -190,7 +190,7 @@ def write_manifest_and_copy(trials: list[Trial]) -> pd.DataFrame:
                 "summary_sha256": hashes[2],
             }
         )
-        if t.selected_latest:
+        if t.selected_earliest:
             dest_dir = DIRS["selected"] / t.material / t.participant / t.block
             dest_dir.mkdir(parents=True, exist_ok=True)
             for p in files:
@@ -210,8 +210,8 @@ def write_manifest_and_copy(trials: list[Trial]) -> pd.DataFrame:
         )
     duplicate_note = (
         "- 重复单元格：6 个，每个含一条原记录和一条后续补测。\n"
-        "- 主规则：同一单元格保留时间戳较晚的补测记录。\n"
-        "- 敏感性规则 1：保留时间戳较早的原记录。\n"
+        "- 主规则：同一单元格保留时间戳较早的首测，识别错误不因补测被替换。\n"
+        "- 敏感性规则 1：改用时间戳较晚的补测。\n"
         "- 敏感性规则 2：全部 186 条记录在单元格内先求平均，再进行匹配比较。"
         if len(trials) == 186
         else "- 当前源目录已经由用户清理为严格平衡的 180 个唯一试次，不再存在重复补测记录。"
@@ -1117,7 +1117,7 @@ def write_literature_review() -> None:
     (DIRS["manuscript"] / "literature_innovation_review_zh.md").write_text(content, encoding="utf-8")
 
 
-def write_manuscript(metrics: pd.DataFrame, contrasts: pd.DataFrame, lmm: pd.DataFrame, lmm_info: dict, sensitivity: pd.DataFrame) -> None:
+def write_manuscript(metrics: pd.DataFrame, contrasts: pd.DataFrame, lmm: pd.DataFrame, lmm_info: dict, sensitivity: pd.DataFrame, source_trial_count: int) -> None:
     metric = "primary_excess_impulse_Ns_0p2_1p0"
     mode_stats = metrics.groupby("mode")[metric].agg(["mean", "std", "count"])
     op_stats = metrics.groupby("mode")["operation_time_s"].agg(["mean", "std"])
@@ -1158,7 +1158,13 @@ def write_manuscript(metrics: pd.DataFrame, contrasts: pd.DataFrame, lmm: pd.Dat
         f"{MODE_SHORT[m]} {mode_stats.loc[m, 'mean']:.3f}±{mode_stats.loc[m, 'std']:.3f} N·s"
         for m in MODE_ORDER
     )
-    duplicate_methods = "当前数据目录包含 180 个唯一且平衡的完成试次，不存在重复补测记录。"
+    duplicate_methods = (
+        "源目录共含186条记录，其中6个条件单元各有一次后续补测。"
+        "为保留端到端识别错误，主分析预先固定为每个单元时间戳最早的首测180条；"
+        "后补记录仅用于改用补测和186条单元均值两套敏感性分析。"
+        if source_trial_count == 186
+        else "当前数据目录包含180个唯一且平衡的首测试次。"
+    )
     sensitivity_text = (
         "主分析及三套预设敏感性分析的 F−E 结果如下：\n\n"
         + chr(10).join(sensitivity_lines)
@@ -1428,27 +1434,29 @@ def write_data_entry_templates(metrics: pd.DataFrame) -> None:
     instructions = """# 补充数据填写说明
 
 - 四个模板均采用逗号分隔文本，填写时不要修改首行字段名。
-- NASA-TLX 六个维度统一填写 0–100；所有维度均按“数值越高、负荷越大/表现越差”编码。回顾性填写必须在论文中注明采集时间和可能的回忆偏倚，不得写成实验当场采集。
-- `failure_log_template.md` 仅记录真实发生的额外尝试或失败，不得根据当前成功试次反推或虚构失败。当前180份日志均为完成记录。
+- 本稿不使用回顾性 NASA-TLX；现有量表模板仅保留归档，不进入第二篇论文统计。
+- `failure_log_template.md` 仅记录真实发生的额外尝试或失败，不得根据当前成功试次反推或虚构失败。主分析180份首测日志均为任务完成记录；视觉误识别仍保留在端到端识别分析中。
 - `actual_object_labels_template.md` 用于补充每次实验实际使用的物体。`same_object_within_block` 只有在同一操作者、材料和组别的四模式确实使用同一物体时填写1，否则填写0。
 - 背景信息和知情同意字段以伦理审批及原始记录为准；未知字段留空，不作推测。
 """
     (DIRS["manuscript"] / "data_entry_template_README.md").write_text(instructions, encoding="utf-8")
 
 
-def write_delivery_readme() -> None:
+def write_delivery_readme(source_trial_count: int) -> None:
     content = f"""# paper2_sci 交付说明
 
 本目录由 `paper2_pipeline.py` 从只读源目录 `{SOURCE}` 生成。
 
 ## 目录
 
-- `01_selected_data`：180 个主分析试次的源文件副本。
-- `02_audit`：当前 180 个唯一试次的审计清单和 SHA-256。
+- `01_primary_first_attempt_data`：180 个首测主分析试次的源文件副本。
+- `01_selected_data`：旧版“后补替换”副本，仅为追溯保留，不再作为主分析输入。
+- `02_audit`：全部 {source_trial_count} 条记录的审计清单和 SHA-256。
 - `03_processed_data`：主分析、敏感性分析和接触对齐后的派生数据。
 - `04_statistics`：描述统计、配对对比、混合模型、视觉时序/在线机制/策略数学审计、敏感性分析和四张正文表。
 - `05_figures`：6 幅正文图，每幅含 SVG、PDF 和 600 dpi PNG。
-- `06_manuscript`：文献创新性审查、中文版论文第一稿、图表说明，以及背景、NASA-TLX、失败和实际物体标签填写模板。
+- `06_manuscript`：文献创新性审查、中文版论文第一稿、图表说明及记录模板。
+- `07_supplement_experiment`：先验可信度闭环的8次预试、80次正式顺序及失败/背景记录表。
 
 ## 复现
 
@@ -1462,7 +1470,7 @@ python .\\my_test\\paper2_pipeline.py
 
 ## 重要解释边界
 
-- 当前源目录已清理为 180 个唯一试次，主分析全部纳入。
+- 当前源目录含 {source_trial_count} 条记录；主分析固定使用每个条件单元的最早首测180条，后补记录仅作敏感性分析。
 - 全部成功，因此成功率仅描述，不做模式优劣推断。
 - E/F视觉时序敏感性按完整2×2匹配块排除，不逐条删除试次。
 - F/G均有在线阻抗更新证据；硬材料F分支为接触触发固定柔化，不表述为力幅值连续调制。
@@ -1479,15 +1487,15 @@ def main() -> None:
     setup_plotting()
     trials = discover_trials()
     manifest = write_manifest_and_copy(trials)
-    latest = [t for t in trials if t.selected_latest]
     earliest = [t for t in trials if t.selected_earliest]
+    latest = [t for t in trials if t.selected_latest]
 
-    metrics_main, aligned = metrics_for_trials(latest, keep_series=True)
+    metrics_main, aligned = metrics_for_trials(earliest, keep_series=True)
     metrics_main.to_csv(DIRS["processed"] / "trial_metrics_main_180.csv", index=False, encoding="utf-8-sig")
     if len(trials) == 186:
-        metrics_old, _ = metrics_for_trials(earliest, keep_series=False)
+        metrics_retest, _ = metrics_for_trials(latest, keep_series=False)
         metrics_all, _ = metrics_for_trials(trials, keep_series=False)
-        metrics_old.to_csv(DIRS["processed"] / "trial_metrics_earliest_180.csv", index=False, encoding="utf-8-sig")
+        metrics_retest.to_csv(DIRS["processed"] / "trial_metrics_latest_retest_180.csv", index=False, encoding="utf-8-sig")
         metrics_all.to_csv(DIRS["processed"] / "trial_metrics_all_186.csv", index=False, encoding="utf-8-sig")
     aligned_summary = aggregate_aligned(aligned)
     aligned_summary.to_csv(DIRS["processed"] / "aligned_timeseries_summary.csv", index=False, encoding="utf-8-sig")
@@ -1497,11 +1505,11 @@ def main() -> None:
     c_main["n_trials_analyzed"] = len(metrics_main)
     sensitivity, timing_block_audit = build_sensitivity_analyses(metrics_main, primary)
     if len(trials) == 186:
-        c_old, _ = contrast_table(metrics_old, primary, "sensitivity_earliest_180")
+        c_retest, _ = contrast_table(metrics_retest, primary, "sensitivity_latest_retest_180")
         c_all, _ = contrast_table(metrics_all, primary, "sensitivity_all_186_cell_mean")
-        c_old["n_trials_analyzed"] = len(metrics_old)
+        c_retest["n_trials_analyzed"] = len(metrics_retest)
         c_all["n_trials_analyzed"] = len(metrics_all)
-        sensitivity = pd.concat([sensitivity, c_old, c_all], ignore_index=True)
+        sensitivity = pd.concat([sensitivity, c_retest, c_all], ignore_index=True)
     wide_main.to_csv(DIRS["processed"] / "paired_block_primary_data.csv", index=False, encoding="utf-8-sig")
     sensitivity.to_csv(DIRS["stats"] / "sensitivity_results.csv", index=False, encoding="utf-8-sig")
     timing_block_audit.to_csv(
@@ -1558,10 +1566,10 @@ def main() -> None:
     fig5_primary(metrics_main, c_main)
     fig6_interactions(metrics_main)
     write_literature_review()
-    write_manuscript(metrics_main, c_main, lmm, lmm_info, sensitivity)
+    write_manuscript(metrics_main, c_main, lmm, lmm_info, sensitivity, len(trials))
     write_figure_captions()
     write_data_entry_templates(metrics_main)
-    write_delivery_readme()
+    write_delivery_readme(len(trials))
 
     summary = {
         "all_trials": len(trials),

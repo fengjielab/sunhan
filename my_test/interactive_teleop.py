@@ -95,6 +95,10 @@ interactive_teleop.py — 交互式遥操作：实时调节阻尼/刚度/力反�
     # 等价写法:
     python3 my_test/interactive_teleop.py --mode vision_force
 
+    # C0/C1/W0/W1 — 先验可信度反事实补充实验
+    python3 my_test/interactive_teleop.py --mode W1 --actual-object apple \
+      --subject-id P01 --trial-id P01_01_apple_W1
+
     # 指定轨迹输出目录
     python3 my_test/interactive_teleop.py --trajectory-dir data/
 
@@ -128,6 +132,12 @@ import panda_py
 from panda_py import controllers, libfranka
 
 from experiment_protocol import ExperimentTimeline, PHASE_PREP
+from trust_correction import (
+    TrustCorrectionConfig,
+    TrustCorrectionState,
+    config_hash as trust_config_hash,
+    update_trust_correction,
+)
 
 sys.path.insert(0, "/home/mfj/sunhan")
 from plans.force_estimator import ForceEstimator
@@ -204,6 +214,11 @@ TRAJECTORY_CSV_HEADER = [
     "force_adapt_target_K", "force_adapt_ratio", "force_adapt_active",
     "force_adapt_delta_K",
     "force_baseline_mean", "force_baseline_std", "force_threshold",
+    "actual_object", "prior_condition", "posterior_correction", "condition_code",
+    "raw_vision_class", "raw_vision_label", "raw_vision_confidence",
+    "applied_prior_label", "prior_K", "safe_anchor_K", "prior_trust",
+    "contact_risk_raw", "contact_risk_ema", "trust_force_guard_N",
+    "trust_target_K", "trust_delta_K", "trust_active", "trust_config_hash",
 ]
 
 # 平滑过渡步长
@@ -394,6 +409,23 @@ FUSION_POSTERIOR_POLICY = {
     },
 }
 
+# 接触风险驱动的视觉先验可信度修正（新补充实验 C0/C1/W0/W1）。
+# 原 A/E/F/G 模式不使用这些参数，因此其控制行为保持不变。
+TRUST_CORRECTION_CONFIG = TrustCorrectionConfig()
+TRUST_OBJECT_CONFIG = {
+    "apple": {
+        "correct_K": 50.0,
+        "correct_label": "soft",
+        "gripper_force": 8.0,
+    },
+    "cup": {
+        "correct_K": 120.0,
+        "correct_label": "medium",
+        "gripper_force": 15.0,
+    },
+}
+TRUST_OVERSTIFF_K = 200.0
+
 # ═══════════════════════════════════════════
 # YOLO 独立进程（拥有独立 GIL，不受控制循环争用）
 # ═══════════════════════════════════════════
@@ -490,15 +522,33 @@ class InteractiveTeleop:
     def __init__(self, mode: str = "default", record_trajectory: bool = True,
                  trajectory_dir: str = "data", subject_id: str = "unknown",
                  object_id: str = "unknown", trial_id: str = "unknown",
-                 auto_stop: bool = True):
+                 auto_stop: bool = True, prior_condition: str = "correct",
+                 posterior_correction: bool = False,
+                 actual_object: str = "unknown"):
         # ── 运行模式 ──
         self.mode = mode  # "default" | "force_only" | "vision" | PRESETS key
+        self._trust_experiment = mode == "trust_experiment"
+        self._prior_condition = str(prior_condition).lower()
+        self._posterior_correction = bool(posterior_correction)
+        self._actual_object = str(actual_object).lower()
+        if self._trust_experiment:
+            if self._prior_condition not in ("correct", "overstiff"):
+                raise ValueError("prior_condition must be correct or overstiff")
+            if self._actual_object not in TRUST_OBJECT_CONFIG:
+                raise ValueError("actual_object must be apple or cup")
+            prefix = "C" if self._prior_condition == "correct" else "W"
+            self._trust_condition_code = prefix + (
+                "1" if self._posterior_correction else "0"
+            )
+        else:
+            self._trust_condition_code = ""
         self._experiment_condition = {
             "default": "A", "experiment_fixed_a": "A",
             "soft_obj": "B", "medium_obj": "B", "hard_obj": "B",
             "vision_observe": "C", "vision_stiffness": "D",
             "vision": "E", "vision_force": "F",
             "force_only": "G",
+            "trust_experiment": self._trust_condition_code,
         }.get(mode, mode)
 
         # ── 运行状态 ──
@@ -514,11 +564,14 @@ class InteractiveTeleop:
         self._experiment_parameters_locked = mode in (
             "experiment_fixed_a", "soft_obj", "medium_obj", "hard_obj",
             "vision_observe", "vision_stiffness", "vision", "vision_force",
-            "force_only",
+            "force_only", "trust_experiment",
         )
 
         # ── Vision 模式状态 ──
-        self._vision_enabled = (mode in ("vision", "vision_observe", "vision_stiffness", "vision_force"))
+        self._vision_enabled = (mode in (
+            "vision", "vision_observe", "vision_stiffness", "vision_force",
+            "trust_experiment",
+        ))
         self._vision_auto_map = (mode in ("vision", "vision_stiffness", "vision_force"))
         self._vision_stiffness_only = (mode == "vision_stiffness")
         self._vision_force_fusion = (mode == "vision_force")
@@ -556,6 +609,7 @@ class InteractiveTeleop:
         self._vision_restarts = 0            # RealSense pipeline 重启次数
         self._vision_confidence = float("nan")
         self._vision_class = "unknown"
+        self._vision_raw_label = "unknown"
         self._first_frame_marked = False
         # 直接在视觉线程内调用 cv2.imshow (而非独立显示进程)，参考 shared_control_node.py
         # 使用 cv2.startWindowThread() 确保 OpenCV GUI 线程安全
@@ -582,6 +636,39 @@ class InteractiveTeleop:
         self._deadband_cur = DEFAULT_DEADBAND
         self._scale_cur = DEFAULT_SCALE
         self._nullspace_cur = DEFAULT_NULLSPACE
+
+        # ── C0/C1/W0/W1：显式先验可信度状态 ──
+        self._trust_config = TRUST_CORRECTION_CONFIG
+        self._trust_config_hash = trust_config_hash(self._trust_config)
+        self._trust_state = TrustCorrectionState()
+        self._trust_last_update = 0.0
+        self._trust_prior_K = float("nan")
+        self._trust_applied_prior_label = "not_applicable"
+        self._trust_risk_raw = 0.0
+        self._trust_force_guard_N = float("nan")
+        self._trust_target_K = float("nan")
+        self._trust_delta_K = 0.0
+        self._trust_active = False
+        self._trust_override_marked = False
+        self._trust_floor_marked = False
+        self._trust_emergency_candidate = None
+
+        if self._trust_experiment:
+            object_cfg = TRUST_OBJECT_CONFIG[self._actual_object]
+            if self._prior_condition == "correct":
+                self._trust_prior_K = object_cfg["correct_K"]
+                self._trust_applied_prior_label = object_cfg["correct_label"]
+            else:
+                self._trust_prior_K = TRUST_OVERSTIFF_K
+                self._trust_applied_prior_label = "deliberately_overstiff"
+            self._trust_target_K = self._trust_prior_K
+            self._K_trans_cur = self._trust_prior_K
+            self._K_rot_cur = self._trust_prior_K * self._trust_config.K_rot_ratio
+            self._damping_ratio_cur = self._trust_config.damping_ratio
+            self._K_fb_cur = self._trust_config.K_fb
+            self._deadband_cur = self._trust_config.deadband_N
+            self._scale_cur = self._trust_config.position_scale
+            self._gripper_force_cur = object_cfg["gripper_force"]
 
         # G 模式沿用 force_adaptive_teleop.py 的接触前基线和阻尼参数。
         if self._force_only_adaptive:
@@ -614,7 +701,10 @@ class InteractiveTeleop:
         self._btn0_prev = 0  # 灰色按钮 (上一帧)
         self._gripper_force_feedback = 0.0  # 夹爪力反馈值
         self._gripper_speed_cur = GRIPPER_SPEED
-        self._gripper_force_cur = GRIPPER_FORCE
+        self._gripper_force_cur = (
+            TRUST_OBJECT_CONFIG[self._actual_object]["gripper_force"]
+            if self._trust_experiment else GRIPPER_FORCE
+        )
         self._gripper_width_actual = float("nan")
         self._gripper_width_valid = False
         self._grasp_success = False
@@ -1076,6 +1166,132 @@ class InteractiveTeleop:
             K_6x6 = self._build_stiffness(self._K_trans_cur, self._K_rot_cur)
             self.ctrl.set_impedance(K_6x6)
 
+    def _configure_trust_experiment_prior(self):
+        """施加 C0/C1/W0/W1 的受控先验，并写入不可歧义的审计事件。"""
+        if not self._trust_experiment:
+            return
+        self._K_trans_cur = self._trust_prior_K
+        self._K_rot_cur = self._trust_prior_K * self._trust_config.K_rot_ratio
+        self._damping_ratio_cur = self._trust_config.damping_ratio
+        self._K_fb_cur = self._trust_config.K_fb
+        self._deadband_cur = self._trust_config.deadband_N
+        self._scale_cur = self._trust_config.position_scale
+        self._gripper_force_cur = TRUST_OBJECT_CONFIG[
+            self._actual_object
+        ]["gripper_force"]
+        self._vision_base_K_trans = self._trust_prior_K
+        self._vision_base_K_rot = self._K_rot_cur
+        self._vision_locked_label = self._trust_applied_prior_label
+        self._vision_locked = True
+        if self.ctrl is not None:
+            self.ctrl.set_impedance(
+                self._build_stiffness(self._K_trans_cur, self._K_rot_cur)
+            )
+        self._timeline.mark(
+            "prior_applied",
+            actual_object=self._actual_object,
+            condition_code=self._trust_condition_code,
+            prior_condition=self._prior_condition,
+            posterior_correction=self._posterior_correction,
+            prior_K_N_per_m=self._trust_prior_K,
+            safe_anchor_K_N_per_m=self._trust_config.safe_anchor_K,
+            applied_prior_label=self._trust_applied_prior_label,
+            config_hash=self._trust_config_hash,
+        )
+
+    def _update_prior_trust_correction(self, now_perf: float):
+        """接触后用风险削弱视觉先验可信度，并向安全刚度锚点回退。"""
+        if not self._trust_experiment or not self._posterior_correction:
+            self._trust_active = False
+            return
+
+        contact_t = self._timeline.event_times.get("contact_onset")
+        if contact_t is None:
+            self._trust_active = False
+            return
+        contact_elapsed = self._timeline.system_time(now_perf) - contact_t
+        if contact_elapsed < self._trust_config.contact_delay_s:
+            self._trust_active = False
+            return
+        if now_perf - self._trust_last_update < self._trust_config.update_interval_s:
+            return
+        if not np.isfinite(self._timeline.force_threshold):
+            return
+        self._trust_last_update = now_perf
+
+        previous_K = self._K_trans_cur
+        previous_trust = self._trust_state.trust
+        result = update_trust_correction(
+            self._trust_state,
+            force_mag_N=float(np.linalg.norm(self._F_ext_current[:3])),
+            force_threshold_N=float(self._timeline.force_threshold),
+            current_K=float(self._K_trans_cur),
+            prior_K=float(self._trust_prior_K),
+            config=self._trust_config,
+        )
+        self._trust_state = result.state
+        self._trust_risk_raw = result.risk_raw
+        self._trust_force_guard_N = result.force_guard_N
+        self._trust_target_K = result.target_K
+        self._trust_delta_K = result.delta_K
+        self._trust_active = result.active
+        self._K_trans_cur = result.command_K
+        self._K_rot_cur = result.command_K * self._trust_config.K_rot_ratio
+
+        if self.ctrl is not None and abs(self._K_trans_cur - previous_K) > 0.5:
+            self.ctrl.set_impedance(
+                self._build_stiffness(self._K_trans_cur, self._K_rot_cur)
+            )
+
+        if result.active and not self._trust_override_marked:
+            self._timeline.mark(
+                "posterior_override_start",
+                now_perf,
+                contact_relative_s=contact_elapsed,
+                force_N=float(np.linalg.norm(self._F_ext_current[:3])),
+                force_guard_N=result.force_guard_N,
+                prior_trust_before=previous_trust,
+                prior_trust_after=result.state.trust,
+                command_K_N_per_m=result.command_K,
+                config_hash=self._trust_config_hash,
+            )
+            self._trust_override_marked = True
+        if result.state.trust <= 0.0 and not self._trust_floor_marked:
+            self._timeline.mark(
+                "prior_trust_floor",
+                now_perf,
+                contact_relative_s=contact_elapsed,
+                command_K_N_per_m=result.command_K,
+            )
+            self._trust_floor_marked = True
+
+    def _check_trust_experiment_safety(self, now_perf: float):
+        """新实验专用的独立超力保护；四个条件使用完全相同的停止规则。"""
+        if not self._trust_experiment:
+            return
+        force_mag = float(np.linalg.norm(self._F_ext_current[:3]))
+        if force_mag >= self._trust_config.emergency_force_N:
+            if self._trust_emergency_candidate is None:
+                self._trust_emergency_candidate = now_perf
+            elif (now_perf - self._trust_emergency_candidate
+                  >= self._trust_config.emergency_hold_s):
+                self._timeline.mark(
+                    "safety_stop",
+                    now_perf,
+                    force_N=force_mag,
+                    limit_N=self._trust_config.emergency_force_N,
+                    hold_s=self._trust_config.emergency_hold_s,
+                    condition_code=self._trust_condition_code,
+                )
+                self._timeline.abort("trust_experiment_force_guard")
+                self.running = False
+                print(
+                    "\n\a  ⛔ 新实验超力保护触发："
+                    f"|F|={force_mag:.2f} N，试次标记为失败并安全停止"
+                )
+        else:
+            self._trust_emergency_candidate = None
+
     # ═══════════════════════════════════════════
     # Vision 模式 — 视觉线程 (RealSense + YOLO)
     # ═══════════════════════════════════════════
@@ -1199,6 +1415,9 @@ class InteractiveTeleop:
                         self._vision_last_time = time.time()
                         self._vision_confidence = float(det.get("conf", float("nan")))
                         self._vision_class = str(det.get("class", "unknown"))
+                        self._vision_raw_label = str(
+                            getattr(det.get("profile"), "label", "unknown")
+                        )
                     self._timeline.mark(
                         "first_detection", confidence=self._vision_confidence,
                         detected_class=self._vision_class,
@@ -1869,6 +2088,15 @@ class InteractiveTeleop:
                 f" r={self._force_adapt_ratio:.2f}"
             )
 
+        if self._trust_experiment:
+            active = "*" if self._trust_active else ""
+            status += (
+                f" 🔁{self._trust_condition_code}"
+                f" τ={self._trust_state.trust:.2f}"
+                f" r={self._trust_state.risk_ema:.2f}"
+                f" ΔK={self._trust_delta_K:+.1f}{active}"
+            )
+
         # Vision 模式下附加检测信息
         if self._vision_enabled:
             lock_str = "🔒" if self._vision_locked else "🔓"
@@ -1878,6 +2106,8 @@ class InteractiveTeleop:
             if self._vision_force_fusion and self._vision_locked:
                 active = "*" if self._fusion_active else ""
                 status += f" 👁️+F ΔKf={self._fusion_delta_K:+.1f}{active}"
+            elif self._trust_experiment:
+                status += " 👁️RAW"
             elif hasattr(self, '_vision_auto_map') and not self._vision_auto_map:
                 status += " 👁️OBS"
             else:
@@ -1922,6 +2152,8 @@ class InteractiveTeleop:
         # 确定启动预设：命令行 preset > 实验模式基线
         if self._init_preset:
             self._set_preset(self._init_preset)
+        elif self._trust_experiment:
+            self._configure_trust_experiment_prior()
         elif self.mode in ("default", "vision_stiffness"):
             self._set_preset("experiment_fixed_a")
         elif self.mode == "vision_observe":
@@ -1933,7 +2165,13 @@ class InteractiveTeleop:
             self._set_preset("standard")
 
         if self._vision_enabled:
-            if hasattr(self, '_vision_auto_map') and not self._vision_auto_map:
+            if self._trust_experiment:
+                correction = "开启" if self._posterior_correction else "关闭"
+                mode_str = (
+                    f"🔁 {self._trust_condition_code} 先验可信度实验 — "
+                    f"{self._actual_object}/{self._prior_condition}/后验{correction}"
+                )
+            elif hasattr(self, '_vision_auto_map') and not self._vision_auto_map:
                 mode_str = "👁️ Vision-Observe 模式 — 视觉仅观察不改变手感"
             elif self._vision_force_fusion:
                 mode_str = "👁️+F Vision-Force 模式 — 视觉前馈 + 力反馈微调"
@@ -2047,6 +2285,9 @@ class InteractiveTeleop:
                         "视觉识别在后台独立进行"
                     )
                 self._timeline.observe_contact(F_mag_now, now_perf)
+                self._check_trust_experiment_safety(now_perf)
+                if not self.running:
+                    break
                 self._timeline.observe_gripper(
                     self._gripper_state.value,
                     self._gripper_width_actual if self._gripper_width_valid else self._last_cmd_width,
@@ -2149,6 +2390,9 @@ class InteractiveTeleop:
                 # ── 4c. F 模式：视觉前馈基线 + 力反馈微调 ──
                 self._update_vision_force_fusion(now)
 
+                # ── 4d. C1/W1：接触风险驱动的先验可信度修正 ──
+                self._update_prior_trust_correction(now_perf)
+
                 # ── 5. 发给 Franka ──
                 if self.ctrl is not None:
                     self.ctrl.set_control(target_pos, self._init_ori)
@@ -2232,7 +2476,7 @@ class InteractiveTeleop:
         if F.size < 6:
             F = np.pad(F, (0, 6 - F.size), constant_values=np.nan)
         self._trajectory.append({
-            "schema_version": 2,
+            "schema_version": 3,
             "system_time": timeline["system_time"],
             "time": timeline["system_time"],  # 内部兼容旧汇总逻辑
             "operation_time": timeline["operation_time"],
@@ -2280,6 +2524,32 @@ class InteractiveTeleop:
             "force_baseline_mean": timeline["force_baseline_mean"],
             "force_baseline_std": timeline["force_baseline_std"],
             "force_threshold": timeline["force_threshold"],
+            "actual_object": self._actual_object if self._trust_experiment else "",
+            "prior_condition": self._prior_condition if self._trust_experiment else "",
+            "posterior_correction": (
+                int(self._posterior_correction) if self._trust_experiment else ""
+            ),
+            "condition_code": self._trust_condition_code,
+            "raw_vision_class": self._vision_class,
+            "raw_vision_label": self._vision_raw_label,
+            "raw_vision_confidence": self._vision_confidence,
+            "applied_prior_label": (
+                self._trust_applied_prior_label if self._trust_experiment else ""
+            ),
+            "prior_K": self._trust_prior_K,
+            "safe_anchor_K": (
+                self._trust_config.safe_anchor_K if self._trust_experiment else ""
+            ),
+            "prior_trust": self._trust_state.trust,
+            "contact_risk_raw": self._trust_risk_raw,
+            "contact_risk_ema": self._trust_state.risk_ema,
+            "trust_force_guard_N": self._trust_force_guard_N,
+            "trust_target_K": self._trust_target_K,
+            "trust_delta_K": self._trust_delta_K,
+            "trust_active": int(self._trust_active),
+            "trust_config_hash": (
+                self._trust_config_hash if self._trust_experiment else ""
+            ),
         })
 
     def _save_trajectory(self, timestamp: str = None):
@@ -2409,6 +2679,9 @@ class InteractiveTeleop:
             "force_adapt_target_K_final": self._force_adapt_target_K,
             "force_adapt_ratio_final": self._force_adapt_ratio,
             "force_adapt_delta_K_final": self._force_adapt_delta_K,
+            "prior_trust_final": self._trust_state.trust,
+            "trust_target_K_final": self._trust_target_K,
+            "trust_delta_K_final": self._trust_delta_K,
         }
 
         # ── 模式信息 ──
@@ -2420,6 +2693,13 @@ class InteractiveTeleop:
             "force_only_adaptive": self._force_only_adaptive,
             "vision_locked": self._vision_locked,
             "vision_label": self._vision_locked_label,
+            "trust_experiment": self._trust_experiment,
+            "actual_object": self._actual_object if self._trust_experiment else None,
+            "condition_code": self._trust_condition_code or None,
+            "prior_condition": self._prior_condition if self._trust_experiment else None,
+            "posterior_correction": (
+                self._posterior_correction if self._trust_experiment else None
+            ),
         }
         if self.mode in PRESETS:
             mode_info["preset_name"] = PRESETS[self.mode]["name"]
@@ -2443,6 +2723,22 @@ class InteractiveTeleop:
                 "force_deadband_N": self._force_adapt_deadband,
                 "K_rot_ratio": G_K_ROT_RATIO,
                 "smooth_factor": G_IMPD_SMOOTH_FACTOR,
+            }
+
+        trust_config = None
+        if self._trust_experiment:
+            from dataclasses import asdict as _asdict
+            trust_config = {
+                **_asdict(self._trust_config),
+                "config_hash": self._trust_config_hash,
+                "actual_object": self._actual_object,
+                "condition_code": self._trust_condition_code,
+                "prior_condition": self._prior_condition,
+                "posterior_correction": self._posterior_correction,
+                "applied_prior_label": self._trust_applied_prior_label,
+                "prior_K_N_per_m": self._trust_prior_K,
+                "gripper_force_N": self._gripper_force_cur,
+                "raw_vision_is_control_input": False,
             }
 
         summary = {
@@ -2474,6 +2770,7 @@ class InteractiveTeleop:
             "final_params": final_params,
             "fusion_config": fusion_config,
             "force_adapt_config": force_adapt_config,
+            "trust_correction_config": trust_config,
             "experiment": self._timeline.to_dict(),
         }
 
@@ -2561,6 +2858,8 @@ def main():
     MODE_CHOICES = [
         "default", "vision", "vision_observe", "vision_stiffness",
         "vision_force", "force_only", "g", "G", "f", "F",
+        "trust_experiment", "c0", "C0", "c1", "C1",
+        "w0", "W0", "w1", "W1",
     ] + sorted(PRESETS.keys())
     parser = argparse.ArgumentParser(description="交互式遥操作：实时调节阻尼/刚度/力反馈")
     parser.add_argument("--mode", "-m", type=str, default="default",
@@ -2572,6 +2871,7 @@ def main():
                              "vision=SCI模式E视觉多参数前馈, "
                              "g/force_only=实验G纯外力在线变阻抗, "
                              "f/vision_force=实验F模式(视觉前馈+力反馈微调融合), "
+                             "C0/C1/W0/W1=先验可信度补充实验, "
                              "或直接指定预设: " + ", ".join(sorted(PRESETS.keys())))
     parser.add_argument("--load", "-l", type=str, default=None,
                         help="启动时加载参数文件路径")
@@ -2583,6 +2883,18 @@ def main():
     parser.add_argument("--object-id", default="unknown", help="物体编号")
     parser.add_argument("--trial-id", default="unknown", help="试次编号")
     parser.add_argument(
+        "--actual-object", choices=("apple", "cup"), default=None,
+        help="C0/C1/W0/W1 的真实物体（必填）",
+    )
+    parser.add_argument(
+        "--prior-condition", choices=("correct", "overstiff"), default=None,
+        help="trust_experiment 的受控视觉先验条件",
+    )
+    parser.add_argument(
+        "--posterior-correction", choices=("on", "off"), default=None,
+        help="trust_experiment 是否启用接触后可信度修正",
+    )
+    parser.add_argument(
         "--manual-stop", action="store_true",
         help="调试模式：任务完成后不自动退出，按 Ctrl+C 时保存并安全关闭",
     )
@@ -2591,17 +2903,46 @@ def main():
         canonical_mode = "vision_force"
     elif args.mode in ("g", "G"):
         canonical_mode = "force_only"
+    elif args.mode.lower() in ("c0", "c1", "w0", "w1"):
+        condition_code = args.mode.upper()
+        canonical_mode = "trust_experiment"
+        prior_condition = "correct" if condition_code.startswith("C") else "overstiff"
+        posterior_correction = condition_code.endswith("1")
     else:
         canonical_mode = args.mode
+
+    if canonical_mode == "trust_experiment":
+        if args.actual_object is None:
+            parser.error("C0/C1/W0/W1 必须指定 --actual-object apple 或 cup")
+        if args.mode.lower() not in ("c0", "c1", "w0", "w1"):
+            if args.prior_condition is None or args.posterior_correction is None:
+                parser.error(
+                    "trust_experiment 必须同时指定 --prior-condition 和 "
+                    "--posterior-correction"
+                )
+            prior_condition = args.prior_condition
+            posterior_correction = args.posterior_correction == "on"
+        actual_object = args.actual_object
+    else:
+        prior_condition = "correct"
+        posterior_correction = False
+        actual_object = "unknown"
+
+    timeline_object_id = args.object_id
+    if canonical_mode == "trust_experiment" and timeline_object_id == "unknown":
+        timeline_object_id = actual_object
 
     teleop = InteractiveTeleop(
         mode=canonical_mode,
         record_trajectory=not args.no_trajectory,
         trajectory_dir=args.trajectory_dir,
         subject_id=args.subject_id,
-        object_id=args.object_id,
+        object_id=timeline_object_id,
         trial_id=args.trial_id,
         auto_stop=not args.manual_stop,
+        prior_condition=prior_condition,
+        posterior_correction=posterior_correction,
+        actual_object=actual_object,
     )
 
     # 若指定了启动参数文件，替换默认保存路径
