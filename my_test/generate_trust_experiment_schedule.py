@@ -12,8 +12,8 @@ ROOT = Path(__file__).resolve().parent
 OUT = ROOT / "paper2_sci" / "07_supplement_experiment"
 
 OBJECTS = {
-    "apple": {"correct_K": 50.0, "gripper_force": 8.0},
-    "cup": {"correct_K": 120.0, "gripper_force": 15.0},
+    "banana": {"correct_K": 50.0, "gripper_force": 8.0},
+    "bottle": {"correct_K": 120.0, "gripper_force": 15.0},
 }
 CONDITIONS = {
     "C0": {"prior": "correct", "posterior": "off"},
@@ -23,7 +23,7 @@ CONDITIONS = {
 }
 TREATMENTS = [
     (obj, cond)
-    for obj in ("apple", "cup")
+    for obj in ("banana", "bottle")
     for cond in ("C0", "C1", "W0", "W1")
 ]
 
@@ -81,10 +81,10 @@ def main() -> None:
 
     # 预试从低风险正确先验开始；每个错误先验先运行有修正的 W1，再运行 W0。
     pilot_order = [
-        ("apple", "C0"), ("apple", "C1"),
-        ("cup", "C0"), ("cup", "C1"),
-        ("apple", "W1"), ("apple", "W0"),
-        ("cup", "W1"), ("cup", "W0"),
+        ("banana", "C0"), ("banana", "C1"),
+        ("bottle", "C0"), ("bottle", "C1"),
+        ("banana", "W1"), ("banana", "W0"),
+        ("bottle", "W1"), ("bottle", "W0"),
     ]
     pilot = [
         trial_row("PILOT", idx, obj, cond, "non_formal_experimenter")

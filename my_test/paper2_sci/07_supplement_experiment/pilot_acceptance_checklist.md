@@ -7,7 +7,8 @@
 | 文件完整性 | 每次均生成 CSV、events JSON、summary JSON |  |  |
 | 条件身份 | 日志 condition_code 与顺序表一致，配置哈希一致 |  |  |
 | 原始视觉 | raw_vision_class/label/confidence 有记录；不作为受控先验输入 |  |  |
-| C0/C1 正确先验 | apple=50 N/m，cup=120 N/m |  |  |
+| 对象标准化 | 仿制香蕉与水瓶状态均符合 `object_standardization.md` |  |  |
+| C0/C1 正确先验 | banana=50 N/m，bottle=120 N/m（预试确认后冻结） |  |  |
 | W0/W1 错误先验 | 两物体均为 200 N/m |  |  |
 | 未修正条件 | C0、W0 的 prior_trust=1 且 K 不发生在线修正 |  |  |
 | 修正起点 | C1、W1 只能在 contact_onset 后至少 0.05 s 激活 |  |  |

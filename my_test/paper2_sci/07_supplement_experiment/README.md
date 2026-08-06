@@ -11,7 +11,7 @@
 | W0 | 故意过硬（200 N/m） | 关闭 | 错误先验反事实基线 |
 | W1 | 故意过硬（200 N/m） | 开启 | 检验闭环纠错收益 |
 
-真实物体为 apple 和 paper cup（命令行写作 `cup`）。正确先验分别为 50 和 120 N/m；安全锚点为 50 N/m。四条件均保留原始视觉识别结果，但该结果只用于端到端识别审计，不改变受控施加的先验。
+实验对象为标准化仿制香蕉（`banana`）和限制状态水瓶（`bottle`）。正确先验暂定分别为50和120 N/m；夹爪力暂定分别为8和15 N；安全锚点为50 N/m。参数须经8次预试确认后一次性冻结。四条件均保留原始视觉识别结果，但该结果只用于端到端识别审计，不改变受控施加的先验。
 
 ## 执行顺序
 
@@ -36,7 +36,7 @@
 命令已写入两个顺序表。例如：
 
 ```bash
-python3 my_test/interactive_teleop.py --mode W1 --actual-object apple --subject-id P01 --object-id apple --trial-id P01_01_apple_W1 --trajectory-dir data/trust_correction/P01
+python3 my_test/interactive_teleop.py --mode W1 --actual-object banana --subject-id P01 --object-id banana --trial-id P01_01_banana_W1 --trajectory-dir data/trust_correction/P01
 ```
 
 重新生成顺序表：

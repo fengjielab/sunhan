@@ -96,8 +96,8 @@ interactive_teleop.py — 交互式遥操作：实时调节阻尼/刚度/力反�
     python3 my_test/interactive_teleop.py --mode vision_force
 
     # C0/C1/W0/W1 — 先验可信度反事实补充实验
-    python3 my_test/interactive_teleop.py --mode W1 --actual-object apple \
-      --subject-id P01 --trial-id P01_01_apple_W1
+    python3 my_test/interactive_teleop.py --mode W1 --actual-object banana \
+      --subject-id P01 --trial-id P01_01_banana_W1
 
     # 指定轨迹输出目录
     python3 my_test/interactive_teleop.py --trajectory-dir data/
@@ -413,12 +413,12 @@ FUSION_POSTERIOR_POLICY = {
 # 原 A/E/F/G 模式不使用这些参数，因此其控制行为保持不变。
 TRUST_CORRECTION_CONFIG = TrustCorrectionConfig()
 TRUST_OBJECT_CONFIG = {
-    "apple": {
+    "banana": {
         "correct_K": 50.0,
         "correct_label": "soft",
         "gripper_force": 8.0,
     },
-    "cup": {
+    "bottle": {
         "correct_K": 120.0,
         "correct_label": "medium",
         "gripper_force": 15.0,
@@ -535,7 +535,7 @@ class InteractiveTeleop:
             if self._prior_condition not in ("correct", "overstiff"):
                 raise ValueError("prior_condition must be correct or overstiff")
             if self._actual_object not in TRUST_OBJECT_CONFIG:
-                raise ValueError("actual_object must be apple or cup")
+                raise ValueError("actual_object must be banana or bottle")
             prefix = "C" if self._prior_condition == "correct" else "W"
             self._trust_condition_code = prefix + (
                 "1" if self._posterior_correction else "0"
@@ -2883,7 +2883,7 @@ def main():
     parser.add_argument("--object-id", default="unknown", help="物体编号")
     parser.add_argument("--trial-id", default="unknown", help="试次编号")
     parser.add_argument(
-        "--actual-object", choices=("apple", "cup"), default=None,
+        "--actual-object", choices=("banana", "bottle"), default=None,
         help="C0/C1/W0/W1 的真实物体（必填）",
     )
     parser.add_argument(
@@ -2913,7 +2913,7 @@ def main():
 
     if canonical_mode == "trust_experiment":
         if args.actual_object is None:
-            parser.error("C0/C1/W0/W1 必须指定 --actual-object apple 或 cup")
+            parser.error("C0/C1/W0/W1 必须指定 --actual-object banana 或 bottle")
         if args.mode.lower() not in ("c0", "c1", "w0", "w1"):
             if args.prior_condition is None or args.posterior_correction is None:
                 parser.error(
