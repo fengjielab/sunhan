@@ -12,9 +12,18 @@ ROOT = Path(__file__).resolve().parent
 OUT = ROOT / "paper2_sci" / "07_supplement_experiment"
 
 OBJECTS = {
-    "banana": {"correct_K": 50.0, "gripper_force": 8.0},
-    # 鼠标快速诊断先沿用原水瓶参数；正式实验前应重新标定。
-    "mouse": {"correct_K": 120.0, "gripper_force": 15.0},
+    "banana": {
+        "correct_K": 50.0,
+        "overstiff_K": 200.0,
+        "safe_anchor_K": 50.0,
+        "gripper_force": 8.0,
+    },
+    "mouse": {
+        "correct_K": 200.0,
+        "overstiff_K": 250.0,
+        "safe_anchor_K": 160.0,
+        "gripper_force": 20.0,
+    },
 }
 CONDITIONS = {
     "C0": {"prior": "correct", "posterior": "off"},
@@ -42,7 +51,9 @@ def trial_row(participant: str, order: int, obj: str, cond: str,
               participant_group: str) -> dict:
     condition = CONDITIONS[cond]
     prior_K = (
-        OBJECTS[obj]["correct_K"] if condition["prior"] == "correct" else 200.0
+        OBJECTS[obj]["correct_K"]
+        if condition["prior"] == "correct"
+        else OBJECTS[obj]["overstiff_K"]
     )
     trial_id = f"{participant}_{order:02d}_{obj}_{cond}"
     output_dir = f"data/trust_correction/{participant}"
@@ -61,7 +72,7 @@ def trial_row(participant: str, order: int, obj: str, cond: str,
         "prior_condition": condition["prior"],
         "posterior_correction": condition["posterior"],
         "prior_K_N_per_m": prior_K,
-        "safe_anchor_K_N_per_m": 50.0,
+        "safe_anchor_K_N_per_m": OBJECTS[obj]["safe_anchor_K"],
         "gripper_force_N": OBJECTS[obj]["gripper_force"],
         "trial_id": trial_id,
         "output_dir": output_dir,

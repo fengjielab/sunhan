@@ -33,8 +33,9 @@
 ## 冻结确认
 
 - 预试配置哈希：
-- 正确先验：banana=____ N/m；mouse=____ N/m
-- 夹爪力：banana=____ N；mouse=____ N
-- 安全锚点：____ N/m
+- 正确先验：banana=50 N/m；mouse=200 N/m
+- 错误先验：banana=200 N/m；mouse=250 N/m
+- 夹爪力：banana=8 N；mouse=20 N
+- 安全锚点：banana=50 N/m；mouse=160 N/m
 - 冻结日期：
 - 实验负责人签字：

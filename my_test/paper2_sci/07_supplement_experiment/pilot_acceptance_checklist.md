@@ -8,13 +8,13 @@
 | 条件身份 | 日志 condition_code 与顺序表一致，配置哈希一致 |  |  |
 | 原始视觉 | raw_vision_class/label/confidence 有记录；不作为受控先验输入 |  |  |
 | 对象标准化 | 仿制香蕉与鼠标状态均符合 `object_standardization.md` |  |  |
-| C0/C1 正确先验 | banana=50 N/m，mouse=120 N/m（预试确认后冻结） |  |  |
-| W0/W1 错误先验 | 两物体均为 200 N/m |  |  |
+| C0/C1 正确先验 | banana=50 N/m，mouse=200 N/m（预试确认后冻结） |  |  |
+| W0/W1 错误先验 | banana=200 N/m，mouse=250 N/m |  |  |
 | 未修正条件 | C0、W0 的 prior_trust=1 且 K 不发生在线修正 |  |  |
 | 修正起点 | C1、W1 只能在 contact_onset 后至少 0.05 s 激活 |  |  |
 | 修正终点 | C1、W1 在 contact_onset 后 0.80 s 停止修正，并记录 posterior_window_end |  |  |
 | 窗口后冻结 | posterior_window_end 后 prior_trust 与 K_trans 保持不变 |  |  |
-| 区间不变性 | 全程 50 ≤ K_trans ≤ 200 N/m |  |  |
+| 区间不变性 | 全程 50 ≤ K_trans ≤ 250 N/m；mouse 安全锚点为160 N/m |  |  |
 | 单步限幅 | 每个 20 Hz 更新步的刚度变化绝对值 ≤20 N/m |  |  |
 | 单调可信度 | 单次试验内 prior_trust 不增加 |  |  |
 | 安全保护 | 外力≥12 N 且持续0.10 s时记录 safety_stop 并停止 |  |  |

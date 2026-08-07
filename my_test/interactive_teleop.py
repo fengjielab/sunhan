@@ -122,6 +122,7 @@ import json
 import os
 import argparse
 import multiprocessing as mp
+from dataclasses import replace
 from enum import Enum
 from pathlib import Path
 from typing import List, Optional
@@ -419,21 +420,29 @@ FUSION_POSTERIOR_POLICY = {
 
 # 接触风险驱动的视觉先验可信度修正（新补充实验 C0/C1/W0/W1）。
 # 原 A/E/F/G 模式不使用这些参数，因此其控制行为保持不变。
-TRUST_CORRECTION_CONFIG = TrustCorrectionConfig()
+TRUST_CORRECTION_CONFIG = TrustCorrectionConfig(
+    # 鼠标采用 hard 先验时，W 条件需要允许施加 250 N/m。
+    K_max=250.0,
+)
 TRUST_OBJECT_CONFIG = {
     "banana": {
         "correct_K": 50.0,
         "correct_label": "soft",
         "gripper_force": 8.0,
+        "overstiff_K": 200.0,
+        "safe_anchor_K": 50.0,
     },
-    # 鼠标替代原水瓶做快速诊断；先沿用水瓶参数，正式实验前重新标定。
+    # 鼠标按现有 hard 物体策略接入信任实验。
     "mouse": {
-        "correct_K": 120.0,
-        "correct_label": "medium",
-        "gripper_force": 15.0,
+        "correct_K": 200.0,
+        "correct_label": "hard",
+        "gripper_force": 20.0,
+        # W 条件故意施加更硬的先验，避免与 C 条件相同。
+        "overstiff_K": 250.0,
+        # hard 策略原有的 140~170 N/m 后验范围取中间值作为初始安全锚点。
+        "safe_anchor_K": 160.0,
     },
 }
-TRUST_OVERSTIFF_K = 200.0
 
 # ═══════════════════════════════════════════
 # YOLO 独立进程（拥有独立 GIL，不受控制循环争用）
@@ -675,11 +684,17 @@ class InteractiveTeleop:
 
         if self._trust_experiment:
             object_cfg = TRUST_OBJECT_CONFIG[self._actual_object]
+            # 安全锚点按物体配置，避免香蕉的 50 N/m 锚点污染 hard 鼠标。
+            self._trust_config = replace(
+                TRUST_CORRECTION_CONFIG,
+                safe_anchor_K=float(object_cfg["safe_anchor_K"]),
+            )
+            self._trust_config_hash = trust_config_hash(self._trust_config)
             if self._prior_condition == "correct":
                 self._trust_prior_K = object_cfg["correct_K"]
                 self._trust_applied_prior_label = object_cfg["correct_label"]
             else:
-                self._trust_prior_K = TRUST_OVERSTIFF_K
+                self._trust_prior_K = object_cfg["overstiff_K"]
                 self._trust_applied_prior_label = "deliberately_overstiff"
             self._trust_target_K = self._trust_prior_K
             self._K_trans_cur = self._trust_prior_K
