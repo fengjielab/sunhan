@@ -1,6 +1,6 @@
 {
-  "timestamp": "20260806_153954",
-  "saved_at": "2026-08-06T15:39:54.714003",
+  "timestamp": "20260807_091830",
+  "saved_at": "2026-08-07T09:18:30.569697",
   "mode": {
     "mode": "trust_experiment",
     "vision_enabled": true,
@@ -10,45 +10,48 @@
     "vision_locked": true,
     "vision_label": "medium",
     "trust_experiment": true,
-    "actual_object": "bottle",
-    "condition_code": "C1",
+    "actual_object": "mouse",
+    "condition_code": "C0",
     "prior_condition": "correct",
-    "posterior_correction": true
+    "posterior_correction": false,
+    "diagnostic_disable_gripper_read": false,
+    "diagnostic_disable_vision": false,
+    "diagnostic_no_vision_display": false
   },
   "runtime": {
-    "duration_s": 24.64,
-    "traj_length_m": 0.4038,
-    "mean_speed_ms": 0.0257,
-    "speed_variance": 0.000446,
-    "speed_std_ms": 0.0211,
-    "max_speed_ms": 0.0981
+    "duration_s": 23.43,
+    "traj_length_m": 0.4009,
+    "mean_speed_ms": 0.0266,
+    "speed_variance": 0.000534,
+    "speed_std_ms": 0.0231,
+    "max_speed_ms": 0.0871
   },
   "trajectory": {
-    "n_samples": 2102,
+    "n_samples": 2043,
     "pos_x_range_m": [
-      -0.0079,
-      0.009
+      -0.0283,
+      -0.0088
     ],
     "pos_y_range_m": [
-      -0.0841,
-      0.0229
+      -0.0719,
+      0.0119
     ],
     "pos_z_range_m": [
-      -0.0039,
-      0.1008
+      0.0025,
+      0.1109
     ]
   },
   "external_force": {
     "source": "Franka estimated external wrench",
     "metric": "norm(Fx, Fy, Fz)",
-    "F_ext_peak_N": 8.065,
-    "F_ext_peak_time_s": 17.87,
-    "F_ext_mean_N": 3.082,
-    "n_samples": 2102
+    "F_ext_peak_N": 7.024,
+    "F_ext_peak_time_s": 17.7342,
+    "F_ext_mean_N": 2.402,
+    "n_samples": 2043
   },
   "final_params": {
-    "K_trans": 119.82822657392964,
-    "K_rot": 7.788834727305427,
+    "K_trans": 120.0,
+    "K_rot": 7.800000000000001,
     "damping_ratio": 1.0,
     "K_fb": 0.5,
     "deadband": 0.3,
@@ -59,9 +62,9 @@
     "force_adapt_target_K_final": 200.0,
     "force_adapt_ratio_final": 0.0,
     "force_adapt_delta_K_final": 0.0,
-    "prior_trust_final": 0.9953680370739401,
-    "trust_target_K_final": 119.67576259517581,
-    "trust_delta_K_final": -0.1717734260703594
+    "prior_trust_final": 1.0,
+    "trust_target_K_final": 120.0,
+    "trust_delta_K_final": 0.0
   },
   "fusion_config": null,
   "force_adapt_config": null,
@@ -87,10 +90,10 @@
     "emergency_force_N": 12.0,
     "emergency_hold_s": 0.1,
     "config_hash": "849612984eae337a",
-    "actual_object": "bottle",
-    "condition_code": "C1",
+    "actual_object": "mouse",
+    "condition_code": "C0",
     "prior_condition": "correct",
-    "posterior_correction": true,
+    "posterior_correction": false,
     "applied_prior_label": "medium",
     "prior_K_N_per_m": 120.0,
     "gripper_force_N": 15.0,
@@ -98,18 +101,18 @@
   },
   "experiment": {
     "schema_version": 3,
-    "mode": "C1",
+    "mode": "C0",
     "subject_id": "PILOT_V2",
-    "object_id": "bottle",
-    "trial_id": "PILOT_V2_04_bottle_C1",
-    "started_at_unix": 1786001970.060486,
+    "object_id": "mouse",
+    "trial_id": "PILOT_V2_03_mouse_C0",
+    "started_at_unix": 1786065487.1226244,
     "phase": "COMPLETE",
     "completed": true,
     "incomplete": false,
     "recognition_time_s": NaN,
-    "operation_time_s": 15.514005970999278,
-    "force_baseline_mean_N": 0.6681193195841777,
-    "force_baseline_std_N": 0.024561565721352933,
+    "operation_time_s": 14.484928352001589,
+    "force_baseline_mean_N": 0.6646258534345912,
+    "force_baseline_std_N": 0.01109588964451978,
     "force_threshold_N": 1.0,
     "events": [
       {
@@ -119,12 +122,12 @@
       },
       {
         "event": "prior_applied",
-        "system_time": 8.307814006000626,
+        "system_time": 8.309964804997435,
         "phase": "PREP",
-        "actual_object": "bottle",
-        "condition_code": "C1",
+        "actual_object": "mouse",
+        "condition_code": "C0",
         "prior_condition": "correct",
-        "posterior_correction": true,
+        "posterior_correction": false,
         "prior_K_N_per_m": 120.0,
         "safe_anchor_K_N_per_m": 50.0,
         "applied_prior_label": "medium",
@@ -132,87 +135,65 @@
       },
       {
         "event": "vision_start",
-        "system_time": 8.30788298799962,
+        "system_time": 8.309986330990796,
         "phase": "PREP"
       },
       {
         "event": "force_baseline_ready",
-        "system_time": 9.015783666000061,
+        "system_time": 8.834605547992396,
         "phase": "PREP",
-        "mean_N": 0.6681193195841777,
-        "std_N": 0.024561565721352933,
+        "mean_N": 0.6646258534345912,
+        "std_N": 0.01109588964451978,
         "threshold_N": 1.0
       },
       {
         "event": "system_ready",
-        "system_time": 9.015783666000061,
+        "system_time": 8.834605547992396,
         "phase": "READY"
       },
       {
         "event": "task_start",
-        "system_time": 9.015783666000061,
+        "system_time": 8.834605547992396,
         "phase": "APPROACH",
         "trigger": "system_ready"
       },
       {
         "event": "first_frame",
-        "system_time": 9.162403792999612,
+        "system_time": 9.09726434899494,
         "phase": "APPROACH"
       },
       {
         "event": "first_detection",
-        "system_time": 10.57068677999996,
+        "system_time": 10.543131271988386,
         "phase": "APPROACH",
-        "confidence": 0.9516063332557678,
-        "detected_class": "bottle"
+        "confidence": 0.8758492469787598,
+        "detected_class": "mouse"
       },
       {
         "event": "contact_onset",
-        "system_time": 11.810150453999086,
+        "system_time": 11.842782981999335,
         "phase": "APPROACH",
         "threshold_N": 1.0
       },
       {
-        "event": "posterior_override_start",
-        "system_time": 12.500509482999405,
-        "phase": "APPROACH",
-        "contact_relative_s": 0.6903590290003194,
-        "force_N": 1.6759783744876788,
-        "force_guard_N": 1.5,
-        "prior_trust_before": 1.0,
-        "prior_trust_after": 0.9978882595061479,
-        "command_K_N_per_m": 119.95565344962911,
-        "config_hash": "849612984eae337a"
-      },
-      {
-        "event": "posterior_window_end",
-        "system_time": 12.610981862999324,
-        "phase": "APPROACH",
-        "contact_relative_s": 0.8008314090002386,
-        "prior_trust": 0.9953680370739401,
-        "command_K_N_per_m": 119.82822657392964,
-        "target_K_N_per_m": 119.67576259517581,
-        "config_hash": "849612984eae337a"
-      },
-      {
         "event": "grasp_start",
-        "system_time": 15.201702116999513,
+        "system_time": 15.748126659993432,
         "phase": "GRASP"
       },
       {
         "event": "grasp_success",
-        "system_time": 16.76376446500035,
+        "system_time": 17.1595033499907,
         "phase": "TRANSPORT",
         "grasp_success": true
       },
       {
         "event": "release_start",
-        "system_time": 22.687382504998823,
+        "system_time": 21.620385018992238,
         "phase": "RELEASE"
       },
       {
         "event": "task_end",
-        "system_time": 24.52978963699934,
+        "system_time": 23.319533899993985,
         "phase": "COMPLETE",
         "success": true
       }
