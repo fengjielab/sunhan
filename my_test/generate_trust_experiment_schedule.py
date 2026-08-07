@@ -13,7 +13,8 @@ OUT = ROOT / "paper2_sci" / "07_supplement_experiment"
 
 OBJECTS = {
     "banana": {"correct_K": 50.0, "gripper_force": 8.0},
-    "bottle": {"correct_K": 120.0, "gripper_force": 15.0},
+    # 鼠标快速诊断先沿用原水瓶参数；正式实验前应重新标定。
+    "mouse": {"correct_K": 120.0, "gripper_force": 15.0},
 }
 CONDITIONS = {
     "C0": {"prior": "correct", "posterior": "off"},
@@ -23,7 +24,7 @@ CONDITIONS = {
 }
 TREATMENTS = [
     (obj, cond)
-    for obj in ("banana", "bottle")
+    for obj in ("banana", "mouse")
     for cond in ("C0", "C1", "W0", "W1")
 ]
 
@@ -82,9 +83,9 @@ def main() -> None:
     # 预试从低风险正确先验开始；每个错误先验先运行有修正的 W1，再运行 W0。
     pilot_order = [
         ("banana", "C0"), ("banana", "C1"),
-        ("bottle", "C0"), ("bottle", "C1"),
+        ("mouse", "C0"), ("mouse", "C1"),
         ("banana", "W1"), ("banana", "W0"),
-        ("bottle", "W1"), ("bottle", "W0"),
+        ("mouse", "W1"), ("mouse", "W0"),
     ]
     pilot = [
         trial_row("PILOT_V2", idx, obj, cond, "non_formal_experimenter_v2")
@@ -92,7 +93,7 @@ def main() -> None:
     ]
     write_csv(OUT / "pilot_schedule_8.csv", pilot)
 
-    # 水瓶机制诊断：单一非正式实验人员，4条件×3个平衡重复块。
+    # 鼠标机制诊断：单一非正式实验人员，4条件×3个平衡重复块。
     # 该数据只用于判断C1过度修正是否可重复，不进入正式统计。
     diagnostic: list[dict] = []
     diagnostic_conditions = ["C0", "C1", "W0", "W1"]
@@ -101,16 +102,16 @@ def main() -> None:
         for within_block_order, condition_index in enumerate(sequence, start=1):
             order += 1
             row = trial_row(
-                "BOTTLE_DIAG",
+                "MOUSE_DIAG",
                 order,
-                "bottle",
+                "mouse",
                 diagnostic_conditions[condition_index],
-                "non_formal_bottle_diagnostic",
+                "non_formal_mouse_diagnostic",
             )
             row["diagnostic_block"] = block
             row["within_block_order"] = within_block_order
             diagnostic.append(row)
-    write_csv(OUT / "bottle_diagnostic_schedule_12.csv", diagnostic)
+    write_csv(OUT / "mouse_diagnostic_schedule_12.csv", diagnostic)
 
     rows = williams_rows(len(TREATMENTS))
     formal: list[dict] = []

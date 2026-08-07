@@ -217,6 +217,8 @@ TRAJECTORY_CSV_HEADER = [
     "prev_panda_command_s", "prev_gripper_update_s", "prev_record_s",
     "prev_keyboard_status_s", "prev_loop_work_s",
     "prev_sleep_requested_s", "prev_sleep_actual_s",
+    "diagnostic_disable_gripper_read", "diagnostic_disable_vision",
+    "diagnostic_no_vision_display",
     "force_adapt_target_K", "force_adapt_ratio", "force_adapt_active",
     "force_adapt_delta_K",
     "force_baseline_mean", "force_baseline_std", "force_threshold",
@@ -424,7 +426,8 @@ TRUST_OBJECT_CONFIG = {
         "correct_label": "soft",
         "gripper_force": 8.0,
     },
-    "bottle": {
+    # 鼠标替代原水瓶做快速诊断；先沿用水瓶参数，正式实验前重新标定。
+    "mouse": {
         "correct_K": 120.0,
         "correct_label": "medium",
         "gripper_force": 15.0,
@@ -530,18 +533,28 @@ class InteractiveTeleop:
                  object_id: str = "unknown", trial_id: str = "unknown",
                  auto_stop: bool = True, prior_condition: str = "correct",
                  posterior_correction: bool = False,
-                 actual_object: str = "unknown"):
+                 actual_object: str = "unknown",
+                 diagnostic_disable_gripper_read: bool = False,
+                 diagnostic_disable_vision: bool = False,
+                 diagnostic_no_vision_display: bool = False):
         # ── 运行模式 ──
         self.mode = mode  # "default" | "force_only" | "vision" | PRESETS key
         self._trust_experiment = mode == "trust_experiment"
         self._prior_condition = str(prior_condition).lower()
         self._posterior_correction = bool(posterior_correction)
         self._actual_object = str(actual_object).lower()
+        self._diagnostic_disable_gripper_read = bool(
+            diagnostic_disable_gripper_read
+        )
+        self._diagnostic_disable_vision = bool(diagnostic_disable_vision)
+        self._diagnostic_no_vision_display = bool(
+            diagnostic_no_vision_display
+        )
         if self._trust_experiment:
             if self._prior_condition not in ("correct", "overstiff"):
                 raise ValueError("prior_condition must be correct or overstiff")
             if self._actual_object not in TRUST_OBJECT_CONFIG:
-                raise ValueError("actual_object must be banana or bottle")
+                raise ValueError("actual_object must be banana or mouse")
             prefix = "C" if self._prior_condition == "correct" else "W"
             self._trust_condition_code = prefix + (
                 "1" if self._posterior_correction else "0"
@@ -577,7 +590,7 @@ class InteractiveTeleop:
         self._vision_enabled = (mode in (
             "vision", "vision_observe", "vision_stiffness", "vision_force",
             "trust_experiment",
-        ))
+        )) and not self._diagnostic_disable_vision
         self._vision_auto_map = (mode in ("vision", "vision_stiffness", "vision_force"))
         self._vision_stiffness_only = (mode == "vision_stiffness")
         self._vision_force_fusion = (mode == "vision_force")
@@ -610,7 +623,7 @@ class InteractiveTeleop:
         self._vision_active = False         # 视觉线程是否已启动
         self._vision_thread = None
         self._vision_yolo_proc = None       # YOLO 子进程句柄
-        self._vision_enable_display = True  # 是否显示 RealSense 摄像头预览窗口
+        self._vision_enable_display = not self._diagnostic_no_vision_display
         self._vision_pause_until = 0.0       # USB 恢复时临时暂停 RealSense
         self._vision_restarts = 0            # RealSense pipeline 重启次数
         self._vision_confidence = float("nan")
@@ -1770,7 +1783,7 @@ class InteractiveTeleop:
             )
 
     def _start_gripper_measurement_thread(self):
-        if self.gripper is None:
+        if self.gripper is None or self._diagnostic_disable_gripper_read:
             return
         if (self._gripper_measure_thread is not None
                 and self._gripper_measure_thread.is_alive()):
@@ -2636,6 +2649,13 @@ class InteractiveTeleop:
             "prev_loop_work_s": self._prev_loop_work_s,
             "prev_sleep_requested_s": self._prev_sleep_requested_s,
             "prev_sleep_actual_s": self._prev_sleep_actual_s,
+            "diagnostic_disable_gripper_read": int(
+                self._diagnostic_disable_gripper_read
+            ),
+            "diagnostic_disable_vision": int(self._diagnostic_disable_vision),
+            "diagnostic_no_vision_display": int(
+                self._diagnostic_no_vision_display
+            ),
             "force_adapt_target_K": self._force_adapt_target_K,
             "force_adapt_ratio": self._force_adapt_ratio,
             "force_adapt_active": int(self._force_adapt_active),
@@ -2819,6 +2839,11 @@ class InteractiveTeleop:
             "posterior_correction": (
                 self._posterior_correction if self._trust_experiment else None
             ),
+            "diagnostic_disable_gripper_read": (
+                self._diagnostic_disable_gripper_read
+            ),
+            "diagnostic_disable_vision": self._diagnostic_disable_vision,
+            "diagnostic_no_vision_display": self._diagnostic_no_vision_display,
         }
         if self.mode in PRESETS:
             mode_info["preset_name"] = PRESETS[self.mode]["name"]
@@ -3006,7 +3031,7 @@ def main():
     parser.add_argument("--object-id", default="unknown", help="物体编号")
     parser.add_argument("--trial-id", default="unknown", help="试次编号")
     parser.add_argument(
-        "--actual-object", choices=("banana", "bottle"), default=None,
+        "--actual-object", choices=("banana", "mouse"), default=None,
         help="C0/C1/W0/W1 的真实物体（必填）",
     )
     parser.add_argument(
@@ -3020,6 +3045,18 @@ def main():
     parser.add_argument(
         "--manual-stop", action="store_true",
         help="调试模式：任务完成后不自动退出，按 Ctrl+C 时保存并安全关闭",
+    )
+    parser.add_argument(
+        "--diagnostic-disable-gripper-read", action="store_true",
+        help="仅时序诊断：关闭后台夹爪宽度读取；不得用于正式试验",
+    )
+    parser.add_argument(
+        "--diagnostic-disable-vision", action="store_true",
+        help="仅时序诊断：关闭相机与YOLO；不得用于正式试验",
+    )
+    parser.add_argument(
+        "--diagnostic-no-vision-display", action="store_true",
+        help="仅时序诊断：保留视觉识别但关闭OpenCV预览；不得用于正式试验",
     )
     args = parser.parse_args()
     if args.mode in ("f", "F"):
@@ -3036,7 +3073,7 @@ def main():
 
     if canonical_mode == "trust_experiment":
         if args.actual_object is None:
-            parser.error("C0/C1/W0/W1 必须指定 --actual-object banana 或 bottle")
+            parser.error("C0/C1/W0/W1 必须指定 --actual-object banana 或 mouse")
         if args.mode.lower() not in ("c0", "c1", "w0", "w1"):
             if args.prior_condition is None or args.posterior_correction is None:
                 parser.error(
@@ -3055,6 +3092,16 @@ def main():
     if canonical_mode == "trust_experiment" and timeline_object_id == "unknown":
         timeline_object_id = actual_object
 
+    diagnostic_flags = (
+        args.diagnostic_disable_gripper_read
+        or args.diagnostic_disable_vision
+        or args.diagnostic_no_vision_display
+    )
+    if diagnostic_flags and not args.subject_id.startswith("TIMING_DIAG"):
+        parser.error(
+            "diagnostic开关只能用于subject-id以TIMING_DIAG开头的时序诊断"
+        )
+
     teleop = InteractiveTeleop(
         mode=canonical_mode,
         record_trajectory=not args.no_trajectory,
@@ -3066,6 +3113,9 @@ def main():
         prior_condition=prior_condition,
         posterior_correction=posterior_correction,
         actual_object=actual_object,
+        diagnostic_disable_gripper_read=args.diagnostic_disable_gripper_read,
+        diagnostic_disable_vision=args.diagnostic_disable_vision,
+        diagnostic_no_vision_display=args.diagnostic_no_vision_display,
     )
 
     # 若指定了启动参数文件，替换默认保存路径

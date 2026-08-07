@@ -105,7 +105,7 @@ def panel_response(ax):
     t_w, trust_w, k_w = simulate(200.0, 4.0)
     t_c, trust_c, k_c = simulate(120.0, 2.0)
     ax.plot(t_w, k_w, color=RED, linewidth=2.2, label="W1: overstiff prior, 4 N")
-    ax.plot(t_c, k_c, color=BLUE, linewidth=2.2, label="C1: bottle prior, 2 N")
+    ax.plot(t_c, k_c, color=BLUE, linewidth=2.2, label="C1: mouse prior, 2 N")
     ax.axhline(50, color=GREEN, linewidth=1.2, linestyle="--", label="Safe anchor")
     ax.axvline(0.80, color=MUTED, linewidth=1.1, linestyle="--", label="Window end")
     ax.set_xlim(0, 1.5)

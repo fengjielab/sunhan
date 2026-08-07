@@ -11,7 +11,7 @@
 | W0 | 故意过硬（200 N/m） | 关闭 | 错误先验反事实基线 |
 | W1 | 故意过硬（200 N/m） | 开启 | 检验闭环纠错收益 |
 
-实验对象为标准化仿制香蕉（`banana`）和限制状态水瓶（`bottle`）。正确先验暂定分别为50和120 N/m；夹爪力暂定分别为8和15 N；安全锚点为50 N/m。参数须经8次预试确认后一次性冻结。四条件均保留原始视觉识别结果，但该结果只用于端到端识别审计，不改变受控施加的先验。
+实验对象为标准化仿制香蕉（`banana`）和计算机鼠标（`mouse`）。鼠标替代水瓶做快速诊断，当前先沿用水瓶的临时参数：正确先验暂定分别为50和120 N/m；夹爪力暂定分别为8和15 N；安全锚点为50 N/m。鼠标参数须经预试重新确认后一次性冻结。四条件均保留原始视觉识别结果，但该结果只用于端到端识别审计，不改变受控施加的先验。
 
 ## 执行顺序
 
@@ -51,20 +51,35 @@ python3 my_test/generate_trust_experiment_schedule.py
 python3 my_test/validate_trust_trial.py data/trust_correction/PILOT_V2/trust_experiment_YYYYMMDD_HHMMSS.csv
 ```
 
-若8次预试出现控制长尾，先单独执行一次 `TIMING_DIAG`，不要立即开始12次水瓶诊断：
+若8次预试出现控制长尾，先单独执行一次 `TIMING_DIAG`，不要立即开始12次鼠标诊断：
 
 ```bash
-python3 my_test/interactive_teleop.py --mode C0 --actual-object bottle --subject-id TIMING_DIAG --object-id bottle --trial-id TIMING_DIAG_01_bottle_C0 --trajectory-dir data/trust_correction/TIMING_DIAG
+python3 my_test/interactive_teleop.py --mode C0 --actual-object mouse --subject-id TIMING_DIAG --object-id mouse --trial-id TIMING_DIAG_01_mouse_C0 --trajectory-dir data/trust_correction/TIMING_DIAG
 python3 my_test/analyze_control_timing.py data/trust_correction/TIMING_DIAG
 ```
 
-定位并解决控制长尾后，如果水瓶C1过度修正或W1收益方向仍不稳定，再按
-`bottle_diagnostic_schedule_12.csv` 完成4条件×3重复的诊断数据；保存目录为
-`data/trust_correction/BOTTLE_DIAG`，不得并入正式统计。新版CSV包含逐模块控制耗时，
+若长周期主要归入 `sleep_or_scheduler`，按以下顺序逐项隔离，每次只改变一个因素：
+
+```bash
+# A：相机保持原状，只关闭后台夹爪宽度读取
+python3 my_test/interactive_teleop.py --mode C0 --actual-object mouse --subject-id TIMING_DIAG_GRIPPER_OFF --object-id mouse --trial-id TIMING_DIAG_GRIPPER_OFF_01_mouse_C0 --trajectory-dir data/trust_correction/TIMING_DIAG_GRIPPER_OFF --diagnostic-disable-gripper-read
+
+# B：夹爪读取恢复、视觉识别保留，只关闭OpenCV画面显示
+python3 my_test/interactive_teleop.py --mode C0 --actual-object mouse --subject-id TIMING_DIAG_DISPLAY_OFF --object-id mouse --trial-id TIMING_DIAG_DISPLAY_OFF_01_mouse_C0 --trajectory-dir data/trust_correction/TIMING_DIAG_DISPLAY_OFF --diagnostic-no-vision-display
+
+# C：夹爪读取恢复，完全关闭相机与YOLO
+python3 my_test/interactive_teleop.py --mode C0 --actual-object mouse --subject-id TIMING_DIAG_VISION_OFF --object-id mouse --trial-id TIMING_DIAG_VISION_OFF_01_mouse_C0 --trajectory-dir data/trust_correction/TIMING_DIAG_VISION_OFF --diagnostic-disable-vision
+```
+
+诊断开关会写入CSV和summary，并被限制为 `TIMING_DIAG*` 被试编号，不能误用于正式数据。
+
+定位并解决控制长尾后，如果鼠标C1过度修正或W1收益方向仍不稳定，再按
+`mouse_diagnostic_schedule_12.csv` 完成4条件×3重复的诊断数据；保存目录为
+`data/trust_correction/MOUSE_DIAG`，不得并入正式统计。新版CSV包含逐模块控制耗时，
 收齐后运行：
 
 ```bash
-python3 my_test/analyze_control_timing.py data/trust_correction/BOTTLE_DIAG
+python3 my_test/analyze_control_timing.py data/trust_correction/MOUSE_DIAG
 ```
 
 正式数据收齐后生成试次指标和预定义对比：
