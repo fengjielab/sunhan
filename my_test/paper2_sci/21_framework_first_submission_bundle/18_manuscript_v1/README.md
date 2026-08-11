@@ -9,8 +9,8 @@ This directory contains the current integrated English manuscript. The scientifi
 
 ## Journal-facing figures and supplement
 
-- Main Figures 1–5: `../19_publication_figures/figures/`.
-- Supplementary Figures S1–S2: the same package's `Fig06` and `Fig07`, mapped in `../20_submission_package/supplementary_material.md`.
+- THMS main Figures 1–4: `../19_publication_figures/figures/`.
+- Supplementary Figures S1–S3: the same package's `Fig05`, `Fig06`, and `Fig07`, mapped in `../20_submission_package/supplementary_material.md`.
 - Figure source extracts, hashes, scripts, and a machine-readable manifest: `../19_publication_figures/`.
 - Supplementary Tables S1–S4 and submission blockers: `../20_submission_package/`.
 

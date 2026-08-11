@@ -10,7 +10,7 @@ This supplement contains framework implementation details, complete small-sample
 |---|---|---|---|---|
 | Event-order compliance | Indicator for each required relation \(t_{e_j}<t_{e_k}\); individual relations are retained | Nominal event order and aligned event timestamps | A/G/E/F where a nominal order exists | N/A when no ordering relation is specified |
 | Executable-guard compliance | Implemented Boolean guard evaluates true at the realized first activation | Executable predicate, its input fields, and first-activation timestamp | A fixed-command check; G raw-force rule; E/F implemented transition/adaptation guards | N/A when no activation guard exists |
-| Nominal-gate compliance | All scientific gates implied by the nominal condition are satisfied at realized activation | Nominal gate specification and aligned event timestamps | G post-contact interpretation; F contact-plus-0.20-s target; relevant E/F transition gates | N/A when no defensible nominal gate was specified |
+| Nominal-gate compliance | All scientific gates supported by a versioned nominal specification are satisfied at realized activation | Nominal gate specification and aligned event timestamps | F contact-plus-0.20-s target; relevant E/F transition gates | N/A when no defensible nominal gate was specified; a mode label alone does not create a gate |
 | Activation timing error | \(t^R_{act}-t^N_{act}\) | Realized activation and defensible nominal target on a common clock | F force refinement | N/A for G because its executable logic contains no post-contact timing target |
 | Pre-contact activation | Indicator that realized activation precedes confirmed contact | First activation and confirmed-contact timestamps | G and F adaptation | N/A for non-adaptive A/E |
 | Contact-to-adaptation latency | \(t^R_{act}-t_{contact}\) | First activation and confirmed-contact timestamps | G and F | N/A for A/E |
@@ -28,9 +28,9 @@ For the case-study implementation, E vision exposure began only when the vision-
 | Configuration | Executable/command result | Nominal/event result | Timing result, median [Q1, Q3] s | Outcome-window exposure | Provenance/clock result |
 |---|---|---|---|---|---|
 | A | Fixed commanded state retained in 45/45 | No activation target applicable | Not applicable | Mode-specific state present throughout 45/45 windows | Acquisition lineage 45/45; analysis/gate clock integrity 45/45 |
-| G | Raw-force executable logic compliant in 45/45 | Post-contact order satisfied in 2/45; pre-contact activation in 43/45 | Contact-to-activation −1.2144 [−1.6962, −0.7986] | Active during the window in 45/45 | Acquisition lineage 45/45; analysis/gate clock integrity 45/45 |
+| G | Raw-force executable logic compliant in 45/45 | Independent contemporaneous post-contact nominal specification unavailable; pre-contact activation in 43/45 | Contact-to-activation −1.2144 [−1.6962, −0.7986] | Active during the window in 45/45 | Acquisition lineage 45/45; analysis clock integrity 45/45 |
 | E | Vision executable logic compliant in 45/45 | Transition complete before contact in 38/45 and by window start in 39/45 | Vision-to-first-command 0.0243 [0.0219, 0.0342]; transition completion 0.3910 [0.3384, 0.4244] | Vision exposure: 39 full, 2 partial, 4 zero | Acquisition lineage 45/45; clock integrity 45/45 |
-| F | Executable vision/adaptation logic compliant in 45/45 | Contact-plus-0.20-s timing satisfied in 3/45; pre-contact activation in 0/45 | Contact-to-activation 0.0533 [0.0515, 0.0711]; timing error −0.1467 [−0.1485, −0.1289]; transition completion 0.3950 [0.3432, 0.4298] | Vision: 42 full, 0 partial, 3 zero; adaptation/joint: 35 full, 7 partial, 3 zero | Acquisition lineage 45/45; intervention-gate clock integrity 0/45 because the delay path mixed clock domains |
+| F | Logged activation reconstructed in 45/45; no separate (C\neq R) claim without replay of the literal mixed-clock predicate | Nominal contact-plus-0.20-s requirement was implemented with incompatible clock domains; timing satisfied in 3/45; pre-contact activation in 0/45 | Contact-to-activation 0.0533 [0.0515, 0.0711]; timing error −0.1467 [−0.1485, −0.1289]; transition completion 0.3950 [0.3432, 0.4298] | Vision: 42 full, 0 partial, 3 zero; adaptation/joint: 35 full, 7 partial, 3 zero | Acquisition lineage 45/45; intervention-gate clock integrity 0/45 because the delay path mixed clock domains |
 
 Trial-level values are provided in `../03_clean_analysis/trial_level_fidelity_metrics.csv` and `../03_clean_analysis/outcome_window_exposure.csv`; the complete configuration summaries are in `../03_clean_analysis/configuration_fidelity_summary.csv`.
 
@@ -60,17 +60,35 @@ The historical columns reproduce the superseded analysis state; the clean column
 
 The complete row-level and statistics-level comparisons are provided in `../03_clean_analysis/old_new_trial_metric_comparison.csv` and `../03_clean_analysis/old_new_statistics_comparison.csv`.
 
-## Supplementary Figure S1. Participant consistency and leave-one-participant-out stability
+## Table S5. Fixed adjacent-window sensitivity for the E-A threshold-referenced excess-force impulse
+
+| Post-contact integration window | E-A mean difference, N·s | t-based 95% CI, N·s | Participant direction | Exact sign-flip p |
+|---|---:|---:|---:|---:|
+| 0.10–1.00 s | −0.3718 | [−0.6618, −0.0819] | 5/5 negative | 0.0625 |
+| 0.30–1.00 s | −0.3238 | [−0.5474, −0.1002] | 5/5 negative | 0.0625 |
+| 0.20–0.80 s | −0.2438 | [−0.4635, −0.0241] | 5/5 negative | 0.0625 |
+| **0.20–1.00 s (principal exploratory analysis)** | **−0.3489** | **[−0.6080, −0.0898]** | **5/5 negative** | **0.0625** |
+| 0.20–1.20 s | −0.4307 | [−0.6960, −0.1653] | 5/5 negative | 0.0625 |
+
+These windows were fixed before inspecting their sensitivity results. They assess directional and magnitude stability and are not additional primary outcomes.
+
+## Supplementary Figure S1. Contact-aligned force and commanded-stiffness context
+
+![Contact-aligned force and commanded-stiffness trajectories.](../19_publication_figures/figures/Fig05_contact_aligned_trajectories.png)
+
+**Figure S1.** (A) Participant-aggregated threshold-referenced excess force. (B) Participant-aggregated logged commanded translational stiffness. Curves first average trials within participant and assigned configuration and then average the five participant curves; bands are pointwise t-based 95% confidence intervals. The shaded region is the retrospective +0.20-to-+1.00-s outcome window. This figure provides descriptive physical/controller context, not a causal mechanism test. Logged stiffness was not independently validated as physical closed-loop impedance.
+
+## Supplementary Figure S2. Participant consistency and leave-one-participant-out stability
 
 ![Participant consistency and leave-one-participant-out stability.](../19_publication_figures/figures/Fig06_participant_lopo_stability.png)
 
-**Figure S1.** (A) Individual E-A participant differences in threshold-referenced excess-force impulse. (B) Full-sample E-A estimate and five leave-one-participant-out estimates with t-based 95% confidence intervals. (C) Corresponding F-E estimates. This is a stability diagnostic; four-participant intervals are not additional independent confirmatory tests.
+**Figure S2.** (A) Individual E-A participant differences in threshold-referenced excess-force impulse. (B) Full-sample E-A estimate and five leave-one-participant-out estimates with t-based 95% confidence intervals. (C) Corresponding F-E estimates. This is a stability diagnostic; four-participant intervals are not additional independent confirmatory tests.
 
-## Supplementary Figure S2. Lineage repair and deterministic trace examples
+## Supplementary Figure S3. Lineage repair and deterministic trace examples
 
 ![Lineage repair and deterministic implementation-deviation examples.](../19_publication_figures/figures/Fig07_lineage_trace_examples.png)
 
-**Figure S2.** (A) Six superseded 20260729 acquisitions and their selected 20260730 replacements. (B) The G trial nearest the class-median activation-to-contact offset. (C) The F trial nearest the class-median activation-to-contact offset, with contact, first activation, and the nominal +0.20-s gate. (D) The eligible post-contact E/F vision-lock trial nearest the pooled post-contact median. Representative trials were selected by a frozen nearest-to-median rule rather than visual extremity.
+**Figure S3.** (A) Six superseded 20260729 acquisitions and their selected 20260730 replacements. (B) The G trial nearest the class-median activation-to-contact offset. (C) The F trial nearest the class-median activation-to-contact offset, with contact, first activation, and the nominal +0.20-s gate. (D) The eligible post-contact E/F vision-lock trial nearest the pooled post-contact median. Representative trials were selected by a frozen nearest-to-median rule rather than visual extremity.
 
 ## Machine-readable supplementary files
 
@@ -84,4 +102,3 @@ The complete row-level and statistics-level comparisons are provided in `../03_c
 - `../03_clean_analysis/leave_one_participant_out.csv`
 - `../03_clean_analysis/old_new_statistics_comparison.csv`
 - `../03_clean_analysis/old_new_trial_metric_comparison.csv`
-
