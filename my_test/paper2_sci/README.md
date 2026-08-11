@@ -1,54 +1,103 @@
-# paper2_sci：第二篇论文工作区
+# paper2_sci 当前文件索引
 
-当前主线已更新为：**人机在环接触遥操作中的阻抗干预时序、操作者作用与内生性审计**。原始 180 次人因试验仍是主数据；“先验可信度纠错闭环”因先导结果不支持，已停止作为论文主创新。
+## 当前论文唯一完整版本
 
-## 当前证据结论
+**所有当前投稿材料统一位于：**
 
-- 180 次试验组成 5 人 × 3 材料 × 3 匹配组 × 4 模式，形成 45 个完整配对块。
-- 视觉前馈 E 相对固定阻抗 A 显著降低接触后 0.2–1.0 s 超阈值力冲量：配对差 −0.342 N·s，95% CI [−0.525, −0.158]，Holm 校正 p=0.0026。
-- 反应式力适应 G 相对 A 的差异不确定：−0.074 N·s，95% CI [−0.226, 0.078]。
-- E 相对 G 的优势为 −0.267 N·s，95% CI [−0.454, −0.081]，说明在当前任务中“接触前干预”比“接触后再反应”更有价值。
-- 在视觉前馈已经存在时，增加力适应 F−E 为 −0.047 N·s，95% CI [−0.162, 0.068]；当前数据不能支持“前馈—反馈协同增益”。
-- 180/180 均成功，成功率存在天花板效应，不能作为主终点。
-- 力适应模式中力同时是刚度更新的输入，因此“观察到的刚度—力相关”存在内生性；不能直接解释为刚度的因果效应。
+`21_framework_first_submission_bundle/`
 
-## 目录
+该目录是目前唯一应继续查看、修改、复核和交接的论文版本，包含：
 
-- `01_primary_first_attempt_data`：180 个首测主分析试次的源文件副本，只读使用。
-- `01_selected_data`：旧版替换方案副本，仅为追溯保留。
-- `02_audit`：记录清单与校验信息。
-- `03_processed_data`：事件对齐和试次级派生数据。
-- `04_statistics`：原 2×2 分析、模型结果、敏感性分析和正文表。
-- `05_figures`：正文图；新增图 7 为时序证据，图 8 为匹配回放设计。
-- `06_manuscript`：中文版稿件、创新性审查和图表说明；当前稿为 `paper2_chinese_manuscript_v3_timing_compensation.md`。
-- `07_supplement_experiment`：已暂停的信任纠错实验包，作为否证过程归档，不再执行正式 80 次计划。
-- `08_timing_compensation`：新方向的可复现脚本、派生结果、统计计划和小补实验协议。
+- framework-first 英文主稿；
+- 较早的中文审阅稿（尚未与英文稿同步，不能用于投稿）；
+- Supplementary Material；
+- Figures 1–7 的 PNG、PDF 和 SVG；
+- figure source data 与作图代码；
+- clean 派生数据、统计结果和 fidelity outputs；
+- clean/fidelity/figure/manuscript QA；
+- 投稿前待补信息和 manuscript-readiness audit；
+- `interactive_teleop.py` 采集代码快照；
+- 全包 SHA-256 manifest。
 
-## 复现
+入口文件：
 
-基础流水线：
+- `21_framework_first_submission_bundle/README.md`
+- `21_framework_first_submission_bundle/18_manuscript_v1/manuscript_v1_en.md`
+- `21_framework_first_submission_bundle/20_submission_package/MANUSCRIPT_READINESS_AUDIT.md`
+- `21_framework_first_submission_bundle/20_submission_package/SUBMISSION_REQUIRED_INFORMATION.md`
 
-```powershell
-python .\my_test\paper2_pipeline.py
-```
+## 从原始 acquisition 重新构建时仍需保留的证据链
 
-新方向分析：
+完整投稿包可以独立复核 clean 结果并重新生成全部图，但没有重复打包原始人体实验 acquisition。若要从原始 acquisition 重新运行 `clean_analysis.py`，仍需：
 
-```powershell
-python .\my_test\paper2_sci\08_timing_compensation\analyze_timing_compensation.py
-```
+- 原始只读 acquisition：`F:\sun\sunhan\my_test\data\ral_date`
+- `02_audit/`：186-record source manifest 与 lineage audit 输入
+- `03_processed_data/`：旧 trial metrics，仅用于 clean rebuild/historical comparison
+- `03_clean_analysis/`：工作区中的原始 clean-analysis 输出与脚本
 
-两个脚本都不修改 `ral_date`、`01_primary_first_attempt_data` 或信任实验原始 CSV。新方向的全部派生文件写入 `08_timing_compensation`，图写入 `05_figures`。
+不要删除或改写这些路径，除非先修改并验证脚本中的路径依赖。
 
-## 投稿前必须完成
+## 顶层目录分类
 
-1. 先执行匹配人机—机器人回放小补实验，将相同目标轨迹置于不同阻抗策略下回放，以分离直接机械效应和操作者介导成分。
-2. 若目标坚持 JCR Q2，建议新增至少 5 名操作者形成确认性样本；在查看新样本条件效应前冻结统计方案。
-3. 成功率只作描述；新增实验应记录接触失败、抓取失败、掉落和人工中止的阶段与原因。
-4. 在回放完成前，只能称“操作者作用/潜在补偿通道”，不能称已证明“操作者补偿机制”。
+### A. 当前投稿版本
 
-## 解释边界
+- `21_framework_first_submission_bundle/`：唯一当前论文包。
 
-- 本文的增量不再表述为“首次形成视觉—力闭环”；相近在线视觉阻抗和共享变阻抗方案已有先例。
-- 当前可以稳妥主张的是：事件对齐的干预时序比较、严格配对的 2×2 因子分解以及自适应策略的内生性审计。
-- 数学性质仅覆盖参数更新器的有界性与平滑性，不等于完整闭环钝性或绝对安全保证。
+### B. 原始/重建证据链，暂时保留
+
+- `02_audit/`
+- `03_processed_data/`
+- `03_clean_analysis/`
+- 工作区外的 `F:\sun\sunhan\my_test\data\ral_date`
+
+### C. 大型数据副本，删除前必须单独核验
+
+- `01_primary_first_attempt_data/`：约 240.54 MB。
+- `01_selected_data/`：约 240.28 MB，属于旧 selection 副本。
+
+它们不在当前投稿包内，也不是当前主稿的直接读取位置；但在逐文件确认与原始 `ral_date` 一致之前，不自动删除。
+
+### D. 历史分析、旧论文方向和分章节中间稿
+
+以下目录已经统一移动至 `90_legacy_archive/`，没有删除：
+
+- `04_statistics/`
+- `05_figures/`
+- `06_manuscript/`
+- `07_supplement_experiment/`
+- `08_timing_compensation/`
+- `09_latency_aware_paper/`
+- `10_confirmatory_experiment/`
+- `11_existing_data_paper_blueprint/`
+- `12_results_writing/`
+- `13_methods_writing/`
+- `14_discussion_writing/`
+- `15_introduction_related_work/`
+- `16_conclusion_writing/`
+- `17_abstract_writing/`
+
+### E. 已复制进完整投稿包的原工作区源目录
+
+以下内容已经复制进 `21_framework_first_submission_bundle/`；原工作副本已移动至 `90_legacy_archive/`：
+
+- `18_manuscript_v1/`
+- `19_publication_figures/`
+- `20_submission_package/`
+
+后续只修改 bundle 内文件。`90_legacy_archive/` 中的副本仅用于历史追溯。
+
+### F. 历史归档
+
+- `90_legacy_archive/`：约 58.28 MB，包含 04–20 阶段的旧分析、旧论文方向、分章节中间稿、原工作副本和旧 `analysis_summary.json`。该目录可以恢复，但不是当前论文入口。
+
+## 当前验证状态
+
+- Clean QA：38/38 PASS
+- Fidelity QA：30/30 PASS
+- Manuscript QA：44/44 PASS
+- Figures 1–7：已在 bundle 内完整重建
+- Bundle SHA-256：PASS
+
+## 仍未完成的投稿事项
+
+伦理/知情同意、作者和单位、funding、conflict of interest、author contributions、数据/代码仓库 DOI 或稳定链接，以及目标期刊格式仍需补充。详见 bundle 内 `SUBMISSION_REQUIRED_INFORMATION.md`。
