@@ -7,8 +7,9 @@ from pathlib import Path
 import sys
 
 import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap
 from matplotlib.lines import Line2D
-from matplotlib.ticker import PercentFormatter
+from matplotlib.patches import Patch
 import numpy as np
 import pandas as pd
 
@@ -35,7 +36,7 @@ FIGURE_HEIGHT_MM = 132.0
 LAYOUT = {
     "left": 0.185,
     "right": 0.985,
-    "bottom": 0.105,
+    "bottom": 0.145,
     "top": 0.855,
     "wspace": 0.27,
     "hspace": 0.42,
@@ -562,62 +563,72 @@ def plot_exposure_panel(ax: plt.Axes, source: pd.DataFrame) -> None:
         ("F adaptation", "F", "F_adaptation_exposure_class"),
         ("F joint vision + adaptation", "F", "F_joint_exposure_class"),
     ]
-    counts_by_row = [
-        _exposure_counts(source.loc[source["mode_code"].eq(mode)], class_column)
-        for _, mode, class_column in specs
-    ]
-    y = np.arange(len(specs), dtype=float)
-    left = np.zeros(len(specs), dtype=float)
-    for level in EXPOSURE_LEVELS:
-        counts = np.array([row[level] for row in counts_by_row], dtype=float)
-        widths = counts / 45.0
-        style = EXPOSURE_STYLE[level]
-        bars = ax.barh(
-            y,
-            widths,
-            left=left,
-            height=0.58,
-            color=style["color"],
-            edgecolor="#4D4D4D",
-            linewidth=0.55,
-            hatch=style["hatch"],
-            label=f"{level} exposure",
-            zorder=2,
+    level_code = {"Full": 0, "Partial": 1, "Zero": 2}
+    matrices: list[np.ndarray] = []
+    counts_by_row: list[dict[str, int]] = []
+    for _, mode, class_column in specs:
+        frame = source.loc[source["mode_code"].eq(mode)].copy()
+        frame["material_order"] = pd.Categorical(
+            frame["material"], categories=["soft", "medium", "hard"], ordered=True
         )
-        for bar, count in zip(bars, counts.astype(int)):
-            if count == 0:
-                continue
-            text_color = "white" if level == "Full" else "#242424"
-            ax.text(
-                bar.get_x() + bar.get_width() / 2.0,
-                bar.get_y() + bar.get_height() / 2.0,
-                str(count),
-                ha="center",
-                va="center",
-                fontsize=7.2,
-                fontweight="bold",
-                color=text_color,
-                zorder=4,
-            )
-        left += widths
+        frame = frame.sort_values(
+            ["participant", "material_order", "block", "record_id"], kind="stable"
+        )
+        if frame.groupby("participant").size().to_dict() != {
+            "P01": 9, "P02": 9, "P03": 9, "P04": 9, "P05": 9
+        }:
+            raise RuntimeError(f"Exposure-matrix participant layout failed for mode {mode}")
+        labels = frame[class_column].astype(str).tolist()
+        matrices.append(np.array([level_code[label] for label in labels], dtype=int))
+        counts_by_row.append(_exposure_counts(frame, class_column))
 
-    ax.set_yticks(y, [label for label, _, _ in specs])
-    ax.set_ylim(3.55, -1.15)
-    ax.set_xlim(0.0, 1.0)
-    ax.set_xticks([0.0, 0.25, 0.50, 0.75, 1.0])
-    ax.xaxis.set_major_formatter(PercentFormatter(xmax=1.0, decimals=0))
-    ax.set_xlabel("Outcome-window exposure (% of 45 trials)")
-    ax.set_title("Outcome-window exposure: contact +0.20 to +1.00 s", loc="left", pad=8)
+    matrix = np.vstack(matrices)
+    cmap = ListedColormap([EXPOSURE_STYLE[level]["color"] for level in EXPOSURE_LEVELS])
+    ax.imshow(matrix, cmap=cmap, vmin=-0.5, vmax=2.5, aspect="auto", interpolation="none")
+
+    # Thin cell borders and symbols keep the categories legible in grayscale.
+    ax.set_xticks(np.arange(-0.5, 45, 1), minor=True)
+    ax.set_yticks(np.arange(-0.5, 4, 1), minor=True)
+    ax.grid(which="minor", color="white", linewidth=0.42)
+    ax.tick_params(which="minor", bottom=False, left=False)
+    for row in range(matrix.shape[0]):
+        for column in range(matrix.shape[1]):
+            if matrix[row, column] == 1:
+                ax.text(column, row, "/", ha="center", va="center", fontsize=5.6, fontweight="bold", color="#3B3425")
+            elif matrix[row, column] == 2:
+                ax.text(column, row, "×", ha="center", va="center", fontsize=5.2, fontweight="bold", color="#4D4D4D")
+
+    for boundary in [8.5, 17.5, 26.5, 35.5]:
+        ax.axvline(boundary, color="#303030", linewidth=0.85)
+    ax.set_xticks([4, 13, 22, 31, 40], ["P01", "P02", "P03", "P04", "P05"])
+    ax.set_yticks(np.arange(4), [label for label, _, _ in specs])
+    ax.set_xlim(-0.5, 48.2)
+    ax.set_ylim(3.5, -0.5)
+    ax.set_xlabel("Trial identity grouped by participant (9 trials per participant/configuration)")
+    ax.set_title("Trial-level outcome-window exposure: contact +0.20 to +1.00 s", loc="left", pad=8)
+    for row, counts in enumerate(counts_by_row):
+        ax.text(
+            46.0,
+            row,
+            f"{counts['Full']}/{counts['Partial']}/{counts['Zero']}",
+            ha="center",
+            va="center",
+            fontsize=6.1,
+            fontweight="bold",
+        )
     ax.legend(
-        loc="center",
-        bbox_to_anchor=(0.64, -0.77),
-        bbox_transform=ax.transData,
+        handles=[
+            Patch(facecolor=EXPOSURE_STYLE["Full"]["color"], edgecolor="#4D4D4D", label="Full"),
+            Patch(facecolor=EXPOSURE_STYLE["Partial"]["color"], edgecolor="#4D4D4D", hatch="///", label="Partial"),
+            Patch(facecolor=EXPOSURE_STYLE["Zero"]["color"], edgecolor="#4D4D4D", hatch="xx", label="Zero"),
+        ],
+        loc="upper right",
+        bbox_to_anchor=(0.995, 1.28),
         ncol=3,
-        handlelength=2.4,
-        handleheight=1.0,
-        columnspacing=1.3,
+        columnspacing=1.0,
+        handlelength=1.5,
     )
-    panel_label(ax, "C", x=-0.065, y=1.16)
+    panel_label(ax, "C", x=-0.065, y=1.20)
 
 
 def create_figure(source: pd.DataFrame) -> plt.Figure:
@@ -661,7 +672,7 @@ def create_figure(source: pd.DataFrame) -> plt.Figure:
     )
     fig.text(
         0.5,
-        0.025,
+        0.010,
         "Trial-level displays characterize intervention fidelity; human outcome inference uses participant n=5.",
         ha="center",
         va="bottom",

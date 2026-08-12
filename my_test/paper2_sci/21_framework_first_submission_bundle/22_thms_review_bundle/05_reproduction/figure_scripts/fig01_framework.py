@@ -15,7 +15,7 @@ from figure_style import figure_size, save_publication_figure, set_publication_s
 
 STEM = "Fig01_realized_intervention_framework"
 WIDTH_MM = 178.0
-HEIGHT_MM = 96.0
+HEIGHT_MM = 88.0
 
 COLORS = {
     "nominal": "#F1F1F1",
@@ -91,63 +91,78 @@ def create_figure() -> plt.Figure:
     ax.set_ylim(0, 1)
     ax.axis("off")
 
-    x_positions = [0.025, 0.215, 0.405, 0.595]
-    layer_width, layer_y, layer_height = 0.145, 0.575, 0.31
+    ax.text(0.018, 0.955, "(A)", fontsize=8.8, fontweight="bold", va="top")
+    ax.text(0.064, 0.955, "From nominal specification to an evidence-admissible claim", fontsize=8.3, fontweight="bold", va="top")
+
+    x_positions = [0.025, 0.218, 0.411, 0.604]
+    layer_width, layer_y, layer_height = 0.145, 0.555, 0.315
     for x, (symbol, title, lines, color_key) in zip(x_positions, LAYERS):
         box(ax, x, layer_y, layer_width, layer_height, title, symbol, lines, COLORS[color_key])
 
-    final_x, final_width = 0.790, 0.185
+    final_x, final_width = 0.797, 0.178
     box(
         ax,
         final_x,
         layer_y,
         final_width,
         layer_height,
-        "Evidence-admissible\ninterpretation",
+        "Evidence-admissible\nclaim",
         None,
-        ["narrowest supported", "statistical contrast", "not automatically causal"],
+        ["narrowest supported", "contrast and unit", "causality not assumed"],
         COLORS["final"],
     )
 
     chain_y = layer_y + layer_height / 2
     interfaces = [
-        ("Specification →\nimplementation", "missing/incorrect guard\nor clock implementation"),
-        ("Implementation →\nrealization", "logged state differs from\nliteral executable prediction"),
-        ("Realization →\noutcome exposure", "partial or zero\nwindow exposure"),
+        ("N ≠ C", "guard / clock"),
+        ("C ≠ R", "logged delivery"),
+        ("R ≠ W", "window exposure"),
     ]
     for index, (label, failure) in enumerate(interfaces):
         left = x_positions[index] + layer_width + 0.004
         right = x_positions[index + 1] - 0.004
         arrow(ax, (left, chain_y), (right, chain_y))
         center = (left + right) / 2
-        ax.text(center, 0.930, label, fontsize=6.2, fontweight="bold", ha="center", va="top", linespacing=1.0)
-        ax.text(center, 0.545, failure, fontsize=5.8, color=COLORS["failure"], ha="center", va="top", linespacing=1.05)
+        ax.text(
+            center,
+            0.885,
+            label,
+            fontsize=6.4,
+            fontweight="bold",
+            ha="center",
+            va="bottom",
+            color=COLORS["failure"],
+            bbox={"boxstyle": "round,pad=0.22", "facecolor": "#FFF7F2", "edgecolor": "#D9B8A6", "linewidth": 0.55},
+        )
+        ax.text(center, 0.535, failure, fontsize=5.5, color=COLORS["failure"], ha="center", va="top")
     arrow(ax, (x_positions[-1] + layer_width + 0.004, chain_y), (final_x - 0.004, chain_y))
 
-    ax.text(0.025, 0.430, "Asynchronous human–machine event channels (schematic)", fontsize=7.5, fontweight="bold", va="bottom")
+    ax.plot([0.02, 0.98], [0.475, 0.475], color="#D0D0D0", linewidth=0.55)
+    ax.text(0.018, 0.438, "(B)", fontsize=8.8, fontweight="bold", va="top")
+    ax.text(0.064, 0.438, "Asynchronous channels determine what reaches the analysis window", fontsize=8.3, fontweight="bold", va="top")
     x0, x1 = 0.205, 0.955
-    y_rows = [0.355, 0.295, 0.235, 0.175, 0.115]
+    y_rows = [0.335, 0.275, 0.215, 0.155, 0.095]
     labels = ["Human input $H_i(t)$", "Vision lock", "Controller activation", "Contact", "Outcome window $W_i$"]
     for y, label in zip(y_rows, labels):
         ax.text(0.185, y, label, fontsize=6.5, ha="right", va="center")
         ax.plot([x0, x1], [y, y], color="#B0B0B0", linewidth=0.55)
-    ax.text(x0, 0.065, "earlier", fontsize=5.8, color=COLORS["muted"], ha="center")
-    ax.text(x1, 0.065, "later", fontsize=5.8, color=COLORS["muted"], ha="center")
-    arrow(ax, (x0, 0.082), (x1, 0.082))
+    ax.text(x0, 0.035, "earlier", fontsize=5.8, color=COLORS["muted"], ha="center")
+    ax.text(x1, 0.035, "later", fontsize=5.8, color=COLORS["muted"], ha="center")
+    arrow(ax, (x0, 0.052), (x1, 0.052))
 
-    ax.plot([0.30, 0.36, 0.43, 0.51], [0.355, 0.374, 0.340, 0.355], color=COLORS["edge"], linewidth=1.1)
-    ax.scatter([0.47], [0.295], s=23, marker="s", color=COLORS["vision"], zorder=4)
-    ax.scatter([0.39], [0.235], s=24, marker="D", color=COLORS["activation"], edgecolor="white", linewidth=0.4, zorder=4)
-    ax.scatter([0.58], [0.175], s=28, marker="|", color="#202020", linewidth=1.4, zorder=4)
-    ax.add_patch(Rectangle((0.66, 0.095), 0.22, 0.040, facecolor=COLORS["window"], edgecolor="#777777", linewidth=0.7))
-    ax.text(0.77, 0.115, "samples contributing to $Y_i$", fontsize=5.9, ha="center", va="center")
-    for x, text, y in [(0.47, "perception", 0.275), (0.39, "activation before contact", 0.215), (0.58, "contact", 0.155)]:
+    ax.plot([0.30, 0.36, 0.43, 0.51], [0.335, 0.354, 0.320, 0.335], color=COLORS["edge"], linewidth=1.1)
+    ax.scatter([0.47], [0.275], s=23, marker="s", color=COLORS["vision"], zorder=4)
+    ax.scatter([0.39], [0.215], s=24, marker="D", color=COLORS["activation"], edgecolor="white", linewidth=0.4, zorder=4)
+    ax.scatter([0.58], [0.155], s=28, marker="|", color="#202020", linewidth=1.4, zorder=4)
+    ax.add_patch(Rectangle((0.66, 0.075), 0.22, 0.040, facecolor=COLORS["window"], edgecolor="#777777", linewidth=0.7))
+    ax.text(0.77, 0.095, "samples contributing to $Y_i$", fontsize=5.9, ha="center", va="center")
+    for x, text, y in [(0.47, "perception", 0.255), (0.39, "activation before contact", 0.195), (0.58, "contact", 0.135)]:
         ax.text(x, y, text, fontsize=5.5, ha="center", va="top", color=COLORS["muted"])
 
     ax.text(
         0.975,
-        0.018,
-        r"Acquisition provenance is an orthogonal prerequisite for the $R_i\leftrightarrow Y_i$ linkage (Fig. 2).",
+        0.006,
+        r"Acquisition provenance is an orthogonal prerequisite for the $R_i\leftrightarrow Y_i$ linkage (Section III-C; Fig. S3).",
         fontsize=5.9,
         ha="right",
         va="bottom",

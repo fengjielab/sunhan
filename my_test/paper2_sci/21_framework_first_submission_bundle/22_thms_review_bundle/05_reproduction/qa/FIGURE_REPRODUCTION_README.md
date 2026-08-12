@@ -43,16 +43,16 @@ Checks include:
 - F vision exposure 42 full / 0 partial / 3 zero;
 - F adaptation and joint exposure 35 full / 7 partial / 3 zero.
 
-Current generated suite QA result: **PASS (11/11 checks)**. This status is regenerated from the clean outputs and is also recorded in `figure_qa_report.json`.
+Current frozen-suite QA result: **PASS (11/11 checks)**. The new setup/process Figure 2 additionally passes **5/5 process-specific checks**, recorded in `figure02_process_qa.txt`.
 
 ## Figure map
 
 | Figure | Script | Output stem (`.pdf`, `.svg`, `.png`) | Clean inputs | Panel meaning |
 |---|---|---|---|---|
 | Fig01 | `fig01_framework.py` | `Fig01_realized_intervention_framework` | conceptual definition and generated `figure01_source_data.csv` | Generic four-layer framework, three evidence interfaces, asynchronous event channels, and admissible interpretation; provenance is intentionally excluded |
-| Fig02 | `fig02_system_lineage.py` | `Fig02_system_and_lineage` | `data_lineage_audit.csv`, `participant_level_metrics.csv` | (A) teleoperation system; (B) schematic asynchronous event channels; (C) exact acquisition lineage, trial-level fidelity, and participant-level inference |
+| Fig02 | `fig02_process_evidence.py` | `Fig02_experimental_setup_and_process` | packaged `assets/experimental_setup.jpg`, `trial_level_fidelity_metrics.csv`, `contact_aligned_summary.csv` | (A) unmodified annotated setup photograph; (B) all 45 F event sequences summarized by trial points, IQRs, and medians; (C) contact-aligned excess force; (D) logged commanded stiffness |
 | Fig03 | `fig03_fidelity_results.py` | `Fig03_realized_intervention_fidelity` | `trial_level_fidelity_metrics.csv`, `outcome_window_exposure.csv` | (A) all G trials ranked by activation latency with task/baseline/contact events; (B) all F trials relative to contact and the nominal +0.20-s gate; (C) full/partial/zero outcome-window exposure |
-| Fig04 | `fig04_participant_outcomes.py` | `Fig04_participant_EA_outcomes` | `participant_level_metrics.csv`, `statistics_summary.csv`; `trial_level_fidelity_metrics.csv` for the 9-trial pre-aggregation QA only | Participant E-A difference plots for excess-force impulse, task-start-to-contact time, and total task time; points show all five differences and diamonds/lines show frozen means and 95% CIs |
+| Fig04 | `fig04_participant_outcomes.py` | `Fig04_participant_EA_outcomes` | `participant_level_metrics.csv`, `statistics_summary.csv`; `trial_level_fidelity_metrics.csv` for the 9-trial pre-aggregation QA only | Fidelity-bounded interpretation map plus the primary participant-level E-A excess-force-impulse result, including raw, multiplicity-adjusted, and exact inference |
 | Fig05 / S1 | `fig05_contact_trajectories.py` | `Fig05_contact_aligned_trajectories` | `contact_aligned_summary.csv`; `contact_aligned_trajectories.csv` and `trial_level_fidelity_metrics.csv` for hierarchical-aggregation and commanded-`K_t` QA | Supplementary descriptive context: participant-aggregated contact-aligned excess force and logged commanded translational stiffness |
 | Fig06 | `fig06_participant_lopo.py` | `Fig06_participant_lopo_stability` | `participant_level_metrics.csv`, `statistics_summary.csv`, `leave_one_participant_out.csv` | (A) individual E-A differences; (B) E-A LOPO; (C) F-E LOPO |
 | Fig07 | `fig07_lineage_examples.py` | `Fig07_lineage_trace_examples` | `master_trial_manifest.csv`, `timing_audit.csv`, `contact_aligned_trajectories.csv` | (A) lineage replacements; (B) G timing; (C) F timing/trace; (D) post-contact vision lock |

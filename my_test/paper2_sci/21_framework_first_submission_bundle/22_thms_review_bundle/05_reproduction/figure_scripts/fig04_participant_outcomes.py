@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate Figure 4: exploratory participant-level E-A force and timing outcomes."""
+"""Generate Figure 4: fidelity-bounded interpretation and the primary E-A outcome."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ import sys
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
 
 from figure_common import (
     parse_root_args,
@@ -28,7 +29,7 @@ from figure_style import (
 
 STEM = "Fig04_participant_EA_outcomes"
 FIGURE_WIDTH_MM = 178.0
-FIGURE_HEIGHT_MM = 88.0
+FIGURE_HEIGHT_MM = 106.0
 LAYOUT = {
     "left": 0.075,
     "right": 0.985,
@@ -89,6 +90,9 @@ STATISTICS_COLUMNS = [
     "raw_mean_difference",
     "ci95_low",
     "ci95_high",
+    "paired_t_p",
+    "exact_sign_flip_p",
+    "paired_t_p_holm",
 ]
 TRIAL_COLUMNS = ["record_id", "participant", "mode_code"]
 
@@ -199,7 +203,43 @@ def build_source_data(
     directions = pd.DataFrame(direction_rows)
     summary = summary.merge(directions, on="metric", how="left", validate="one_to_one")
 
-    source = pd.concat([long, summary], ignore_index=True, sort=False)
+    interpretation_rows = pd.DataFrame(
+        [
+            {
+                "row_type": "interpretation_map",
+                "panel": "A",
+                "contrast": "G-A",
+                "nominal_framing": "Post-contact force adaptation",
+                "fidelity_evidence": "43/45 G activations occurred before contact",
+                "admissible_comparison": "Raw-force-rule G versus fixed A",
+            },
+            {
+                "row_type": "interpretation_map",
+                "panel": "A",
+                "contrast": "E-A",
+                "nominal_framing": "Vision-isolated assistance",
+                "fidelity_evidence": "Bundled parameters; visual exposure 39/2/4",
+                "admissible_comparison": "Visual-enabled E bundle versus fixed A",
+            },
+            {
+                "row_type": "interpretation_map",
+                "panel": "A",
+                "contrast": "F-E",
+                "nominal_framing": "+0.20-s force refinement",
+                "fidelity_evidence": "Only 3/45 met the gate; mixed clocks",
+                "admissible_comparison": "Early/heterogeneous F versus E",
+            },
+            {
+                "row_type": "interpretation_map",
+                "panel": "A",
+                "contrast": "F-G",
+                "nominal_framing": "Vision × force interaction",
+                "fidelity_evidence": "Different bundles, rules, and timing",
+                "admissible_comparison": "Observed F bundle versus G bundle",
+            },
+        ]
+    )
+    source = pd.concat([long, summary, interpretation_rows], ignore_index=True, sort=False)
     ordered_columns = [
         "row_type",
         "panel",
@@ -217,8 +257,14 @@ def build_source_data(
         "effect_estimate_E_minus_A",
         "ci95_low",
         "ci95_high",
+        "paired_t_p",
+        "exact_sign_flip_p",
+        "paired_t_p_holm",
         "direction_count",
         "direction",
+        "nominal_framing",
+        "fidelity_evidence",
+        "admissible_comparison",
     ]
     return source.reindex(columns=ordered_columns).sort_values(
         ["panel", "row_type", "participant", "mode_code"],
@@ -475,30 +521,118 @@ def plot_metric_panel(
     )
 
 
+def draw_interpretation_panel(ax: plt.Axes, source: pd.DataFrame) -> None:
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.axis("off")
+    ax.text(0.0, 1.02, "(A)", fontsize=9.2, fontweight="bold", va="bottom")
+    ax.text(0.055, 1.02, "Fidelity evidence narrows what each contrast can support", fontsize=8.6, fontweight="bold", va="bottom")
+
+    columns = [
+        (0.10, 0.235, "Nominal framing", "#F1F1F1"),
+        (0.385, 0.265, "Observed fidelity evidence", "#F8EDE5"),
+        (0.705, 0.275, "Evidence-admissible comparison", "#E5F0EA"),
+    ]
+    for x, width, title, color in columns:
+        ax.add_patch(FancyBboxPatch((x, 0.86), width, 0.105, boxstyle="round,pad=0.004,rounding_size=0.012", facecolor=color, edgecolor="#666666", linewidth=0.65))
+        ax.text(x + width / 2, 0.912, title, fontsize=6.2, fontweight="bold", ha="center", va="center")
+
+    rows = source.loc[source["row_type"].eq("interpretation_map")]
+    contrast_order = ["G-A", "E-A", "F-E", "F-G"]
+    rows = rows.set_index("contrast").loc[contrast_order].reset_index()
+    y_positions = [0.675, 0.49, 0.305, 0.12]
+    for y, (_, row) in zip(y_positions, rows.iterrows()):
+        ax.add_patch(FancyBboxPatch((0.012, y), 0.068, 0.13, boxstyle="round,pad=0.004,rounding_size=0.012", facecolor="#FFFFFF", edgecolor="#555555", linewidth=0.75))
+        ax.text(0.046, y + 0.065, str(row["contrast"]).replace("-", "−"), fontsize=6.6, fontweight="bold", ha="center", va="center")
+        texts = [
+            str(row["nominal_framing"]).replace("Post-contact ", "Post-contact\n").replace("Vision-isolated ", "Vision-isolated\n").replace(" force refinement", "\nforce refinement").replace(" interaction", "\ninteraction"),
+            str(row["fidelity_evidence"]).replace(" occurred ", "\noccurred ").replace("; visual", ";\nvisual").replace("; mixed", ";\nmixed").replace(", rules, and", ", rules,\nand"),
+            str(row["admissible_comparison"]).replace(" versus ", "\nversus "),
+        ]
+        for (x, width, _, color), cell_text in zip(columns, texts):
+            ax.add_patch(FancyBboxPatch((x, y), width, 0.13, boxstyle="round,pad=0.004,rounding_size=0.010", facecolor=color, edgecolor="#888888", linewidth=0.55))
+            ax.text(x + width / 2, y + 0.065, cell_text, fontsize=5.65, ha="center", va="center", linespacing=1.05)
+        for start_x, end_x in [(0.338, 0.380), (0.653, 0.700)]:
+            ax.add_patch(FancyArrowPatch((start_x, y + 0.065), (end_x, y + 0.065), arrowstyle="-|>", mutation_scale=7.0, linewidth=0.65, color="#666666"))
+
+    ax.text(0.99, 0.005, "Admissible = narrowest comparison supported by implementation, delivery, exposure, and analysis unit.", fontsize=5.55, ha="right", va="bottom", color="#555555", fontstyle="italic")
+
+
+def plot_primary_outcome(ax: plt.Axes, source: pd.DataFrame) -> pd.Series:
+    metric_name = "primary_excess_impulse_Ns_0p2_1p0"
+    participant_rows = source.loc[source["row_type"].eq("participant_mean") & source["metric"].eq(metric_name)]
+    wide = participant_rows.pivot(index="participant", columns="mode_code", values="participant_mean").loc[:, ["A", "E"]].sort_index()
+    differences = wide["E"] - wide["A"]
+    summary = source.loc[source["row_type"].eq("contrast_summary") & source["metric"].eq(metric_name)].iloc[0]
+    participants = differences.index.tolist()
+    y = np.arange(5, dtype=float)
+    mean_y = 6.0
+    effect, low, high = (float(summary[key]) for key in ["effect_estimate_E_minus_A", "ci95_low", "ci95_high"])
+
+    ax.axvspan(-0.66, 0.0, color="#EAF4EF", zorder=0)
+    ax.axvline(0.0, color="#555555", linewidth=0.8, linestyle=(0, (3, 2)), zorder=1)
+    ax.hlines(y, 0.0, differences.to_numpy(dtype=float), color="#95B9A8", linewidth=0.8, zorder=2)
+    ax.scatter(differences.to_numpy(dtype=float), y, s=34, facecolor="white", edgecolor="#009E73", linewidth=1.1, zorder=3)
+    ax.hlines(mean_y, low, high, color="#222222", linewidth=1.25, zorder=3)
+    ax.plot([low, low], [mean_y - 0.14, mean_y + 0.14], color="#222222", linewidth=0.9)
+    ax.plot([high, high], [mean_y - 0.14, mean_y + 0.14], color="#222222", linewidth=0.9)
+    ax.scatter([effect], [mean_y], s=43, marker="D", facecolor="#009E73", edgecolor="white", linewidth=0.45, zorder=4)
+    ax.set_xlim(-0.66, 0.04)
+    ax.set_ylim(-0.8, 6.7)
+    ax.invert_yaxis()
+    ax.set_yticks([*y, mean_y], [*participants, "Mean (95% CI)"])
+    ax.set_xlabel("E − A difference in excess-force impulse (N·s)")
+    ax.set_title("Primary participant-level outcome", loc="left", pad=6)
+    ax.grid(axis="x", color="#D5D5D5", linewidth=0.5, alpha=0.7)
+    ax.set_axisbelow(True)
+    panel_label(ax, "B", x=-0.15, y=1.13)
+    ax.text(0.015, 0.04, "← lower impulse under E", transform=ax.transAxes, fontsize=5.8, color="#007C60", ha="left", va="bottom")
+    return summary
+
+
+def draw_statistics_box(ax: plt.Axes, summary: pd.Series) -> None:
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.axis("off")
+    ax.add_patch(FancyBboxPatch((0.02, 0.05), 0.96, 0.89, boxstyle="round,pad=0.012,rounding_size=0.025", facecolor="#F7FAF8", edgecolor="#8AA697", linewidth=0.75))
+    ax.text(0.08, 0.86, "E − A summary", fontsize=7.0, fontweight="bold", va="top")
+    ax.text(
+        0.08,
+        0.72,
+        f"Mean difference  {_signed(float(summary['effect_estimate_E_minus_A']))} N·s\n"
+        f"95% CI  [{_signed(float(summary['ci95_low']))}, {_signed(float(summary['ci95_high']))}]\n"
+        f"Participants below zero  5/5",
+        fontsize=6.2,
+        va="top",
+        linespacing=1.35,
+    )
+    ax.plot([0.08, 0.92], [0.45, 0.45], color="#C5D4CC", linewidth=0.65)
+    ax.text(
+        0.08,
+        0.39,
+        f"paired t: raw p={float(summary['paired_t_p']):.4f}\n"
+        f"paired t: Holm p={float(summary['paired_t_p_holm']):.4f}\n"
+        f"exact sign-flip p={float(summary['exact_sign_flip_p']):.4f}",
+        fontsize=5.9,
+        va="top",
+        linespacing=1.32,
+    )
+    ax.text(0.08, 0.055, "Exploratory; not a mechanism-\nisolated causal effect.", fontsize=5.35, va="bottom", color="#8A4C2E", fontweight="bold", linespacing=1.08)
+
+
 def create_figure(source: pd.DataFrame) -> plt.Figure:
     set_publication_style()
-    fig, axes = plt.subplots(
-        1,
-        3,
-        figsize=figure_size(FIGURE_WIDTH_MM, FIGURE_HEIGHT_MM),
-    )
-    fig.subplots_adjust(**LAYOUT)
-    participant_rows = source.loc[source["row_type"].eq("participant_mean")]
-    summary_rows = source.loc[source["row_type"].eq("contrast_summary")]
-    for ax, metric in zip(axes, METRICS):
-        summary = summary_rows.loc[
-            summary_rows["metric"].eq(metric["source_column"])
-        ].iloc[0]
-        plot_metric_panel(ax, participant_rows, summary, metric)
-
+    fig = plt.figure(figsize=figure_size(FIGURE_WIDTH_MM, FIGURE_HEIGHT_MM))
+    draw_interpretation_panel(fig.add_axes([0.025, 0.52, 0.95, 0.41]), source)
+    summary = plot_primary_outcome(fig.add_axes([0.115, 0.165, 0.55, 0.265]), source)
+    draw_statistics_box(fig.add_axes([0.71, 0.15, 0.255, 0.28]), summary)
     fig.text(
         0.5,
-        0.045,
-        "Exploratory paired differences; n=5 independent participants (9 selected trials per participant/configuration).\n"
-        "E is a bundled assignment with heterogeneous realized visual exposure. Task start denotes system readiness, not first human movement.",
+        0.018,
+        "Participant-level inference uses n=5 independent participants (9 selected trials per participant/configuration); E is a bundled assignment with heterogeneous visual exposure.",
         ha="center",
         va="bottom",
-        fontsize=6.6,
+        fontsize=6.2,
         fontstyle="italic",
         color="#303030",
     )

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate Figure 2: case system, asynchronous event channels, and provenance."""
+"""Generate Figure 2: case system architecture and acquisition provenance."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd
-from matplotlib.patches import FancyArrowPatch, FancyBboxPatch, Rectangle
+from matplotlib.patches import Circle, FancyArrowPatch, FancyBboxPatch, Rectangle
 
 from figure_common import parse_root_args, prepare_run, read_clean_csv, record_manifest, write_source_csv
 from figure_style import figure_size, save_publication_figure, set_publication_style
@@ -15,7 +15,7 @@ from figure_style import figure_size, save_publication_figure, set_publication_s
 
 STEM = "Fig02_system_and_lineage"
 WIDTH_MM = 178.0
-HEIGHT_MM = 118.0
+HEIGHT_MM = 84.0
 
 COLORS = {
     "neutral": "#F1F1F1",
@@ -47,15 +47,22 @@ def add_box(ax: plt.Axes, xy: tuple[float, float], size: tuple[float, float], te
     ax.text(x + width / 2, y + height / 2, text, fontsize=fontsize, ha="center", va="center", fontweight="bold" if bold else "normal", linespacing=1.05)
 
 
-def arrow(ax: plt.Axes, start: tuple[float, float], end: tuple[float, float], connectionstyle: str = "arc3") -> None:
+def arrow(
+    ax: plt.Axes,
+    start: tuple[float, float],
+    end: tuple[float, float],
+    connectionstyle: str = "arc3",
+    color: str | None = None,
+    linewidth: float = 0.8,
+) -> None:
     ax.add_patch(
         FancyArrowPatch(
             start,
             end,
             arrowstyle="-|>",
             mutation_scale=8.0,
-            linewidth=0.8,
-            color=COLORS["edge"],
+            linewidth=linewidth,
+            color=color or COLORS["edge"],
             connectionstyle=connectionstyle,
             shrinkA=1.0,
             shrinkB=1.0,
@@ -65,35 +72,57 @@ def arrow(ax: plt.Axes, start: tuple[float, float], end: tuple[float, float], co
 
 def panel_title(ax: plt.Axes, letter: str, title: str) -> None:
     ax.text(0.0, 1.02, f"({letter})", fontsize=9.2, fontweight="bold", va="bottom")
-    ax.text(0.075, 1.02, title, fontsize=8.6, fontweight="bold", va="bottom")
+    ax.text(0.095, 1.02, title, fontsize=8.6, fontweight="bold", va="bottom")
 
 
 def draw_system(ax: plt.Axes) -> None:
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)
     ax.axis("off")
-    panel_title(ax, "A", "Human-in-the-loop teleoperation system")
-    y, h = 0.54, 0.18
-    nodes = [
-        (0.02, 0.16, "Human\noperator", COLORS["neutral"]),
-        (0.235, 0.18, "Force Dimension\nOmega.7", COLORS["blue"]),
-        (0.475, 0.20, "Supervisory\ncontroller", COLORS["blue"]),
-        (0.735, 0.24, "Panda + Hand\nobject/environment", COLORS["green"]),
-    ]
-    for x, w, text, color in nodes:
-        add_box(ax, (x, y), (w, h), text, color, fontsize=6.3, bold=("controller" in text))
-    for left, right in zip(nodes[:-1], nodes[1:]):
-        arrow(ax, (left[0] + left[1] + 0.004, y + h / 2), (right[0] - 0.004, y + h / 2))
-    ax.text(0.37, 0.50, "recorded master command", fontsize=5.6, ha="center", color=COLORS["muted"])
-    ax.text(0.63, 0.50, "commanded impedance\n+ gripper command", fontsize=5.6, ha="center", va="top", color=COLORS["muted"])
+    panel_title(ax, "A", "Coupled system and audited signal paths")
 
-    add_box(ax, (0.26, 0.12), (0.18, 0.15), "RealSense D435i\nsemantic lock", COLORS["green"], fontsize=6.0)
-    arrow(ax, (0.44, 0.195), (0.57, 0.54))
-    add_box(ax, (0.735, 0.12), (0.24, 0.15), "Internal estimated wrench\n" + r"$O\_F\_ext\_hat\_K$", COLORS["orange"], fontsize=5.9)
-    arrow(ax, (0.855, 0.54), (0.855, 0.27))
-    ax.text(0.86, 0.085, "contact detection · logged force · haptic feedback", fontsize=5.4, ha="center", va="top", color=COLORS["muted"])
-    arrow(ax, (0.74, 0.16), (0.33, 0.53), connectionstyle="arc3,rad=-0.34")
-    ax.text(0.53, 0.315, "haptic feedback", fontsize=5.5, ha="center", color=COLORS["muted"])
+    # Light scene cards provide visual hierarchy without implying unavailable photographs.
+    ax.add_patch(FancyBboxPatch((0.01, 0.15), 0.25, 0.70, boxstyle="round,pad=0.008,rounding_size=0.02", facecolor="#F8F8F8", edgecolor="#D2D2D2", linewidth=0.65))
+    ax.add_patch(FancyBboxPatch((0.35, 0.15), 0.25, 0.70, boxstyle="round,pad=0.008,rounding_size=0.02", facecolor="#F4F8FB", edgecolor="#C8D7DF", linewidth=0.65))
+    ax.add_patch(FancyBboxPatch((0.69, 0.15), 0.30, 0.70, boxstyle="round,pad=0.008,rounding_size=0.02", facecolor="#F4F9F6", edgecolor="#C9DACE", linewidth=0.65))
+    ax.text(0.135, 0.81, "HUMAN / MASTER", fontsize=5.7, fontweight="bold", ha="center", color=COLORS["muted"])
+    ax.text(0.475, 0.81, "SUPERVISORY LAYER", fontsize=5.7, fontweight="bold", ha="center", color=COLORS["muted"])
+    ax.text(0.84, 0.81, "ROBOT / TASK", fontsize=5.7, fontweight="bold", ha="center", color=COLORS["muted"])
+
+    # Operator and Omega.7 pictograms.
+    ax.add_patch(Circle((0.075, 0.64), 0.030, facecolor="white", edgecolor=COLORS["edge"], linewidth=0.8))
+    ax.plot([0.075, 0.075], [0.61, 0.50], color=COLORS["edge"], linewidth=1.0)
+    ax.plot([0.075, 0.040], [0.575, 0.525], color=COLORS["edge"], linewidth=0.9)
+    ax.plot([0.075, 0.122], [0.575, 0.535], color=COLORS["edge"], linewidth=0.9)
+    ax.plot([0.075, 0.045], [0.50, 0.43], color=COLORS["edge"], linewidth=0.9)
+    ax.plot([0.075, 0.105], [0.50, 0.43], color=COLORS["edge"], linewidth=0.9)
+    ax.add_patch(Circle((0.165, 0.515), 0.037, facecolor=COLORS["blue"], edgecolor=COLORS["edge"], linewidth=0.8))
+    ax.plot([0.165, 0.205], [0.515, 0.56], color=COLORS["edge"], linewidth=1.2)
+    ax.add_patch(Circle((0.205, 0.56), 0.010, facecolor="#FFFFFF", edgecolor=COLORS["edge"], linewidth=0.7))
+    ax.text(0.135, 0.25, "Operator + Omega.7\nrecorded master motion", fontsize=6.2, ha="center", va="center")
+
+    add_box(ax, (0.385, 0.55), (0.18, 0.15), "Supervisory\ncontroller", COLORS["blue"], fontsize=6.5, bold=True)
+    add_box(ax, (0.385, 0.29), (0.18, 0.13), "RealSense D435i\nsemantic lock", COLORS["green"], fontsize=5.8)
+
+    # Stylized Panda arm, hand, and contact surface.
+    joints = [(0.74, 0.36), (0.76, 0.54), (0.82, 0.66), (0.89, 0.57), (0.92, 0.45)]
+    for start, end in zip(joints[:-1], joints[1:]):
+        ax.plot([start[0], end[0]], [start[1], end[1]], color="#4B4B4B", linewidth=4.0, solid_capstyle="round", zorder=2)
+    for x, y in joints:
+        ax.add_patch(Circle((x, y), 0.021, facecolor="white", edgecolor="#4B4B4B", linewidth=0.9, zorder=3))
+    ax.plot([0.92, 0.955], [0.45, 0.41], color="#4B4B4B", linewidth=2.0)
+    ax.plot([0.945, 0.970], [0.405, 0.405], color=COLORS["f"], linewidth=1.8)
+    ax.add_patch(Rectangle((0.80, 0.30), 0.18, 0.035, facecolor="#D9D9D9", edgecolor="#777777", linewidth=0.6))
+    ax.text(0.84, 0.235, "Panda + Hand\nobject / environment", fontsize=6.2, ha="center", va="center")
+
+    # Three distinct audited pathways.
+    arrow(ax, (0.23, 0.66), (0.38, 0.66), color=COLORS["g"], linewidth=1.15)
+    arrow(ax, (0.57, 0.66), (0.71, 0.66), color=COLORS["g"], linewidth=1.15)
+    ax.text(0.47, 0.735, "recorded command → impedance / gripper command", fontsize=5.4, ha="center", color=COLORS["g"])
+    arrow(ax, (0.57, 0.355), (0.71, 0.42), color="#009E73", linewidth=1.05)
+    ax.text(0.64, 0.325, "vision-configured parameters", fontsize=5.2, ha="center", color="#007C60")
+    arrow(ax, (0.73, 0.34), (0.23, 0.38), connectionstyle="arc3,rad=-0.18", color=COLORS["f"], linewidth=1.05)
+    ax.text(0.49, 0.18, "estimated wrench → contact detection, logged force, haptic feedback", fontsize=5.4, ha="center", color="#A84C00")
 
 
 def draw_timeline(ax: plt.Axes) -> None:
@@ -134,7 +163,7 @@ def draw_provenance(ax: plt.Axes, counts: dict[str, int]) -> None:
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)
     ax.axis("off")
-    panel_title(ax, "C", "Acquisition provenance and inference level")
+    panel_title(ax, "B", "Acquisition provenance and inference level")
     add_box(ax, (0.08, 0.82), (0.84, 0.11), "Experimental acquisition", COLORS["neutral"], fontsize=6.4, bold=True)
     add_box(ax, (0.04, 0.64), (0.27, 0.11), "Raw CSV", COLORS["blue"], fontsize=6.0)
     add_box(ax, (0.365, 0.64), (0.27, 0.11), "Event JSON", COLORS["blue"], fontsize=6.0)
@@ -156,9 +185,8 @@ def draw_provenance(ax: plt.Axes, counts: dict[str, int]) -> None:
 def create_figure(counts: dict[str, int]) -> plt.Figure:
     set_publication_style()
     fig = plt.figure(figsize=figure_size(WIDTH_MM, HEIGHT_MM))
-    draw_system(fig.add_axes([0.025, 0.46, 0.54, 0.48]))
-    draw_provenance(fig.add_axes([0.60, 0.46, 0.375, 0.48]), counts)
-    draw_timeline(fig.add_axes([0.025, 0.055, 0.95, 0.29]))
+    draw_system(fig.add_axes([0.025, 0.08, 0.55, 0.84]))
+    draw_provenance(fig.add_axes([0.61, 0.08, 0.365, 0.84]), counts)
     return fig
 
 
@@ -184,7 +212,7 @@ def main() -> None:
     source_path = write_source_csv(source, source_dir / "figure02_source_data.csv")
     outputs = save_publication_figure(create_figure(counts), figures_dir, STEM, args.dpi)
     record_manifest(publication_root, project_root, STEM, Path(__file__), [lineage_path, participant_path], source_path, outputs)
-    print(f"Generated {STEM}: system + schematic event channels + exact provenance")
+    print(f"Generated {STEM}: system architecture + exact provenance")
 
 
 if __name__ == "__main__":

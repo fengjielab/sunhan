@@ -11,7 +11,7 @@ from pathlib import Path
 
 SCRIPTS = [
     "fig01_framework.py",
-    "fig02_system_lineage.py",
+    "fig02_process_evidence.py",
     "fig03_fidelity_results.py",
     "fig04_participant_outcomes.py",
     "fig05_contact_trajectories.py",
