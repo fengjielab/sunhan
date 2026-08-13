@@ -19,6 +19,13 @@
 - `interactive_teleop.py` 采集代码快照；
 - 全包 SHA-256 manifest。
 
+## 新增前瞻性 K_fb 可行性预试
+
+`23_kfb_timing_pilot/` 是独立于存档 `n=5` 数据的新实验执行包。现场仍以
+`F:\sun\sunhan\my_test\interactive_teleop.py --mode kfb_timing` 为入口；该目录
+保存冻结顺序、私有oracle、执行说明和工程/志愿者检查表。当前状态仅为软件实现
+完成，尚未运行实体机器人验收或人体采集，不能写成已有前瞻性结果。
+
 入口文件：
 
 - `21_framework_first_submission_bundle/README.md`

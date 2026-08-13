@@ -32,6 +32,9 @@ interactive_teleop.py — 交互式遥操作：实时调节阻尼/刚度/力反�
     7. 预设手感场景切换（一键切换多组参数）
     8. Omega.7 力反馈实时渲染（从端外力 → 主端力觉）
     9. Omega.7 夹钳 → Franka 夹爪控制
+    10. K_fb timing 模式: 固定目标接触任务中的五种前瞻性时序/暴露扰动
+        - 关闭视觉、夹爪动作和夹爪附加反馈
+        - 私有oracle调度、单调时钟、5 N中止、2 N反馈限幅和不可覆盖文件
 
 手感维度:
     ┌──────────────┬──────────────────────────────────────┐
@@ -105,6 +108,12 @@ interactive_teleop.py — 交互式遥操作：实时调节阻尼/刚度/力反�
     # 关闭轨迹录制以节省内存
     python3 my_test/interactive_teleop.py --no-trajectory
 
+    # K_fb 时序预试（真实条件由私有oracle按trial-id读取）
+    python3 my_test/interactive_teleop.py --mode kfb_timing \
+      --subject-id ENGINEER --trial-id ENG_E01_01 \
+      --kfb-oracle path/to/private_oracle/oracle.csv \
+      --kfb-start-pose-file path/to/start_pose_v1.json
+
 用法示例:
     终端1: python3 my_test/interactive_teleop.py --mode vision
     # 结束后用离线分析工具:
@@ -121,6 +130,7 @@ import ctypes
 import json
 import os
 import argparse
+import csv
 import multiprocessing as mp
 from dataclasses import replace
 from enum import Enum
@@ -133,6 +143,14 @@ import panda_py
 from panda_py import controllers, libfranka
 
 from experiment_protocol import ExperimentTimeline, PHASE_PREP
+from kfb_timing_protocol import (
+    CONDITIONS as KFB_TIMING_CONDITIONS,
+    DEFAULT_CONFIG as KFB_TIMING_CONFIG,
+    KfbTimingRuntime,
+    config_hash as kfb_timing_config_hash,
+    sha256_file,
+    software_hash as kfb_timing_software_hash,
+)
 from trust_correction import (
     TrustCorrectionConfig,
     TrustCorrectionState,
@@ -228,6 +246,14 @@ TRAJECTORY_CSV_HEADER = [
     "applied_prior_label", "prior_K", "safe_anchor_K", "prior_trust",
     "contact_risk_raw", "contact_risk_ema", "trust_force_guard_N",
     "trust_target_K", "trust_delta_K", "trust_active", "trust_config_hash",
+    "t_mono_ns", "trial_id", "masked_condition", "protocol_phase",
+    "intervention_state", "K_fb_commanded", "K_fb_transition_reason",
+    "contact_candidate", "contact_confirmed",
+    "force_baseline_median_N", "force_baseline_sigma_N",
+    "force_threshold_on_N", "force_threshold_off_N", "force_corrected_N",
+    "haptic_cmd_x", "haptic_cmd_y", "haptic_cmd_z", "haptic_cmd_norm",
+    "haptic_send_ok", "haptic_clamped", "target_speed_limited",
+    "safety_abort", "kfb_config_sha256", "acquisition_software_sha256",
 ]
 
 # 平滑过渡步长
@@ -545,10 +571,34 @@ class InteractiveTeleop:
                  actual_object: str = "unknown",
                  diagnostic_disable_gripper_read: bool = False,
                  diagnostic_disable_vision: bool = False,
-                 diagnostic_no_vision_display: bool = False):
+                 diagnostic_no_vision_display: bool = False,
+                 kfb_condition: str = "",
+                 kfb_masked_condition: str = "",
+                 kfb_protocol_phase: str = "",
+                 kfb_analyzed: bool = False,
+                 kfb_acquisition_software_hash: str = "",
+                 kfb_start_pose: Optional[dict] = None,
+                 kfb_start_pose_hash: str = ""):
         # ── 运行模式 ──
         self.mode = mode  # "default" | "force_only" | "vision" | PRESETS key
         self._trust_experiment = mode == "trust_experiment"
+        self._kfb_timing_experiment = mode == "kfb_timing"
+        self._kfb_condition = str(kfb_condition).upper()
+        self._kfb_masked_condition = str(kfb_masked_condition)
+        self._kfb_protocol_phase = str(kfb_protocol_phase)
+        self._kfb_analyzed = bool(kfb_analyzed)
+        self._kfb_config = KFB_TIMING_CONFIG
+        self._kfb_config_hash = kfb_timing_config_hash(self._kfb_config)
+        self._kfb_acquisition_software_hash = str(kfb_acquisition_software_hash)
+        self._kfb_start_pose = kfb_start_pose
+        self._kfb_start_pose_hash = str(kfb_start_pose_hash)
+        if self._kfb_timing_experiment:
+            if self._kfb_condition not in KFB_TIMING_CONDITIONS:
+                raise ValueError("kfb_condition must be one of C0/C1/C2/C3/C4")
+            if not self._kfb_masked_condition:
+                raise ValueError("kfb_masked_condition is required")
+            if not isinstance(self._kfb_start_pose, dict):
+                raise ValueError("kfb_start_pose is required for fixed-target trials")
         self._prior_condition = str(prior_condition).lower()
         self._posterior_correction = bool(posterior_correction)
         self._actual_object = str(actual_object).lower()
@@ -577,6 +627,7 @@ class InteractiveTeleop:
             "vision": "E", "vision_force": "F",
             "force_only": "G",
             "trust_experiment": self._trust_condition_code,
+            "kfb_timing": "KFB_TIMING",
         }.get(mode, mode)
 
         # ── 运行状态 ──
@@ -592,7 +643,7 @@ class InteractiveTeleop:
         self._experiment_parameters_locked = mode in (
             "experiment_fixed_a", "soft_obj", "medium_obj", "hard_obj",
             "vision_observe", "vision_stiffness", "vision", "vision_force",
-            "force_only", "trust_experiment",
+            "force_only", "trust_experiment", "kfb_timing",
         )
 
         # ── Vision 模式状态 ──
@@ -758,6 +809,10 @@ class InteractiveTeleop:
         self._target_pos_current = np.full(3, np.nan)
         self._omega_read_valid = True
         self._control_dt = float("nan")
+        self._haptic_command = np.zeros(3)
+        self._haptic_send_ok = True
+        self._haptic_clamped = False
+        self._target_speed_limited = False
         self._timing_profile_version = 1
         self._prev_omega_io_s = float("nan")
         self._prev_panda_state_s = float("nan")
@@ -776,6 +831,17 @@ class InteractiveTeleop:
             mode=self._experiment_condition, subject_id=subject_id,
             object_id=object_id, trial_id=trial_id,
         )
+        self._kfb_runtime = None
+        self._kfb_snapshot = None
+        self._kfb_runtime_start_ns = None
+
+        if self._kfb_timing_experiment:
+            self._K_trans_cur = self._kfb_config.K_trans_N_per_m
+            self._K_rot_cur = self._kfb_config.K_rot_Nm_per_rad
+            self._damping_ratio_cur = self._kfb_config.damping_ratio
+            self._K_fb_cur = self._kfb_config.K_fb_baseline
+            self._deadband_cur = self._kfb_config.deadband_N
+            self._scale_cur = self._kfb_config.position_scale
 
         # ── 硬件句柄 ──
         self.panda = None
@@ -864,18 +930,25 @@ class InteractiveTeleop:
         print("    ✅ 保持当前位置，控制器将从此处无缝接管")
 
         # ── 夹爪 ──
-        print("[3] 初始化 Franka Hand 夹爪 ...")
-        self.gripper = libfranka.Gripper(ROBOT_IP)
-        try:
-            self.gripper.homing()
-            print("    ✅ Homing 完成")
-        except Exception as e:
-            print(f"    ⚠️  Homing 失败: {e}")
-        self.gripper.move(GRIPPER_MAX, self._gripper_speed_cur)
-        self._last_cmd_width = GRIPPER_MAX
-        self._gripper_width_actual = float("nan")
-        self._gripper_width_valid = False
-        print(f"    ✅ 夹爪已打开 ({GRIPPER_MAX*1000:.0f} mm)")
+        if self._kfb_timing_experiment:
+            print("[3] K_fb 时序实验：Franka Hand 与夹爪附加力反馈均禁用")
+            self.gripper = None
+            self._last_cmd_width = GRIPPER_MAX
+            self._gripper_width_actual = float("nan")
+            self._gripper_width_valid = False
+        else:
+            print("[3] 初始化 Franka Hand 夹爪 ...")
+            self.gripper = libfranka.Gripper(ROBOT_IP)
+            try:
+                self.gripper.homing()
+                print("    ✅ Homing 完成")
+            except Exception as e:
+                print(f"    ⚠️  Homing 失败: {e}")
+            self.gripper.move(GRIPPER_MAX, self._gripper_speed_cur)
+            self._last_cmd_width = GRIPPER_MAX
+            self._gripper_width_actual = float("nan")
+            self._gripper_width_valid = False
+            print(f"    ✅ 夹爪已打开 ({GRIPPER_MAX*1000:.0f} mm)")
 
         # ── 状态读取 ──
         state = self.panda.get_state()
@@ -885,6 +958,37 @@ class InteractiveTeleop:
         # 用 panda.get_orientation() 直接获取四元数，避免手动矩阵→四元数转换
         self._init_ori = np.array(self.panda.get_orientation(), dtype=float)
         self._virtual_ref = self._init_pos.copy()
+
+        if self._kfb_timing_experiment:
+            expected_pos = np.asarray(
+                self._kfb_start_pose.get("position_m", []), dtype=float
+            )
+            expected_ori = np.asarray(
+                self._kfb_start_pose.get("orientation_xyzw", []), dtype=float
+            )
+            target_checked = bool(self._kfb_start_pose.get("fixed_target_checked", False))
+            pad_distance = float(self._kfb_start_pose.get("pad_distance_m", float("nan")))
+            if expected_pos.shape != (3,) or expected_ori.shape != (4,):
+                raise RuntimeError("start-pose file must contain 3D position and xyzw orientation")
+            position_error = float(np.linalg.norm(self._init_pos - expected_pos))
+            expected_ori /= max(float(np.linalg.norm(expected_ori)), 1e-12)
+            current_ori = self._init_ori / max(float(np.linalg.norm(self._init_ori)), 1e-12)
+            orientation_dot = min(1.0, abs(float(np.dot(expected_ori, current_ori))))
+            orientation_error_deg = float(np.degrees(2.0 * np.arccos(orientation_dot)))
+            if not target_checked or not np.isfinite(pad_distance) or abs(pad_distance - 0.030) > 0.002:
+                raise RuntimeError(
+                    "start-pose file must attest a checked fixed target at 30±2 mm"
+                )
+            if position_error > 0.002 or orientation_error_deg > 2.0:
+                raise RuntimeError(
+                    "robot is outside frozen start-pose tolerance: "
+                    f"position={position_error*1000:.1f} mm, "
+                    f"orientation={orientation_error_deg:.2f} deg"
+                )
+            print(
+                "    ✅ 固定目标与起始位姿检查通过 "
+                f"({position_error*1000:.1f} mm, {orientation_error_deg:.2f}°)"
+            )
 
         # ── 外力估计 ──
         self.force_estimator = ForceEstimator(panda=self.panda)
@@ -1250,7 +1354,6 @@ class InteractiveTeleop:
             applied_prior_label=self._trust_applied_prior_label,
             config_hash=self._trust_config_hash,
         )
-
     def _update_prior_trust_correction(self, now_perf: float):
         """接触后用风险削弱视觉先验可信度，并向安全刚度锚点回退。"""
         if not self._trust_experiment or not self._posterior_correction:
@@ -2242,7 +2345,8 @@ class InteractiveTeleop:
         # 启动键盘线程
         kb_thread = threading.Thread(target=self._keyboard_loop, daemon=True)
         kb_thread.start()
-        self._start_gripper_measurement_thread()
+        if not self._kfb_timing_experiment:
+            self._start_gripper_measurement_thread()
 
         # 显示初始帮助
         self._print_help()
@@ -2250,6 +2354,9 @@ class InteractiveTeleop:
         # 确定启动预设：命令行 preset > 实验模式基线
         if self._init_preset:
             self._set_preset(self._init_preset)
+        elif self._kfb_timing_experiment:
+            # 参数已由冻结协议设置；禁止调用会改变多个参数的 PRESET。
+            pass
         elif self._trust_experiment:
             self._configure_trust_experiment_prior()
         elif self.mode in ("default", "vision_stiffness"):
@@ -2262,7 +2369,12 @@ class InteractiveTeleop:
         else:
             self._set_preset("standard")
 
-        if self._vision_enabled:
+        if self._kfb_timing_experiment:
+            mode_str = (
+                "🧪 K_fb 时序扰动预试 — "
+                f"匿名条件 {self._kfb_masked_condition}"
+            )
+        elif self._vision_enabled:
             if self._trust_experiment:
                 correction = "开启" if self._posterior_correction else "关闭"
                 mode_str = (
@@ -2294,6 +2406,13 @@ class InteractiveTeleop:
         last_cycle_perf = time.perf_counter()
         vision_start_time = time.time() + VISION_START_DELAY
         vision_start_announced = False
+        if self._kfb_timing_experiment:
+            self._kfb_runtime_start_ns = time.perf_counter_ns()
+            self._kfb_runtime = KfbTimingRuntime(
+                KFB_TIMING_CONDITIONS[self._kfb_condition],
+                self._kfb_runtime_start_ns,
+                self._kfb_config,
+            )
 
         try:
             while self.running:
@@ -2308,6 +2427,7 @@ class InteractiveTeleop:
                 timing_keyboard_status_s = 0.0
                 now = time.time()
                 now_perf = t_start
+                now_mono_ns = time.perf_counter_ns()
                 self._control_dt = now_perf - last_cycle_perf
                 last_cycle_perf = now_perf
 
@@ -2356,7 +2476,8 @@ class InteractiveTeleop:
 
                 # ── 按钮事件处理 (上升沿检测) ──
                 # 灰色按钮 (button 0) → 夹爪完全张开复位 (状态机路径)
-                if btn0 and not self._btn0_prev:
+                if (not self._kfb_timing_experiment
+                        and btn0 and not self._btn0_prev):
                     print(f"\n  🔘 灰色按钮 → 夹爪完全张开")
                     self._grasp_armed = False  # 主端仍闭合时，避免张开后立即重抓
                     if self._gripper_state != GripperState.RELEASING:
@@ -2376,33 +2497,81 @@ class InteractiveTeleop:
                         )
                         if self.force_estimator is not None:
                             self._F_ext_current = self.force_estimator.update(state)
-                    except Exception:
-                        pass  # Franka 读取失败时继续
+                    except Exception as exc:
+                        if self._kfb_timing_experiment:
+                            # A prospective trial cannot silently reuse stale
+                            # force/pose data; the outer handler preserves it as
+                            # incomplete and the original trial_id is never reused.
+                            raise RuntimeError("Panda state/force read failed") from exc
+                        pass  # 旧模式保持原有容错行为
                 timing_panda_state_s = time.perf_counter() - timing_start
 
                 # ── 2b. 自动实验生命周期 ──
                 F_mag_now = float(np.linalg.norm(self._F_ext_current[:3]))
-                self._timeline.add_force_baseline(F_mag_now, now_perf)
-                controller_ready = not self._transition_active
-                if (self._timeline.phase == PHASE_PREP and
-                        self._timeline.baseline_ready and controller_ready):
-                    self._timeline.set_ready(now_perf)
-                    self._timeline.start_task(now_perf, trigger="system_ready")
-                    self._omega_prev_pos = raw_pos.copy()
-                    print(
-                        "\n\a  ✅ 实验开始 — 机械臂已可操作；"
-                        "视觉识别在后台独立进行"
+                if self._kfb_timing_experiment:
+                    self._kfb_snapshot = self._kfb_runtime.step(F_mag_now, now_mono_ns)
+                    self._K_fb_cur = self._kfb_snapshot.K_fb_commanded
+                    for event_name in self._kfb_snapshot.events:
+                        details = {}
+                        if event_name == "force_baseline_ready":
+                            self._timeline.force_baseline_mean = self._kfb_snapshot.force_baseline_median_N
+                            self._timeline.force_baseline_std = self._kfb_snapshot.force_baseline_sigma_N
+                            self._timeline.force_threshold = self._kfb_snapshot.force_threshold_on_N
+                            details = {
+                                "median_N": self._kfb_snapshot.force_baseline_median_N,
+                                "robust_sigma_N": self._kfb_snapshot.force_baseline_sigma_N,
+                                "threshold_on_N": self._kfb_snapshot.force_threshold_on_N,
+                                "threshold_off_N": self._kfb_snapshot.force_threshold_off_N,
+                            }
+                            self._timeline.mark(event_name, now_perf, **details)
+                            self._timeline.set_ready(now_perf)
+                            self._timeline.start_task(now_perf, trigger="kfb_baseline_ready")
+                            self._omega_prev_pos = raw_pos.copy()
+                            print("\n\a  ✅ 2 s基线完成 — 请缓慢接近固定目标")
+                            continue
+                        if event_name == "contact_confirmed":
+                            details = {"reference": "controller_contact_confirmed"}
+                            print("\n\a  HOLD — 保持接触1.5秒")
+                        elif event_name in ("kfb_intervention_on", "kfb_intervention_off"):
+                            details = {
+                                "masked_condition": self._kfb_masked_condition,
+                                "K_fb_commanded": self._kfb_snapshot.K_fb_commanded,
+                            }
+                        elif event_name == "safety_abort":
+                            details = {
+                                "reason": self._kfb_snapshot.abort_reason,
+                                "force_corrected_N": self._kfb_snapshot.force_corrected_N,
+                            }
+                        self._timeline.mark(event_name, now_perf, **details)
+                    if self._kfb_snapshot.completed:
+                        self._timeline.complete(
+                            now_perf, success=True,
+                            completion_rule="contact_confirmed_plus_1p50_s",
+                        )
+                    elif self._kfb_snapshot.aborted:
+                        self._timeline.abort(self._kfb_snapshot.abort_reason)
+                else:
+                    self._timeline.add_force_baseline(F_mag_now, now_perf)
+                    controller_ready = not self._transition_active
+                    if (self._timeline.phase == PHASE_PREP and
+                            self._timeline.baseline_ready and controller_ready):
+                        self._timeline.set_ready(now_perf)
+                        self._timeline.start_task(now_perf, trigger="system_ready")
+                        self._omega_prev_pos = raw_pos.copy()
+                        print(
+                            "\n\a  ✅ 实验开始 — 机械臂已可操作；"
+                            "视觉识别在后台独立进行"
+                        )
+                    self._timeline.observe_contact(F_mag_now, now_perf)
+                    self._check_trust_experiment_safety(now_perf)
+                    if not self.running:
+                        break
+                    self._timeline.observe_gripper(
+                        self._gripper_state.value,
+                        self._gripper_width_actual if self._gripper_width_valid else self._last_cmd_width,
+                        now_perf,
+                        grasp_success=self._grasp_success,
                     )
-                self._timeline.observe_contact(F_mag_now, now_perf)
-                self._check_trust_experiment_safety(now_perf)
-                if not self.running:
-                    break
-                self._timeline.observe_gripper(
-                    self._gripper_state.value,
-                    self._gripper_width_actual if self._gripper_width_valid else self._last_cmd_width,
-                    now_perf,
-                    grasp_success=self._grasp_success,
-                )
 
                 # ── 3. 力反馈计算 ──
                 F_ext_xyz = self._F_ext_current[:3]
@@ -2415,17 +2584,36 @@ class InteractiveTeleop:
 
                 # ── 3a. 夹爪力反馈叠加 ──
                 # 夹爪闭合程度映射到 Omega.7 力反馈 (Z 方向)，模拟夹持力感
-                grip_norm = self._angle_to_norm(omega_grip)
-                grip_force_mag = grip_norm * FORCE_FB_GAIN * FORCE_FB_MAX
-                grip_force_mag = min(grip_force_mag, FORCE_FB_MAX)
-                F_haptic[2] += grip_force_mag
-                self._gripper_force_feedback = grip_force_mag
+                if not self._kfb_timing_experiment:
+                    grip_norm = self._angle_to_norm(omega_grip)
+                    grip_force_mag = grip_norm * FORCE_FB_GAIN * FORCE_FB_MAX
+                    grip_force_mag = min(grip_force_mag, FORCE_FB_MAX)
+                    F_haptic[2] += grip_force_mag
+                    self._gripper_force_feedback = grip_force_mag
+                else:
+                    self._gripper_force_feedback = 0.0
+
+                self._haptic_clamped = False
+                haptic_norm = float(np.linalg.norm(F_haptic))
+                if self._kfb_timing_experiment:
+                    if self._kfb_snapshot and (
+                            self._kfb_snapshot.aborted or self._kfb_snapshot.completed):
+                        F_haptic = np.zeros(3)
+                        haptic_norm = 0.0
+                    elif haptic_norm > self._kfb_config.haptic_command_limit_N:
+                        F_haptic *= self._kfb_config.haptic_command_limit_N / haptic_norm
+                        haptic_norm = self._kfb_config.haptic_command_limit_N
+                        self._haptic_clamped = True
+                self._haptic_command = np.asarray(F_haptic, dtype=float).copy()
 
                 timing_start = time.perf_counter()
                 try:
-                    dhd.setForce(F_haptic)
+                    send_result = dhd.setForce(F_haptic)
+                    self._haptic_send_ok = send_result is None or send_result >= 0
                 except Exception:
-                    pass
+                    self._haptic_send_ok = False
+                    if self._kfb_timing_experiment and self._kfb_runtime is not None:
+                        self._kfb_runtime.abort("haptic_send_failed")
                 timing_haptic_send_s = time.perf_counter() - timing_start
 
                 # ── 4. 位置映射（增量式） ──
@@ -2438,7 +2626,16 @@ class InteractiveTeleop:
                 delta_raw = raw_pos - self._omega_prev_pos
                 # READY前冻结从端，并持续更新主端参考，解锁时不会产生位置跳变。
                 if "task_start" in self._timeline.event_times:
-                    self._virtual_ref += delta_raw * self._scale_cur * SIGN
+                    target_delta = delta_raw * self._scale_cur * SIGN
+                    self._target_speed_limited = False
+                    if self._kfb_timing_experiment:
+                        safe_dt = min(max(self._control_dt, 0.0), 0.020)
+                        max_step = self._kfb_config.target_speed_limit_m_s * safe_dt
+                        step_norm = float(np.linalg.norm(target_delta))
+                        if max_step > 0 and step_norm > max_step:
+                            target_delta *= max_step / step_norm
+                            self._target_speed_limited = True
+                    self._virtual_ref += target_delta
                 target_pos = self._virtual_ref.copy()
                 # 防止数值爆炸
                 np.clip(target_pos, -10.0, 10.0, out=target_pos)
@@ -2514,7 +2711,8 @@ class InteractiveTeleop:
 
                 # ── 6. 夹爪控制 (降频) ──
                 timing_start = time.perf_counter()
-                if (now - last_gripper_time) >= dt_gripper:
+                if (not self._kfb_timing_experiment
+                        and (now - last_gripper_time) >= dt_gripper):
                     self._update_gripper()
                     last_gripper_time = now
                 timing_gripper_update_s = time.perf_counter() - timing_start
@@ -2531,7 +2729,10 @@ class InteractiveTeleop:
 
                 if self._timeline.completed:
                     if self._auto_stop:
-                        print("\n\a  ✅ 任务释放完成，自动结束并保存数据")
+                        if self._kfb_timing_experiment:
+                            print("\n\a  ✅ 接触保持完成，自动结束并保存数据")
+                        else:
+                            print("\n\a  ✅ 任务释放完成，自动结束并保存数据")
                         self.running = False
                         break
                     if not self._completion_announced:
@@ -2540,6 +2741,10 @@ class InteractiveTeleop:
                             "请按 Ctrl+C 保存并安全退出"
                         )
                         self._completion_announced = True
+                if self._kfb_timing_experiment and self._timeline.incomplete:
+                    print("\n\a  ⛔ K_fb试次已安全中止，保存为 incomplete")
+                    self.running = False
+                    break
 
                 # ── 7. 键盘处理 (降频) ──
                 timing_start = time.perf_counter()
@@ -2601,9 +2806,21 @@ class InteractiveTeleop:
     # 轨迹录制
     # ═══════════════════════════════════════════
 
+    def _artifact_stem(self, timestamp: str) -> str:
+        if not self._kfb_timing_experiment:
+            return f"{self.mode}_{timestamp}"
+        safe_trial_id = "".join(
+            char if char.isalnum() or char in ("-", "_") else "_"
+            for char in str(self._timeline.trial_id)
+        ).strip("_")
+        if not safe_trial_id or safe_trial_id == "unknown":
+            raise ValueError("K_fb timing trials require a unique trial_id")
+        return safe_trial_id
+
     def _record_trajectory_sample(self, raw_pos, gripper_deg, button, now_perf=None):
         """记录一个轨迹样本点（主循环每周期调用）"""
         now_perf = time.perf_counter() if now_perf is None else now_perf
+        record_mono_ns = time.perf_counter_ns()
         F_mag = float(np.linalg.norm(self._F_ext_current[:3]))
         timeline = self._timeline.snapshot(now_perf)
         event = self._timeline.consume_events()
@@ -2611,7 +2828,7 @@ class InteractiveTeleop:
         if F.size < 6:
             F = np.pad(F, (0, 6 - F.size), constant_values=np.nan)
         self._trajectory.append({
-            "schema_version": 3,
+            "schema_version": 4 if self._kfb_timing_experiment else 3,
             "system_time": timeline["system_time"],
             "time": timeline["system_time"],  # 内部兼容旧汇总逻辑
             "operation_time": timeline["operation_time"],
@@ -2704,6 +2921,76 @@ class InteractiveTeleop:
             "trust_config_hash": (
                 self._trust_config_hash if self._trust_experiment else ""
             ),
+            "t_mono_ns": (
+                record_mono_ns - self._kfb_runtime_start_ns
+                if self._kfb_timing_experiment and self._kfb_runtime_start_ns is not None
+                else ""
+            ),
+            "trial_id": self._timeline.trial_id,
+            "masked_condition": (
+                self._kfb_masked_condition if self._kfb_timing_experiment else ""
+            ),
+            "protocol_phase": (
+                self._kfb_protocol_phase if self._kfb_timing_experiment else ""
+            ),
+            "intervention_state": (
+                self._kfb_snapshot.intervention_state
+                if self._kfb_timing_experiment and self._kfb_snapshot else ""
+            ),
+            "K_fb_commanded": (
+                self._kfb_snapshot.K_fb_commanded
+                if self._kfb_timing_experiment and self._kfb_snapshot else self._K_fb_cur
+            ),
+            "K_fb_transition_reason": (
+                self._kfb_snapshot.transition_reason
+                if self._kfb_timing_experiment and self._kfb_snapshot else ""
+            ),
+            "contact_candidate": int(bool(
+                self._kfb_timing_experiment and self._kfb_snapshot
+                and self._kfb_snapshot.contact_candidate
+            )),
+            "contact_confirmed": int(bool(
+                self._kfb_timing_experiment and self._kfb_snapshot
+                and self._kfb_snapshot.contact_confirmed
+            )),
+            "force_baseline_median_N": (
+                self._kfb_snapshot.force_baseline_median_N
+                if self._kfb_timing_experiment and self._kfb_snapshot else ""
+            ),
+            "force_baseline_sigma_N": (
+                self._kfb_snapshot.force_baseline_sigma_N
+                if self._kfb_timing_experiment and self._kfb_snapshot else ""
+            ),
+            "force_threshold_on_N": (
+                self._kfb_snapshot.force_threshold_on_N
+                if self._kfb_timing_experiment and self._kfb_snapshot else ""
+            ),
+            "force_threshold_off_N": (
+                self._kfb_snapshot.force_threshold_off_N
+                if self._kfb_timing_experiment and self._kfb_snapshot else ""
+            ),
+            "force_corrected_N": (
+                self._kfb_snapshot.force_corrected_N
+                if self._kfb_timing_experiment and self._kfb_snapshot else ""
+            ),
+            "haptic_cmd_x": self._haptic_command[0],
+            "haptic_cmd_y": self._haptic_command[1],
+            "haptic_cmd_z": self._haptic_command[2],
+            "haptic_cmd_norm": float(np.linalg.norm(self._haptic_command)),
+            "haptic_send_ok": int(self._haptic_send_ok),
+            "haptic_clamped": int(self._haptic_clamped),
+            "target_speed_limited": int(self._target_speed_limited),
+            "safety_abort": int(bool(
+                self._kfb_timing_experiment and self._kfb_runtime
+                and self._kfb_runtime.aborted
+            )),
+            "kfb_config_sha256": (
+                self._kfb_config_hash if self._kfb_timing_experiment else ""
+            ),
+            "acquisition_software_sha256": (
+                self._kfb_acquisition_software_hash
+                if self._kfb_timing_experiment else ""
+            ),
         })
 
     def _save_trajectory(self, timestamp: str = None):
@@ -2725,7 +3012,8 @@ class InteractiveTeleop:
 
         path = Path(self._trajectory_dir)
         path.mkdir(parents=True, exist_ok=True)
-        fname = f"{self.mode}_{timestamp}.csv"
+        stem = self._artifact_stem(timestamp)
+        fname = f"{stem}.csv"
         fpath = path / fname
 
         # 计算采样率
@@ -2733,7 +3021,8 @@ class InteractiveTeleop:
         duration = times[-1] - times[0] if len(times) > 1 else 0
         actual_freq = len(times) / duration if duration > 0 else 0
 
-        with open(fpath, "w", newline="") as f:
+        open_mode = "x" if self._kfb_timing_experiment else "w"
+        with open(fpath, open_mode, newline="") as f:
             writer = _csv.writer(f)
             writer.writerow(TRAJECTORY_CSV_HEADER)
             for row in self._trajectory:
@@ -2743,8 +3032,11 @@ class InteractiveTeleop:
         print(f"     {len(self._trajectory)} 点, {duration:.1f}s, {actual_freq:.0f} Hz")
         print(f"     使用离线分析工具评估疲劳度:")
         print(f"     python3 my_test/omega7_trajectory_analyzer.py --load {fpath} --save-plot")
-        events_path = path / f"{self.mode}_{timestamp}_events.json"
+        events_path = path / f"{stem}_events.json"
+        if self._kfb_timing_experiment and events_path.exists():
+            raise FileExistsError(f"refusing to overwrite existing event file: {events_path}")
         self._timeline.save_events(events_path)
+        self._last_events_path = str(events_path)
         print(f"     事件时间轴: {events_path}")
         return str(fpath), timestamp
 
@@ -2759,7 +3051,8 @@ class InteractiveTeleop:
 
         path = Path(self._trajectory_dir)
         path.mkdir(parents=True, exist_ok=True)
-        fname = f"{self.mode}_{timestamp}_summary.json"
+        stem = self._artifact_stem(timestamp)
+        fname = f"{stem}_summary.json"
         fpath = path / fname
 
         # ── 基本时间统计 ──
@@ -2859,6 +3152,14 @@ class InteractiveTeleop:
             ),
             "diagnostic_disable_vision": self._diagnostic_disable_vision,
             "diagnostic_no_vision_display": self._diagnostic_no_vision_display,
+            "kfb_timing_experiment": self._kfb_timing_experiment,
+            "masked_condition": (
+                self._kfb_masked_condition if self._kfb_timing_experiment else None
+            ),
+            "protocol_phase": (
+                self._kfb_protocol_phase if self._kfb_timing_experiment else None
+            ),
+            "analyzed": self._kfb_analyzed if self._kfb_timing_experiment else None,
         }
         if self.mode in PRESETS:
             mode_info["preset_name"] = PRESETS[self.mode]["name"]
@@ -2930,10 +3231,20 @@ class InteractiveTeleop:
             "fusion_config": fusion_config,
             "force_adapt_config": force_adapt_config,
             "trust_correction_config": trust_config,
+            "kfb_timing_config": ({
+                "protocol_version": self._kfb_config.protocol_version,
+                "config_sha256": self._kfb_config_hash,
+                "acquisition_software_sha256": self._kfb_acquisition_software_hash,
+                "masked_condition": self._kfb_masked_condition,
+                "start_pose_sha256": self._kfb_start_pose_hash,
+                "force_source": "Franka estimated external wrench",
+                "independent_force_sensor": False,
+            } if self._kfb_timing_experiment else None),
             "experiment": self._timeline.to_dict(),
         }
 
-        with open(fpath, "w") as f:
+        open_mode = "x" if self._kfb_timing_experiment else "w"
+        with open(fpath, open_mode, encoding="utf-8") as f:
             _json.dump(summary, f, indent=2, ensure_ascii=False)
 
         print(f"  📊 汇总已保存: {fpath}")
@@ -2945,6 +3256,46 @@ class InteractiveTeleop:
         )
 
         return str(fpath)
+
+    def _save_kfb_trial_manifest(self, csv_path: str, events_path: str,
+                                 summary_path: str) -> str:
+        """Write an immutable hash manifest after the complete triplet exists."""
+        if not self._kfb_timing_experiment:
+            return ""
+        paths = {
+            "csv": Path(csv_path),
+            "events": Path(events_path),
+            "summary": Path(summary_path),
+        }
+        for role, path in paths.items():
+            if not path.is_file():
+                raise FileNotFoundError(f"missing {role} artifact: {path}")
+        manifest_path = paths["csv"].with_name(
+            f"{paths['csv'].stem}_manifest.json"
+        )
+        payload = {
+            "schema_version": 1,
+            "protocol_version": self._kfb_config.protocol_version,
+            "trial_id": self._timeline.trial_id,
+            "participant_id": self._timeline.subject_id,
+            "masked_condition": self._kfb_masked_condition,
+            "protocol_phase": self._kfb_protocol_phase,
+            "analyzed": self._kfb_analyzed,
+            "completed": self._timeline.completed,
+            "incomplete": self._timeline.incomplete,
+            "config_sha256": self._kfb_config_hash,
+            "acquisition_software_sha256": self._kfb_acquisition_software_hash,
+            "start_pose_sha256": self._kfb_start_pose_hash,
+            "files": {
+                role: {"path": path.name, "sha256": sha256_file(path)}
+                for role, path in paths.items()
+            },
+        }
+        with manifest_path.open("x", encoding="utf-8") as handle:
+            json.dump(payload, handle, ensure_ascii=False, indent=2)
+            handle.write("\n")
+        print(f"     不可覆盖哈希清单: {manifest_path}")
+        return str(manifest_path)
 
     # ═══════════════════════════════════════════
     # 安全关闭
@@ -2990,8 +3341,14 @@ class InteractiveTeleop:
             from datetime import datetime as _dt
             timestamp = _dt.now().strftime('%Y%m%d_%H%M%S')
             csv_path, ts = self._save_trajectory(timestamp)
+            summary_path = None
             if ts:
-                self._save_summary(ts)
+                summary_path = self._save_summary(ts)
+            if (self._kfb_timing_experiment and csv_path and summary_path
+                    and getattr(self, "_last_events_path", None)):
+                self._save_kfb_trial_manifest(
+                    csv_path, self._last_events_path, summary_path
+                )
             if csv_path:
                 try:
                     from force_metrics import analyze_csv
@@ -3023,6 +3380,7 @@ def main():
         "vision_force", "force_only", "g", "G", "f", "F",
         "trust_experiment", "c0", "C0", "c1", "C1",
         "w0", "W0", "w1", "W1",
+        "kfb_timing",
     ] + sorted(PRESETS.keys())
     parser = argparse.ArgumentParser(description="交互式遥操作：实时调节阻尼/刚度/力反馈")
     parser.add_argument("--mode", "-m", type=str, default="default",
@@ -3033,9 +3391,10 @@ def main():
                              "vision_stiffness=SCI模式D视觉仅调阻抗, "
                              "vision=SCI模式E视觉多参数前馈, "
                              "g/force_only=实验G纯外力在线变阻抗, "
-                             "f/vision_force=实验F模式(视觉前馈+力反馈微调融合), "
-                             "C0/C1/W0/W1=先验可信度补充实验, "
-                             "或直接指定预设: " + ", ".join(sorted(PRESETS.keys())))
+                              "f/vision_force=实验F模式(视觉前馈+力反馈微调融合), "
+                              "C0/C1/W0/W1=先验可信度补充实验, "
+                              "kfb_timing=前瞻性K_fb时序扰动预试, "
+                              "或直接指定预设: " + ", ".join(sorted(PRESETS.keys())))
     parser.add_argument("--load", "-l", type=str, default=None,
                         help="启动时加载参数文件路径")
     parser.add_argument("--no-trajectory", action="store_true",
@@ -3073,6 +3432,14 @@ def main():
         "--diagnostic-no-vision-display", action="store_true",
         help="仅时序诊断：保留视觉识别但关闭OpenCV预览；不得用于正式试验",
     )
+    parser.add_argument(
+        "--kfb-oracle", type=Path, default=None,
+        help="K_fb预试私有oracle.csv；程序仅按trial-id读取对应调度",
+    )
+    parser.add_argument(
+        "--kfb-start-pose-file", type=Path, default=None,
+        help="固定目标检查完成后冻结的起始位姿JSON",
+    )
     args = parser.parse_args()
     if args.mode in ("f", "F"):
         canonical_mode = "vision_force"
@@ -3085,6 +3452,47 @@ def main():
         posterior_correction = condition_code.endswith("1")
     else:
         canonical_mode = args.mode
+
+    kfb_condition = ""
+    kfb_masked_condition = ""
+    kfb_protocol_phase = ""
+    kfb_analyzed = False
+    kfb_source_hash = ""
+    kfb_start_pose = None
+    kfb_start_pose_hash = ""
+    if canonical_mode == "kfb_timing":
+        if args.kfb_oracle is None or not args.kfb_oracle.is_file():
+            parser.error("kfb_timing 必须指定现有的 --kfb-oracle")
+        if args.kfb_start_pose_file is None or not args.kfb_start_pose_file.is_file():
+            parser.error("kfb_timing 必须指定现有的 --kfb-start-pose-file")
+        if args.trial_id == "unknown" or args.subject_id == "unknown":
+            parser.error("kfb_timing 必须指定 --trial-id 和 --subject-id")
+        with args.kfb_oracle.open("r", newline="", encoding="utf-8-sig") as handle:
+            oracle_matches = [
+                row for row in csv.DictReader(handle)
+                if row.get("trial_id") == args.trial_id
+            ]
+        if len(oracle_matches) != 1:
+            parser.error("trial-id在oracle中必须恰好出现一次")
+        oracle_row = oracle_matches[0]
+        if oracle_row.get("participant_id") != args.subject_id:
+            parser.error("subject-id与oracle中的participant_id不一致")
+        if oracle_row.get("config_sha256") != kfb_timing_config_hash(KFB_TIMING_CONFIG):
+            parser.error("oracle配置哈希与当前冻结协议不一致；请重新生成顺序表")
+        source_dir = Path(__file__).resolve().parent
+        kfb_source_hash = kfb_timing_software_hash([
+            source_dir / "interactive_teleop.py",
+            source_dir / "kfb_timing_protocol.py",
+            source_dir / "experiment_protocol.py",
+        ])
+        if oracle_row.get("acquisition_software_sha256") != kfb_source_hash:
+            parser.error("oracle采集软件哈希与当前代码不一致；请重新生成并冻结顺序表")
+        kfb_condition = oracle_row["true_condition"]
+        kfb_masked_condition = oracle_row["masked_condition"]
+        kfb_protocol_phase = oracle_row["phase"]
+        kfb_analyzed = bool(int(oracle_row["analyzed"]))
+        kfb_start_pose = json.loads(args.kfb_start_pose_file.read_text(encoding="utf-8"))
+        kfb_start_pose_hash = sha256_file(args.kfb_start_pose_file)
 
     if canonical_mode == "trust_experiment":
         if args.actual_object is None:
@@ -3106,6 +3514,8 @@ def main():
     timeline_object_id = args.object_id
     if canonical_mode == "trust_experiment" and timeline_object_id == "unknown":
         timeline_object_id = actual_object
+    elif canonical_mode == "kfb_timing" and timeline_object_id == "unknown":
+        timeline_object_id = "FIXED_PAD"
 
     diagnostic_flags = (
         args.diagnostic_disable_gripper_read
@@ -3116,6 +3526,15 @@ def main():
         parser.error(
             "diagnostic开关只能用于subject-id以TIMING_DIAG开头的时序诊断"
         )
+    if canonical_mode == "kfb_timing":
+        if args.no_trajectory:
+            parser.error("kfb_timing 禁止 --no-trajectory")
+        if args.manual_stop:
+            parser.error("kfb_timing 禁止 --manual-stop；必须在接触后1.5秒自动结束")
+        if args.load:
+            parser.error("kfb_timing 禁止加载外部参数文件")
+        if diagnostic_flags:
+            parser.error("kfb_timing 已固定关闭视觉/夹爪，不接受diagnostic开关")
 
     teleop = InteractiveTeleop(
         mode=canonical_mode,
@@ -3131,19 +3550,32 @@ def main():
         diagnostic_disable_gripper_read=args.diagnostic_disable_gripper_read,
         diagnostic_disable_vision=args.diagnostic_disable_vision,
         diagnostic_no_vision_display=args.diagnostic_no_vision_display,
+        kfb_condition=kfb_condition,
+        kfb_masked_condition=kfb_masked_condition,
+        kfb_protocol_phase=kfb_protocol_phase,
+        kfb_analyzed=kfb_analyzed,
+        kfb_acquisition_software_hash=kfb_source_hash,
+        kfb_start_pose=kfb_start_pose,
+        kfb_start_pose_hash=kfb_start_pose_hash,
     )
 
     # 若指定了启动参数文件，替换默认保存路径
     if args.load:
         teleop.SAVE_FILE = args.load
 
-    teleop.initialize()
+    try:
+        teleop.initialize()
 
-    # 初始化后自动加载参数（若指定了加载文件）
-    if args.load and os.path.exists(args.load):
-        teleop._load_params()
+        # 初始化后自动加载参数（若指定了加载文件）
+        if args.load and os.path.exists(args.load):
+            teleop._load_params()
 
-    teleop.run()
+        teleop.run()
+    except BaseException:
+        # initialize() 期间的位姿/硬件验收失败也必须撤去Omega输出并关闭句柄。
+        if not teleop.running:
+            teleop._shutdown()
+        raise
 
 
 if __name__ == "__main__":

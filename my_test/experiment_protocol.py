@@ -199,6 +199,15 @@ class ExperimentTimeline:
         self.phase = PHASE_INCOMPLETE
         self.mark("task_incomplete", reason=reason, success=False)
 
+    def complete(self, now: Optional[float] = None, success: bool = True,
+                 **details) -> None:
+        """Complete a non-grasp task without fabricating gripper transitions."""
+        if self.completed or self.incomplete:
+            return
+        self.phase = PHASE_COMPLETE
+        self.completed = True
+        self.mark("task_end", now, success=bool(success), **details)
+
     def snapshot(self, now: Optional[float] = None) -> Dict:
         return {
             "system_time": self.system_time(now),
