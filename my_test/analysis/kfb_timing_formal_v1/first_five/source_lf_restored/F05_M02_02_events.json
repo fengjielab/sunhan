@@ -1,0 +1,80 @@
+{
+  "schema_version": 3,
+  "mode": "KFB_TIMING",
+  "subject_id": "F05",
+  "object_id": "FIXED_PAD",
+  "trial_id": "F05_M02_02",
+  "started_at_unix": 1786604574.201369,
+  "phase": "COMPLETE",
+  "completed": true,
+  "incomplete": false,
+  "recognition_time_s": null,
+  "operation_time_s": 2.8755939590009802,
+  "force_baseline_mean_N": 0.9065771440635433,
+  "force_baseline_std_N": 0.012456972670895234,
+  "force_threshold_N": 1.6565771440635433,
+  "events": [
+    {
+      "event": "system_start",
+      "system_time": 0.0,
+      "phase": "PREP"
+    },
+    {
+      "event": "force_baseline_ready",
+      "system_time": 3.16775793099805,
+      "phase": "PREP",
+      "median_N": 0.9065771440635433,
+      "robust_sigma_N": 0.012456972670895234,
+      "threshold_on_N": 1.6565771440635433,
+      "threshold_off_N": 1.3565771440635432
+    },
+    {
+      "event": "system_ready",
+      "system_time": 3.16775793099805,
+      "phase": "READY"
+    },
+    {
+      "event": "task_start",
+      "system_time": 3.16775793099805,
+      "phase": "APPROACH",
+      "trigger": "kfb_baseline_ready"
+    },
+    {
+      "event": "contact_candidate",
+      "system_time": 4.488101001999894,
+      "phase": "APPROACH"
+    },
+    {
+      "event": "contact_confirmed",
+      "system_time": 4.539314555000601,
+      "phase": "APPROACH",
+      "reference": "controller_contact_confirmed"
+    },
+    {
+      "event": "kfb_intervention_on",
+      "system_time": 4.590519123998092,
+      "phase": "APPROACH",
+      "masked_condition": "M1F1EE7E",
+      "K_fb_commanded": 0.7
+    },
+    {
+      "event": "kfb_intervention_off",
+      "system_time": 5.740559194000525,
+      "phase": "APPROACH",
+      "masked_condition": "M1F1EE7E",
+      "K_fb_commanded": 0.5
+    },
+    {
+      "event": "trial_complete",
+      "system_time": 6.04335188999903,
+      "phase": "APPROACH"
+    },
+    {
+      "event": "task_end",
+      "system_time": 6.04335188999903,
+      "phase": "COMPLETE",
+      "success": true,
+      "completion_rule": "contact_confirmed_plus_1p50_s"
+    }
+  ]
+}
