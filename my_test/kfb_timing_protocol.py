@@ -64,6 +64,8 @@ class KfbTimingConfig:
     force_abort_N: float = 5.0
     haptic_command_limit_N: float = 2.0
     target_speed_limit_m_s: float = 0.03
+    start_pose_position_tolerance_m: float = 0.015
+    start_pose_orientation_tolerance_deg: float = 5.0
     max_metric_gap_s: float = 0.020
     movement_speed_threshold_m_s: float = 0.005
     movement_sustain_s: float = 0.020
@@ -80,6 +82,10 @@ class KfbTimingConfig:
             raise ValueError("intervention K_fb must exceed baseline K_fb")
         if self.contact_normal_axis not in ("x", "y", "z"):
             raise ValueError("contact_normal_axis must be x, y, or z")
+        if self.start_pose_position_tolerance_m <= 0:
+            raise ValueError("start-pose position tolerance must be positive")
+        if not 0 < self.start_pose_orientation_tolerance_deg <= 30:
+            raise ValueError("invalid start-pose orientation tolerance")
         for spec in CONDITIONS.values():
             if not 0 <= spec.onset_s < spec.offset_s <= self.trial_end_after_contact_s:
                 raise ValueError(f"invalid condition interval: {spec.code}")

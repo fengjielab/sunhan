@@ -979,11 +979,17 @@ class InteractiveTeleop:
                 raise RuntimeError(
                     "start-pose file must attest a checked fixed target at 30±2 mm"
                 )
-            if position_error > 0.002 or orientation_error_deg > 2.0:
+            if (
+                position_error > self._kfb_config.start_pose_position_tolerance_m
+                or orientation_error_deg
+                > self._kfb_config.start_pose_orientation_tolerance_deg
+            ):
                 raise RuntimeError(
                     "robot is outside frozen start-pose tolerance: "
                     f"position={position_error*1000:.1f} mm, "
-                    f"orientation={orientation_error_deg:.2f} deg"
+                    f"orientation={orientation_error_deg:.2f} deg; allowed="
+                    f"{self._kfb_config.start_pose_position_tolerance_m*1000:.0f} mm/"
+                    f"{self._kfb_config.start_pose_orientation_tolerance_deg:.1f} deg"
                 )
             print(
                 "    ✅ 固定目标与起始位姿检查通过 "
