@@ -60,7 +60,9 @@ mkdir -p "$DATA_DIR"
 echo
 echo "即将启动：subject=$SUBJECT_ID, trial=$TRIAL_ID, mode=kfb_timing"
 echo "启动后先保持静止2秒；看到提示后缓慢接近；出现 HOLD 后保持1.5秒。"
-read -r -p "按 Enter 启动试次，或按 Ctrl+C 取消："
+if [[ "${KFB_SKIP_LAUNCH_CONFIRM:-0}" != "1" ]]; then
+  read -r -p "按 Enter 启动试次，或按 Ctrl+C 取消："
+fi
 
 exec python3 "$SCRIPT_DIR/interactive_teleop.py" \
   --mode kfb_timing \
