@@ -116,6 +116,7 @@ def write_config(path: Path, config: KfbTimingConfig = DEFAULT_CONFIG) -> None:
 
 
 def sha256_file(path: Path) -> str:
+    """Hash exact bytes; use for acquired artifacts that must not change."""
     digest = hashlib.sha256()
     with Path(path).open("rb") as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
@@ -123,12 +124,22 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def sha256_text_file(path: Path) -> str:
+    """Hash UTF-8 text canonically across Windows/Linux checkouts."""
+    text = Path(path).read_text(encoding="utf-8-sig")
+    canonical = text.replace("\r\n", "\n").replace("\r", "\n").encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()
+
+
 def software_hash(paths: Iterable[Path]) -> str:
+    """Hash source text after BOM/newline normalization."""
     digest = hashlib.sha256()
     for path in sorted((Path(item) for item in paths), key=lambda item: item.name):
         digest.update(path.name.encode("utf-8"))
         digest.update(b"\0")
-        digest.update(Path(path).read_bytes())
+        text = path.read_text(encoding="utf-8-sig")
+        canonical = text.replace("\r\n", "\n").replace("\r", "\n")
+        digest.update(canonical.encode("utf-8"))
         digest.update(b"\0")
     return digest.hexdigest()
 

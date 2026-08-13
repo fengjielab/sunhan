@@ -16,7 +16,7 @@ from kfb_timing_protocol import (
     CONDITIONS,
     DEFAULT_CONFIG,
     config_hash,
-    sha256_file,
+    sha256_text_file,
     software_hash,
     write_config,
 )
@@ -253,11 +253,12 @@ def main() -> None:
         "participant_training_trials": sum(row["phase"] == "training" for row in run_rows),
         "participant_measured_trials": sum(row["phase"] == "measured" for row in run_rows),
         "oracle_path": "private_oracle/oracle.csv",
-        "file_sha256": {
-            "engineering_run_sheet.csv": sha256_file(engineering_path),
-            "participant_run_sheet.csv": sha256_file(participant_path),
-            "private_oracle/oracle.csv": sha256_file(oracle_path),
-            "protocol_config_v1.json": sha256_file(config_path),
+        "text_hash_canonicalization": "UTF-8, optional BOM removed, CRLF/CR normalized to LF",
+        "file_text_sha256": {
+            "engineering_run_sheet.csv": sha256_text_file(engineering_path),
+            "participant_run_sheet.csv": sha256_text_file(participant_path),
+            "private_oracle/oracle.csv": sha256_text_file(oracle_path),
+            "protocol_config_v1.json": sha256_text_file(config_path),
         },
     }
     (output_dir / "schedule_metadata.json").write_text(

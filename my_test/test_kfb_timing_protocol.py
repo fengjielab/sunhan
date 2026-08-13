@@ -15,6 +15,7 @@ from kfb_timing_protocol import (
     NS_PER_S,
     classify_delivery,
     config_hash,
+    sha256_text_file,
     write_config,
 )
 
@@ -85,6 +86,15 @@ class KfbTimingRuntimeTests(unittest.TestCase):
             path = Path(directory) / "config.json"
             write_config(path)
             self.assertIn(config_hash(), path.read_text(encoding="utf-8"))
+
+    def test_text_hash_is_portable_across_newlines_and_bom(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            windows = root / "windows.txt"
+            linux = root / "linux.txt"
+            windows.write_bytes(b"\xef\xbb\xbfalpha\r\nbeta\r\n")
+            linux.write_bytes(b"alpha\nbeta\n")
+            self.assertEqual(sha256_text_file(windows), sha256_text_file(linux))
 
 
 class ScheduleTests(unittest.TestCase):

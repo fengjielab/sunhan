@@ -10,7 +10,13 @@ import math
 from collections import Counter
 from pathlib import Path
 
-from kfb_timing_protocol import CONDITIONS, DEFAULT_CONFIG, config_hash, sha256_file, software_hash
+from kfb_timing_protocol import (
+    CONDITIONS,
+    DEFAULT_CONFIG,
+    config_hash,
+    sha256_text_file,
+    software_hash,
+)
 
 
 def read_csv(path: Path) -> list[dict]:
@@ -28,9 +34,15 @@ def main() -> None:
     metadata_path = schedule_dir / "schedule_metadata.json"
     metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
     checks = {}
-    for relative, expected_hash in metadata["file_sha256"].items():
+    if metadata.get("text_hash_canonicalization") != (
+        "UTF-8, optional BOM removed, CRLF/CR normalized to LF"
+    ):
+        raise RuntimeError("schedule does not use the portable text-hash format")
+    for relative, expected_hash in metadata["file_text_sha256"].items():
         path = schedule_dir / relative
-        checks[f"hash:{relative}"] = path.is_file() and sha256_file(path) == expected_hash
+        checks[f"hash:{relative}"] = (
+            path.is_file() and sha256_text_file(path) == expected_hash
+        )
 
     config_path = schedule_dir / "protocol_config_v1.json"
     stored_config = json.loads(config_path.read_text(encoding="utf-8"))

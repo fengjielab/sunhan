@@ -43,10 +43,10 @@ python3 my_test/capture_kfb_start_pose.py \
 
 ## 2. 顺序表和oracle
 
-当前冻结顺序位于 `frozen_schedule_v5/`。`frozen_schedule_v1/` 至
-`frozen_schedule_v4/` 已被取代：v5保留绝对5 N中止和严格序位平衡，并要求
-K_fb模式遇到Panda状态或力读取失败时立即将原试次保存为incomplete，禁止静默沿用
-陈旧数据；不得用v1/v2/v3/v4开展采集。
+当前冻结顺序位于 `frozen_schedule_v6/`。`frozen_schedule_v1/` 至
+`frozen_schedule_v5/` 已被取代。v6将冻结文本和采集源码哈希改为UTF-8、去可选BOM、
+统一LF换行后的规范哈希，因此同一内容在Windows和Ubuntu上校验一致；实体采集产生的
+CSV/events/summary仍使用严格原始字节哈希。不得用v1至v5开展采集。
 
 - `engineering_run_sheet.csv`：25次工程顺序，不含真实条件；
 - `participant_run_sheet.csv`：4人训练和正式顺序，不含真实条件；
@@ -57,7 +57,7 @@ K_fb模式遇到Panda状态或力读取失败时立即将原试次保存为incom
 
 ```bash
 python3 my_test/generate_kfb_timing_schedule.py \
-  --output-dir my_test/paper2_sci/23_kfb_timing_pilot/frozen_schedule_v6
+  --output-dir my_test/paper2_sci/23_kfb_timing_pilot/frozen_schedule_v7
 ```
 
 程序会拒绝非空输出目录；代码哈希变化后，旧oracle也会被现场入口拒绝。
@@ -66,7 +66,7 @@ python3 my_test/generate_kfb_timing_schedule.py \
 
 ```bash
 python3 my_test/verify_kfb_timing_setup.py \
-  --schedule-dir my_test/paper2_sci/23_kfb_timing_pilot/frozen_schedule_v5 \
+  --schedule-dir my_test/paper2_sci/23_kfb_timing_pilot/frozen_schedule_v6 \
   --start-pose-file my_test/paper2_sci/23_kfb_timing_pilot/start_pose_v1.json
 ```
 
@@ -80,7 +80,7 @@ python3 my_test/interactive_teleop.py \
   --subject-id ENGINEER \
   --trial-id ENG_E01_01 \
   --object-id FIXED_PAD \
-  --kfb-oracle my_test/paper2_sci/23_kfb_timing_pilot/frozen_schedule_v5/private_oracle/oracle.csv \
+  --kfb-oracle my_test/paper2_sci/23_kfb_timing_pilot/frozen_schedule_v6/private_oracle/oracle.csv \
   --kfb-start-pose-file my_test/paper2_sci/23_kfb_timing_pilot/start_pose_v1.json \
   --trajectory-dir data/kfb_timing_pilot
 ```
@@ -110,7 +110,7 @@ python3 my_test/analyze_kfb_timing.py reconstruct \
 ```bash
 python3 my_test/analyze_kfb_timing.py unblind \
   --fidelity analysis/kfb_timing/fidelity_blinded.csv \
-  --oracle my_test/paper2_sci/23_kfb_timing_pilot/frozen_schedule_v5/private_oracle/oracle.csv \
+  --oracle my_test/paper2_sci/23_kfb_timing_pilot/frozen_schedule_v6/private_oracle/oracle.csv \
   --output analysis/kfb_timing/fidelity_unblinded.csv
 ```
 
@@ -120,7 +120,7 @@ python3 my_test/analyze_kfb_timing.py unblind \
 python3 my_test/analyze_kfb_timing.py analyze \
   --data-dir data/kfb_timing_pilot \
   --fidelity analysis/kfb_timing/fidelity_unblinded.csv \
-  --oracle my_test/paper2_sci/23_kfb_timing_pilot/frozen_schedule_v5/private_oracle/oracle.csv \
+  --oracle my_test/paper2_sci/23_kfb_timing_pilot/frozen_schedule_v6/private_oracle/oracle.csv \
   --output-dir analysis/kfb_timing/results
 ```
 
