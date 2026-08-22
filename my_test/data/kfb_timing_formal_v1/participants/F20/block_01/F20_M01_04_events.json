@@ -1,0 +1,75 @@
+{
+  "schema_version": 3,
+  "mode": "KFB_TIMING",
+  "subject_id": "F20",
+  "object_id": "FIXED_PAD",
+  "trial_id": "F20_M01_04",
+  "started_at_unix": 1787385620.2091038,
+  "phase": "INCOMPLETE",
+  "completed": false,
+  "incomplete": true,
+  "recognition_time_s": null,
+  "operation_time_s": null,
+  "force_baseline_mean_N": 0.7715628505319341,
+  "force_baseline_std_N": 0.011389111217883077,
+  "force_threshold_N": 1.521562850531934,
+  "events": [
+    {
+      "event": "system_start",
+      "system_time": 0.0,
+      "phase": "PREP"
+    },
+    {
+      "event": "force_baseline_ready",
+      "system_time": 3.1814915319991997,
+      "phase": "PREP",
+      "median_N": 0.7715628505319341,
+      "robust_sigma_N": 0.011389111217883077,
+      "threshold_on_N": 1.521562850531934,
+      "threshold_off_N": 1.221562850531934
+    },
+    {
+      "event": "system_ready",
+      "system_time": 3.1814915319991997,
+      "phase": "READY"
+    },
+    {
+      "event": "task_start",
+      "system_time": 3.1814915319991997,
+      "phase": "APPROACH",
+      "trigger": "kfb_baseline_ready"
+    },
+    {
+      "event": "contact_candidate",
+      "system_time": 6.3927059970010305,
+      "phase": "APPROACH"
+    },
+    {
+      "event": "contact_confirmed",
+      "system_time": 6.444131747000938,
+      "phase": "APPROACH",
+      "reference": "controller_contact_confirmed"
+    },
+    {
+      "event": "kfb_intervention_on",
+      "system_time": 6.945157731999643,
+      "phase": "APPROACH",
+      "masked_condition": "M33B7CB5",
+      "K_fb_commanded": 0.7
+    },
+    {
+      "event": "safety_abort",
+      "system_time": 7.535163747998013,
+      "phase": "APPROACH",
+      "reason": "force_limit_exceeded",
+      "force_corrected_N": 4.2303118904619295
+    },
+    {
+      "event": "task_incomplete",
+      "system_time": 7.535535893999622,
+      "phase": "INCOMPLETE",
+      "reason": "force_limit_exceeded",
+      "success": false
+    }
+  ]
+}

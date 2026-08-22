@@ -1,0 +1,165 @@
+{
+  "timestamp": "20260822_150044",
+  "saved_at": "2026-08-22T15:00:44.670525",
+  "mode": {
+    "mode": "kfb_timing",
+    "vision_enabled": false,
+    "vision_auto_map": false,
+    "vision_force_fusion": false,
+    "force_only_adaptive": false,
+    "vision_locked": false,
+    "vision_label": "unknown",
+    "trust_experiment": false,
+    "actual_object": null,
+    "condition_code": null,
+    "prior_condition": null,
+    "posterior_correction": null,
+    "diagnostic_disable_gripper_read": false,
+    "diagnostic_disable_vision": false,
+    "diagnostic_no_vision_display": false,
+    "kfb_timing_experiment": true,
+    "masked_condition": "M7B07217",
+    "protocol_phase": "measured",
+    "analyzed": true
+  },
+  "runtime": {
+    "duration_s": 7.08,
+    "traj_length_m": 0.0475,
+    "mean_speed_ms": 0.0123,
+    "speed_variance": 0.00027,
+    "speed_std_ms": 0.0164,
+    "max_speed_ms": 0.1159
+  },
+  "trajectory": {
+    "n_samples": 1140,
+    "pos_x_range_m": [
+      0.0209,
+      0.0313
+    ],
+    "pos_y_range_m": [
+      0.0196,
+      0.0338
+    ],
+    "pos_z_range_m": [
+      0.0449,
+      0.0776
+    ]
+  },
+  "external_force": {
+    "source": "Franka estimated external wrench",
+    "metric": "norm(Fx, Fy, Fz)",
+    "F_ext_peak_N": 2.505,
+    "F_ext_peak_time_s": 6.7279,
+    "F_ext_mean_N": 1.266,
+    "n_samples": 1140
+  },
+  "final_params": {
+    "K_trans": 200.0,
+    "K_rot": 13.0,
+    "damping_ratio": 1.2,
+    "K_fb": 0.5,
+    "deadband": 0.3,
+    "scale": 3.0,
+    "vision_base_K_trans": 200.0,
+    "vision_base_K_rot": 10.0,
+    "fusion_delta_K_final": 0.0,
+    "force_adapt_target_K_final": 200.0,
+    "force_adapt_ratio_final": 0.0,
+    "force_adapt_delta_K_final": 0.0,
+    "prior_trust_final": 1.0,
+    "trust_target_K_final": NaN,
+    "trust_delta_K_final": 0.0
+  },
+  "fusion_config": null,
+  "force_adapt_config": null,
+  "trust_correction_config": null,
+  "kfb_timing_config": {
+    "protocol_version": "kfb-timing-pilot-v1",
+    "config_sha256": "ad4b715165e84dd399d377549dc111fb1309cda1260e23e9ee621d07fad63984",
+    "acquisition_software_sha256": "6ba3dffa4798388fb8057a608cfa40a0e24aeba9257d245b2d5103a1844d1115",
+    "masked_condition": "M7B07217",
+    "start_pose_sha256": "dfbc5a56b4c0a61d90c7d955d8fa0877abfe4d313fd07a69676ea87910803360",
+    "force_source": "Franka estimated external wrench",
+    "independent_force_sensor": false
+  },
+  "experiment": {
+    "schema_version": 3,
+    "mode": "KFB_TIMING",
+    "subject_id": "F13",
+    "object_id": "FIXED_PAD",
+    "trial_id": "F13_M03_04",
+    "started_at_unix": 1787382037.5912905,
+    "phase": "COMPLETE",
+    "completed": true,
+    "incomplete": false,
+    "recognition_time_s": NaN,
+    "operation_time_s": 3.8509889780034428,
+    "force_baseline_mean_N": 0.9102082526390335,
+    "force_baseline_std_N": 0.05860727541718193,
+    "force_threshold_N": 1.6602082526390336,
+    "events": [
+      {
+        "event": "system_start",
+        "system_time": 0.0,
+        "phase": "PREP"
+      },
+      {
+        "event": "force_baseline_ready",
+        "system_time": 3.174529680996784,
+        "phase": "PREP",
+        "median_N": 0.9102082526390335,
+        "robust_sigma_N": 0.05860727541718193,
+        "threshold_on_N": 1.6602082526390336,
+        "threshold_off_N": 1.3602082526390333
+      },
+      {
+        "event": "system_ready",
+        "system_time": 3.174529680996784,
+        "phase": "READY"
+      },
+      {
+        "event": "task_start",
+        "system_time": 3.174529680996784,
+        "phase": "APPROACH",
+        "trigger": "kfb_baseline_ready"
+      },
+      {
+        "event": "contact_candidate",
+        "system_time": 5.472956343997794,
+        "phase": "APPROACH"
+      },
+      {
+        "event": "contact_confirmed",
+        "system_time": 5.524336546997802,
+        "phase": "APPROACH",
+        "reference": "controller_contact_confirmed"
+      },
+      {
+        "event": "kfb_intervention_on",
+        "system_time": 6.027451787998871,
+        "phase": "APPROACH",
+        "masked_condition": "M7B07217",
+        "K_fb_commanded": 0.7
+      },
+      {
+        "event": "kfb_intervention_off",
+        "system_time": 6.72786448899933,
+        "phase": "APPROACH",
+        "masked_condition": "M7B07217",
+        "K_fb_commanded": 0.5
+      },
+      {
+        "event": "trial_complete",
+        "system_time": 7.025518659000227,
+        "phase": "APPROACH"
+      },
+      {
+        "event": "task_end",
+        "system_time": 7.025518659000227,
+        "phase": "COMPLETE",
+        "success": true,
+        "completion_rule": "contact_confirmed_plus_1p50_s"
+      }
+    ]
+  }
+}
