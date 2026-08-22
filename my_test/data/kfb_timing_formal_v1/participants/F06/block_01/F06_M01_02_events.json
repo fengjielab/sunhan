@@ -1,0 +1,82 @@
+{
+  "schema_version": 3,
+  "mode": "KFB_TIMING",
+  "subject_id": "F06",
+  "object_id": "FIXED_PAD",
+  "trial_id": "F06_M01_02",
+  "started_at_unix": 1787377947.940717,
+  "phase": "INCOMPLETE",
+  "completed": false,
+  "incomplete": true,
+  "recognition_time_s": null,
+  "operation_time_s": null,
+  "force_baseline_mean_N": 1.1872630376796025,
+  "force_baseline_std_N": 0.018407178048275526,
+  "force_threshold_N": 1.9372630376796025,
+  "events": [
+    {
+      "event": "system_start",
+      "system_time": 0.0,
+      "phase": "PREP"
+    },
+    {
+      "event": "force_baseline_ready",
+      "system_time": 3.185357426000337,
+      "phase": "PREP",
+      "median_N": 1.1872630376796025,
+      "robust_sigma_N": 0.018407178048275526,
+      "threshold_on_N": 1.9372630376796025,
+      "threshold_off_N": 1.6372630376796025
+    },
+    {
+      "event": "system_ready",
+      "system_time": 3.185357426000337,
+      "phase": "READY"
+    },
+    {
+      "event": "task_start",
+      "system_time": 3.185357426000337,
+      "phase": "APPROACH",
+      "trigger": "kfb_baseline_ready"
+    },
+    {
+      "event": "contact_candidate",
+      "system_time": 4.314596619999065,
+      "phase": "APPROACH"
+    },
+    {
+      "event": "contact_confirmed",
+      "system_time": 4.647360556999047,
+      "phase": "APPROACH",
+      "reference": "controller_contact_confirmed"
+    },
+    {
+      "event": "kfb_intervention_on",
+      "system_time": 5.74932234500011,
+      "phase": "APPROACH",
+      "masked_condition": "M02A47C5",
+      "K_fb_commanded": 0.7
+    },
+    {
+      "event": "kfb_intervention_off",
+      "system_time": 5.949096102000112,
+      "phase": "APPROACH",
+      "masked_condition": "M02A47C5",
+      "K_fb_commanded": 0.5
+    },
+    {
+      "event": "safety_abort",
+      "system_time": 5.964552228000684,
+      "phase": "APPROACH",
+      "reason": "force_limit_exceeded",
+      "force_corrected_N": 3.842838275971844
+    },
+    {
+      "event": "task_incomplete",
+      "system_time": 5.9648548850000225,
+      "phase": "INCOMPLETE",
+      "reason": "force_limit_exceeded",
+      "success": false
+    }
+  ]
+}
