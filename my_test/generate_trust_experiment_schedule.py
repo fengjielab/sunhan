@@ -9,7 +9,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent
-OUT = ROOT / "paper2_sci" / "07_supplement_experiment"
+OUT = ROOT / "正宫" / "07_supplement_experiment"
 
 OBJECTS = {
     "banana": {

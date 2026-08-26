@@ -1,0 +1,145 @@
+{
+  "figure_name": "Realized-Intervention Fidelity Framework",
+  "layout": {
+    "coordinate_system": "normalized_axes_0_to_1",
+    "margin_x": 0.025,
+    "layer_y": 0.550,
+    "layer_height": 0.300,
+    "layer_width": 0.150,
+    "final_width": 0.18,
+    "interface_title_y": 0.910,
+    "interface_failure_y": 0.520,
+    "provenance_y": 0.150,
+    "provenance_height": 0.190
+  },
+  "colors": {
+    "nominal": "#F1F1F1",
+    "executable": "#DCE8F2",
+    "realized": "#DDECE4",
+    "outcome": "#F2E1D5",
+    "final": "#FFFFFF",
+    "final_edge": "#2F2F2F",
+    "provenance_source": "#F3F3F3",
+    "provenance_identity": "#E7EDF2",
+    "provenance_linkage": "#E6EEE9",
+    "edge": "#555555",
+    "guide": "#8A8A8A",
+    "muted_text": "#555555",
+    "failure": "#7A3E2B"
+  },
+  "layers": [
+    {
+      "id": "N_m",
+      "title": "Nominal intervention",
+      "display_title": ["[1]  Nominal", "intervention"],
+      "symbol": "$N_m$",
+      "color_key": "nominal",
+      "subtext": [
+        "parameters",
+        "guards",
+        "update rules",
+        "event/timing constraints",
+        "intended outcome exposure"
+      ],
+      "display_subtext": [
+        "parameters",
+        "guards",
+        "update rules",
+        "event/timing constraints",
+        "intended outcome",
+        "exposure"
+      ]
+    },
+    {
+      "id": "C_m",
+      "title": "Executable controller logic",
+      "display_title": ["[2]  Executable", "controller logic"],
+      "symbol": "$C_m$",
+      "color_key": "executable",
+      "subtext": [
+        "executable guards",
+        "clock domains",
+        "update equations",
+        "scheduler",
+        "command generation"
+      ]
+    },
+    {
+      "id": "R_i",
+      "title": "Realized logged intervention",
+      "display_title": ["[3]  Realized logged", "intervention"],
+      "symbol": "$R_i$",
+      "color_key": "realized",
+      "subtext": [
+        "event timestamps",
+        "activation states",
+        "command trajectories",
+        "trial-specific exposure"
+      ]
+    },
+    {
+      "id": "Y_i",
+      "title": "Outcome",
+      "display_title": ["[4]  Outcome"],
+      "symbol": "$Y_i$",
+      "color_key": "outcome",
+      "subtext": [
+        "event-aligned window $W_i$",
+        "derived metric",
+        "independent experimental",
+        "unit"
+      ],
+      "display_subtext": [
+        "event-aligned window",
+        "$W_i$",
+        "derived metric",
+        "independent experimental",
+        "unit"
+      ]
+    }
+  ],
+  "interfaces": [
+    {
+      "from": "N_m",
+      "to": "C_m",
+      "label": "Semantic fidelity",
+      "display_label": ["Semantic fidelity"],
+      "failure": ["semantic / estimand mismatch"]
+    },
+    {
+      "from": "C_m",
+      "to": "R_i",
+      "label": "Runtime fidelity",
+      "display_label": ["Runtime fidelity"],
+      "failure": ["temporal or parameter", "runtime noncompliance"]
+    },
+    {
+      "from": "R_i",
+      "to": "Y_i",
+      "label": "Outcome-window exposure",
+      "display_label": ["Outcome-window", "exposure"],
+      "failure": ["exposure heterogeneity"]
+    }
+  ],
+  "provenance": {
+    "path_label": "Provenance path for the $R_i$ ↔ $Y_i$ linkage",
+    "sources_title": "Archived sources",
+    "sources": ["Raw trajectory", "Event log", "Summary metadata", "Outcome source"],
+    "identity_title": "Exact acquisition identity",
+    "identity_subtext": ["timestamped record", "+ hash verification"],
+    "linkage_title": "Provenance-consistent linkage",
+    "linkage_subtext": ["$R_i$ ↔ $Y_i$", "same acquisition"],
+    "failure": "Provenance inconsistency"
+  },
+  "final_interpretation": {
+    "arrow_label": "Admissible scientific contrast",
+    "display_arrow_label": ["Admissible scientific", "contrast"],
+    "title": ["Admissible", "interpretation"],
+    "subtext": [
+      "What scientific contrast",
+      "does the archived intervention",
+      "evidence legitimately support?"
+    ]
+  },
+  "footnote": "Logged controller commands are not equivalent to independently measured physical impedance."
+}

@@ -16,7 +16,7 @@ import pandas as pd
 
 
 ROOT = Path(r"F:\sun\sunhan\my_test")
-OUT = ROOT / "paper2_sci" / "03_clean_analysis"
+OUT = ROOT / "正宫" / "03_clean_analysis"
 RAW_ROOT = ROOT / "data" / "ral_date"
 FIG = OUT / "figures"
 TAB = OUT / "tables"

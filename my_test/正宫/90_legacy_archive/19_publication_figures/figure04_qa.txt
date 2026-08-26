@@ -1,0 +1,60 @@
+Figure 4 QA — Participant-level exploratory E-A outcomes
+STATUS: PASS
+
+Semantic column mapping:
+- Task-start-to-contact time (s) -> participant_level_metrics.csv: approach_time_s
+
+Inputs:
+- F:\sun\sunhan\my_test\paper2_sci\03_clean_analysis\participant_level_metrics.csv
+- F:\sun\sunhan\my_test\paper2_sci\03_clean_analysis\statistics_summary.csv
+- F:\sun\sunhan\my_test\paper2_sci\03_clean_analysis\trial_level_fidelity_metrics.csv
+
+Checks:
+[PASS] independent human participants | actual=5 | expected=5
+[PASS] participant identities | actual=['P01', 'P02', 'P03', 'P04', 'P05'] | expected=['P01', 'P02', 'P03', 'P04', 'P05']
+[PASS] unique participant/configuration aggregates | actual=20 | expected=20
+[PASS] A/E participant coverage | actual={'A': 5, 'E': 5} | expected={'A': 5, 'E': 5}
+[PASS] selected trials per participant/configuration | actual=[9] | expected=[9]
+[PASS] selected trial total | actual=180 | expected=180
+[PASS] figure participant source rows | actual=30 | expected=30
+[PASS] figure contrast summary rows | actual=3 | expected=3
+[PASS] A exactly one frozen E-A summary | actual=1 | expected=1
+[PASS] A frozen n_participants | actual=5 | expected=5
+[PASS] A frozen effect and 95% CI | actual=(-0.3489, -0.608, -0.0898) | expected=(-0.3489, -0.608, -0.0898)
+[PASS] A participant differences negative | actual=5 | expected=5
+[PASS] A participant mean difference matches frozen summary | actual=-0.348901893745 | expected=-0.348901893745
+[PASS] B exactly one frozen E-A summary | actual=1 | expected=1
+[PASS] B frozen n_participants | actual=5 | expected=5
+[PASS] B frozen effect and 95% CI | actual=(1.7805, 1.5084, 2.0527) | expected=(1.7805, 1.5084, 2.0527)
+[PASS] B participant differences positive | actual=5 | expected=5
+[PASS] B participant mean difference matches frozen summary | actual=1.78051308804 | expected=1.78051308804
+[PASS] C exactly one frozen E-A summary | actual=1 | expected=1
+[PASS] C frozen n_participants | actual=5 | expected=5
+[PASS] C frozen effect and 95% CI | actual=(1.2128, 0.5741, 1.8514) | expected=(1.2128, 0.5741, 1.8514)
+[PASS] C participant differences positive | actual=5 | expected=5
+[PASS] C participant mean difference matches frozen summary | actual=1.21276721733 | expected=1.21276721733
+
+Selected trials before participant aggregation:
+participant  mode_code
+P01          A            9
+             E            9
+             F            9
+             G            9
+P02          A            9
+             E            9
+             F            9
+             G            9
+P03          A            9
+             E            9
+             F            9
+             G            9
+P04          A            9
+             E            9
+             F            9
+             G            9
+P05          A            9
+             E            9
+             F            9
+             G            9
+
+No trial-level inferential test is run by this figure script.

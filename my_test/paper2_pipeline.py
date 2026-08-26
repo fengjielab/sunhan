@@ -4,7 +4,6 @@ import csv
 import hashlib
 import json
 import math
-import shutil
 import textwrap
 import warnings
 from dataclasses import dataclass
@@ -23,10 +22,9 @@ from scipy import linalg, optimize, stats
 
 ROOT = Path(r"F:\sun\sunhan\my_test")
 SOURCE = ROOT / "data" / "ral_date"
-OUT = ROOT / "paper2_sci"
+OUT = ROOT / "正宫"
 
 DIRS = {
-    "selected": OUT / "01_primary_first_attempt_data",
     "audit": OUT / "02_audit",
     "processed": OUT / "03_processed_data",
     "stats": OUT / "04_statistics",
@@ -153,7 +151,7 @@ def discover_trials() -> list[Trial]:
     return trials
 
 
-def write_manifest_and_copy(trials: list[Trial]) -> pd.DataFrame:
+def write_manifest(trials: list[Trial]) -> pd.DataFrame:
     rows = []
     selected = [t for t in trials if t.selected_earliest]
     if len(selected) != 180 or len(trials) not in {180, 186}:
@@ -190,13 +188,6 @@ def write_manifest_and_copy(trials: list[Trial]) -> pd.DataFrame:
                 "summary_sha256": hashes[2],
             }
         )
-        if t.selected_earliest:
-            dest_dir = DIRS["selected"] / t.material / t.participant / t.block
-            dest_dir.mkdir(parents=True, exist_ok=True)
-            for p in files:
-                dest = dest_dir / p.name
-                if not dest.exists() or dest.stat().st_size != p.stat().st_size:
-                    shutil.copy2(p, dest)
     manifest = pd.DataFrame(rows).sort_values(
         ["participant", "material", "block", "mode", "timestamp"]
     )
@@ -1443,14 +1434,13 @@ def write_data_entry_templates(metrics: pd.DataFrame) -> None:
 
 
 def write_delivery_readme(source_trial_count: int) -> None:
-    content = f"""# paper2_sci 交付说明
+    content = f"""# 正宫 交付说明
 
 本目录由 `paper2_pipeline.py` 从只读源目录 `{SOURCE}` 生成。
 
 ## 目录
 
-- `01_primary_first_attempt_data`：180 个首测主分析试次的源文件副本。
-- `01_selected_data`：旧版“后补替换”副本，仅为追溯保留，不再作为主分析输入。
+- 原始 CSV、events 和 summary 只从 `{SOURCE}` 读取，不在本目录生成副本。
 - `02_audit`：全部 {source_trial_count} 条记录的审计清单和 SHA-256。
 - `03_processed_data`：主分析、敏感性分析和接触对齐后的派生数据。
 - `04_statistics`：描述统计、配对对比、混合模型、视觉时序/在线机制/策略数学审计、敏感性分析和四张正文表。
@@ -1486,7 +1476,7 @@ def main() -> None:
     ensure_dirs()
     setup_plotting()
     trials = discover_trials()
-    manifest = write_manifest_and_copy(trials)
+    manifest = write_manifest(trials)
     earliest = [t for t in trials if t.selected_earliest]
     latest = [t for t in trials if t.selected_latest]
 

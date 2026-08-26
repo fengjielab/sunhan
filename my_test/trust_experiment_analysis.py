@@ -215,7 +215,7 @@ def main() -> None:
     parser.add_argument("--data-dir", type=Path, required=True)
     parser.add_argument(
         "--output-dir", type=Path,
-        default=Path("my_test/paper2_sci/08_supplement_results"),
+        default=Path("my_test/正宫/08_supplement_results"),
     )
     args = parser.parse_args()
     csv_files = sorted(args.data_dir.rglob("trust_experiment_*.csv"))

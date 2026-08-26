@@ -20,10 +20,10 @@ def resolve_root(root: Path | None) -> Path:
     candidate = Path(__file__).resolve().parents[2] if root is None else root.resolve()
     if (candidate / "03_clean_analysis").is_dir():
         return candidate
-    nested = candidate / "my_test" / "paper2_sci"
+    nested = candidate / "my_test" / "正宫"
     if (nested / "03_clean_analysis").is_dir():
         return nested
-    raise FileNotFoundError(f"Could not locate paper2_sci below {candidate}")
+    raise FileNotFoundError(f"Could not locate 正宫 below {candidate}")
 
 
 def close(actual: float, expected: float, tolerance: float = 5e-5) -> bool:

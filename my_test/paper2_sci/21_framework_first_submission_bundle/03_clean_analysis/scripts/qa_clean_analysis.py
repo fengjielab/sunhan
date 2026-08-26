@@ -9,7 +9,7 @@ import pandas as pd
 from scipy import stats
 
 
-OUT = Path(r"F:\sun\sunhan\my_test\paper2_sci\03_clean_analysis")
+OUT = Path(r"F:\sun\sunhan\my_test\正宫\03_clean_analysis")
 
 
 def exact_sign_flip(values: np.ndarray) -> float:

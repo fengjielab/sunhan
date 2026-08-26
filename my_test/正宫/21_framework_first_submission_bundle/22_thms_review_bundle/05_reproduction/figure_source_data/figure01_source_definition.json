@@ -1,0 +1,48 @@
+{
+  "figure_name": "Realized-Intervention Fidelity Framework",
+  "scope": "Generic conceptual framework; acquisition provenance is intentionally delegated to Figure 2.",
+  "layers": [
+    {
+      "id": "N_m",
+      "label": "Documented nominal intervention",
+      "evidence": ["parameters", "guards and timing", "intended exposure"]
+    },
+    {
+      "id": "C_m",
+      "label": "Executable implementation",
+      "evidence": ["literal guards", "clock domains", "update logic"]
+    },
+    {
+      "id": "R_i",
+      "label": "Realized logged intervention",
+      "evidence": ["event timestamps", "activation states", "command trajectories"]
+    },
+    {
+      "id": "Y_i",
+      "label": "Windowed outcome",
+      "evidence": ["event-aligned window", "derived metric", "independent experimental unit"]
+    }
+  ],
+  "interfaces": [
+    {
+      "from": "N_m",
+      "to": "C_m",
+      "label": "Specification to implementation",
+      "failure": "Missing or incorrect guard or clock implementation"
+    },
+    {
+      "from": "C_m",
+      "to": "R_i",
+      "label": "Implementation to realization",
+      "failure": "Logged state differs from the literal executable prediction"
+    },
+    {
+      "from": "R_i",
+      "to": "Y_i",
+      "label": "Realization to outcome exposure",
+      "failure": "Partial or zero outcome-window exposure"
+    }
+  ],
+  "timeline_channels": ["human input H_i(t)", "vision lock", "controller activation", "contact", "outcome window W_i"],
+  "final_interpretation": "Narrowest evidence-supported statistical contrast; not automatically causal"
+}

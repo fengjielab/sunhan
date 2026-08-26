@@ -30,7 +30,7 @@ def parse_root_args(description: str) -> argparse.Namespace:
         "--root",
         type=Path,
         default=None,
-        help="paper2_sci project root, or a repository root containing my_test/paper2_sci",
+        help="正宫 project root, or a repository root containing my_test/正宫",
     )
     parser.add_argument("--dpi", type=int, default=600, help="PNG resolution (minimum 600).")
     args = parser.parse_args()
@@ -46,12 +46,12 @@ def resolve_project_root(root: Path | None, script_file: str) -> Path:
         candidate = root.resolve()
     if (candidate / "03_clean_analysis").is_dir():
         return candidate
-    nested = candidate / "my_test" / "paper2_sci"
+    nested = candidate / "my_test" / "正宫"
     if (nested / "03_clean_analysis").is_dir():
         return nested
     raise FileNotFoundError(
         f"Could not locate 03_clean_analysis below --root={candidate}. "
-        "Pass the paper2_sci directory or the repository root."
+        "Pass the 正宫 directory or the repository root."
     )
 
 

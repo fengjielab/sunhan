@@ -5,7 +5,7 @@ This directory is the rebuilt, non-destructive analysis lineage for the 180 vali
 ## 1. Frozen source state
 
 - Raw data root: `F:/sun/sunhan/my_test/data/ral_date`
-- Historical 186-record manifest: `F:/sun/sunhan/my_test/paper2_sci/02_audit/trial_manifest_186.csv`
+- Historical 186-record manifest: `F:/sun/sunhan/my_test/正宫/02_audit/trial_manifest_186.csv`
 - Collection code commit: `09c13e0b679905f14f770d820af00841546cb4cc`
 - Collection code files audited at that commit:
   - `my_test/interactive_teleop.py`
@@ -139,7 +139,7 @@ The evidence supports raw-force baseline, fixed deadband, and initialization as 
 ## 10. Reproduction command
 
 ```powershell
-python F:\sun\sunhan\my_test\paper2_sci\03_clean_analysis\scripts\clean_analysis.py
+python F:\sun\sunhan\my_test\正宫\03_clean_analysis\scripts\clean_analysis.py
 ```
 
 The script stops if the source manifest no longer contains 186 records/180 keys, if the selected main set is not exactly 180 unique keys, if the six user-confirmed validity decisions are not found, or if any raw companion file fails its recorded SHA-256 hash.

@@ -1,0 +1,75 @@
+Figure 3 QA — Trial-level realized-intervention fidelity
+STATUS: PASS
+
+Inputs:
+- F:\sun\sunhan\my_test\paper2_sci\21_framework_first_submission_bundle\03_clean_analysis\trial_level_fidelity_metrics.csv
+- F:\sun\sunhan\my_test\paper2_sci\21_framework_first_submission_bundle\03_clean_analysis\outcome_window_exposure.csv
+
+Frozen and structural checks:
+[PASS] trial-level fidelity rows | actual=180 | expected=180
+[PASS] outcome-window exposure rows | actual=180 | expected=180
+[PASS] A/G/E/F counts in fidelity input | actual={'A': 45, 'E': 45, 'F': 45, 'G': 45} | expected={'A': 45, 'G': 45, 'E': 45, 'F': 45}
+[PASS] A/G/E/F counts in exposure input | actual={'A': 45, 'E': 45, 'F': 45, 'G': 45} | expected={'A': 45, 'G': 45, 'E': 45, 'F': 45}
+[PASS] unique record_id in both inputs | actual=(180, 180) | expected=(180, 180)
+[PASS] exact record_id linkage across inputs | actual=True | expected=True
+[PASS] independent human participants | actual=5 | expected=5
+[PASS] exposure provenance valid | actual=180 | expected=180
+[PASS] G executable raw-force rule compliant | actual=45 | expected=45
+[PASS] G pre-contact activation | actual=43 | expected=43
+[PASS] G median contact-to-activation (s) | actual=-1.21437258 | expected=-1.214
+[PASS] F nominal +0.20-s satisfied | actual=3 | expected=3
+[PASS] F median activation (s) | actual=0.05327363301 | expected=0.0533
+[PASS] F median timing error (s) | actual=-0.146726367 | expected=-0.1467
+[PASS] timestamp-derived activation latency matches clean metric | actual=True | expected=True
+[PASS] G required timing values missing | actual=0 | expected=0
+[PASS] F required timing values missing | actual=0 | expected=0
+[PASS] G deterministic ranks 1-45 | actual=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45] | expected=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45]
+[PASS] F deterministic ranks 1-45 | actual=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45] | expected=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45]
+[PASS] E vision exposure | actual={'Full': 39, 'Partial': 2, 'Zero': 4} | expected={'Full': 39, 'Partial': 2, 'Zero': 4}
+[PASS] F vision exposure | actual={'Full': 42, 'Partial': 0, 'Zero': 3} | expected={'Full': 42, 'Partial': 0, 'Zero': 3}
+[PASS] F adaptation exposure | actual={'Full': 35, 'Partial': 7, 'Zero': 3} | expected={'Full': 35, 'Partial': 7, 'Zero': 3}
+[PASS] F joint exposure | actual={'Full': 35, 'Partial': 7, 'Zero': 3} | expected={'Full': 35, 'Partial': 7, 'Zero': 3}
+
+Exact reproducibility case lists:
+
+G post-contact exceptions
+-------------------------
+                                 record_id                   trial_id  contact_to_adaptation_latency_s
+ hard|P02|第六组实验|force_only|20260730_131655  hard|P02|第六组实验|force_only                         0.041343
+soft|P05|第十三次实验|force_only|20260730_143048 soft|P05|第十三次实验|force_only                         0.035394
+
+F +0.20-s compliant cases
+-------------------------
+                                    record_id                      trial_id  contact_to_adaptation_latency_s  activation_timing_error_s
+  hard|P02|第五组实验|vision_force|20260729_171210   hard|P02|第五组实验|vision_force                         1.224104                   1.024104
+  hard|P03|第九组实验|vision_force|20260729_170948   hard|P03|第九组实验|vision_force                         2.686907                   2.486907
+medium|P02|第五组实验|vision_force|20260729_164241 medium|P02|第五组实验|vision_force                         1.097549                   0.897549
+
+E vision zero-exposure cases
+----------------------------
+                              record_id                trial_id  vision_configuration_exposure_fraction
+ hard|P04|第十一次实验|vision|20260730_154334  hard|P04|第十一次实验|vision                                     0.0
+ hard|P05|第十四次实验|vision|20260730_152545  hard|P05|第十四次实验|vision                                     0.0
+medium|P01|第一组实验|vision|20260729_161027 medium|P01|第一组实验|vision                                     0.0
+  soft|P02|第四组实验|vision|20260729_155652   soft|P02|第四组实验|vision                                     0.0
+
+F vision zero-exposure cases
+----------------------------
+                                    record_id                      trial_id  vision_configuration_exposure_fraction
+  hard|P02|第五组实验|vision_force|20260729_171210   hard|P02|第五组实验|vision_force                                     0.0
+  hard|P03|第九组实验|vision_force|20260729_170948   hard|P03|第九组实验|vision_force                                     0.0
+medium|P02|第五组实验|vision_force|20260729_164241 medium|P02|第五组实验|vision_force                                     0.0
+
+F adaptation zero-exposure cases
+--------------------------------
+                                    record_id                      trial_id  force_adaptation_exposure_fraction
+  hard|P02|第五组实验|vision_force|20260729_171210   hard|P02|第五组实验|vision_force                                 0.0
+  hard|P03|第九组实验|vision_force|20260729_170948   hard|P03|第九组实验|vision_force                                 0.0
+medium|P02|第五组实验|vision_force|20260729_164241 medium|P02|第五组实验|vision_force                                 0.0
+
+F joint zero-exposure cases
+---------------------------
+                                    record_id                      trial_id  exposure_fraction
+  hard|P02|第五组实验|vision_force|20260729_171210   hard|P02|第五组实验|vision_force                0.0
+  hard|P03|第九组实验|vision_force|20260729_170948   hard|P03|第九组实验|vision_force                0.0
+medium|P02|第五组实验|vision_force|20260729_164241 medium|P02|第五组实验|vision_force                0.0

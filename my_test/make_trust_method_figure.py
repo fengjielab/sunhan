@@ -17,7 +17,7 @@ from trust_correction import (
 )
 
 
-OUT = Path(__file__).resolve().parent / "paper2_sci" / "05_figures"
+OUT = Path(__file__).resolve().parent / "正宫" / "05_figures"
 BLUE = "#2563EB"
 ORANGE = "#D97706"
 GREEN = "#059669"

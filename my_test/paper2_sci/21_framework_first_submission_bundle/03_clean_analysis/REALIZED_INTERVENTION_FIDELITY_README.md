@@ -47,8 +47,8 @@ This analysis extends the frozen clean reconstruction without altering the exist
 ## Reproduction
 
 ```powershell
-python F:\sun\sunhan\my_test\paper2_sci\03_clean_analysis\scripts\fidelity_analysis.py
-python F:\sun\sunhan\my_test\paper2_sci\03_clean_analysis\scripts\qa_fidelity_analysis.py
+python F:\sun\sunhan\my_test\正宫\03_clean_analysis\scripts\fidelity_analysis.py
+python F:\sun\sunhan\my_test\正宫\03_clean_analysis\scripts\qa_fidelity_analysis.py
 ```
 
 The QA script stops on duplicate/missing records, source-hash failure, outcome mismatch, unbounded exposure fractions, unexpected A/G/F checks, missing figures, or the appearance of inferential fishing columns.

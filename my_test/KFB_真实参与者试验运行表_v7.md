@@ -6,7 +6,7 @@
 
 ```bash
 cd ~/sunhan/my_test
-python3 verify_kfb_timing_setup.py --schedule-dir paper2_sci/23_kfb_timing_pilot/frozen_schedule_v7 --start-pose-file paper2_sci/23_kfb_timing_pilot/start_pose_v1.json
+python3 verify_kfb_timing_setup.py --schedule-dir 正宫/23_kfb_timing_pilot/frozen_schedule_v7 --start-pose-file 正宫/23_kfb_timing_pilot/start_pose_v1.json
 ```
 
 校验必须显示 `"overall_pass": true`。现场表只显示匿名条件码，不显示真实 C0–C4。

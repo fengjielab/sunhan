@@ -17,7 +17,7 @@ from scipy import stats
 
 
 ROOT = Path(r"F:\sun\sunhan\my_test")
-PAPER_ROOT = ROOT / "paper2_sci"
+PAPER_ROOT = ROOT / "正宫"
 RAW_ROOT = ROOT / "data" / "ral_date"
 OUT = PAPER_ROOT / "03_clean_analysis"
 FIG = OUT / "figures"

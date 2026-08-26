@@ -26,7 +26,7 @@ if [[ "$PARTICIPANT_ID" != "$TRIAL_PARTICIPANT_ID" ]]; then
   exit 2
 fi
 
-PILOT_DIR="$SCRIPT_DIR/paper2_sci/23_kfb_timing_pilot"
+PILOT_DIR="$SCRIPT_DIR/正宫/23_kfb_timing_pilot"
 SCHEDULE_DIR="$PILOT_DIR/frozen_schedule_formal_v1"
 ORACLE_PATH="$SCHEDULE_DIR/private_oracle/oracle.csv"
 START_POSE_PATH="$PILOT_DIR/start_pose_v1.json"
