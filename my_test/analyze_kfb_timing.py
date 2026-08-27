@@ -459,7 +459,7 @@ def _summaries(metrics: List[dict]) -> Tuple[List[dict], List[dict]]:
         by_participant[row["participant_id"]][row["true_condition"]] = row
     contrasts = []
     for participant, condition_rows in sorted(by_participant.items()):
-        for numerator, denominator in (("C1", "C0"), ("C3", "C0")):
+        for numerator, denominator in (("C1", "C0"), ("C2", "C0"), ("C3", "C0"), ("C4", "C0")):
             if numerator not in condition_rows or denominator not in condition_rows:
                 continue
             row = {
@@ -477,9 +477,10 @@ def _summaries(metrics: List[dict]) -> Tuple[List[dict], List[dict]]:
 
 
 def _acceptance_report(metrics: List[dict], fidelity: List[dict], phase: str) -> dict:
-    target = 25 if phase == "engineering" else 60
     selected_metrics = [row for row in metrics if row.get("phase") == phase and (phase == "engineering" or _int(row.get("analyzed")) == 1)]
     selected_fidelity = [row for row in fidelity if row.get("phase") == phase and (phase == "engineering" or _int(row.get("analyzed")) == 1)]
+    participant_ids = sorted({row["participant_id"] for row in selected_metrics})
+    target = 25 if phase == "engineering" else 15 * len(participant_ids)
     valid_count = sum(_int(row.get("technical_valid")) for row in selected_metrics)
     evaluable = [row for row in selected_fidelity if _int(row.get("evaluable")) == 1]
     timing_errors = [abs(_float(row.get("onset_error_s"))) for row in evaluable]
@@ -495,7 +496,9 @@ def _acceptance_report(metrics: List[dict], fidelity: List[dict], phase: str) ->
     checks = {
         "expected_trial_count": len(selected_metrics) == target,
         "technical_valid_count": valid_count == 25 if phase == "engineering" else valid_count >= 57,
-        "per_participant_valid": True if phase == "engineering" else all(participant_valid[p] >= 14 for p in ("P01", "P02", "P03", "P04")),
+        "per_participant_valid": True if phase == "engineering" else all(
+            participant_valid[participant_id] >= 14 for participant_id in participant_ids
+        ),
         "classification_accuracy": _mean([_int(row.get("classification_correct")) for row in evaluable]) >= (1.0 if phase == "engineering" else 0.95),
         "timing_mae": _mean(timing_errors) <= 0.020,
         "timing_p95": _percentile(timing_errors, 0.95) <= 0.020,
