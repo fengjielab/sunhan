@@ -1,0 +1,869 @@
+ Object-Conditioned Strategy-Level Parameter Configuration for Haptic Teleoperation of
+                               Heterogeneous Objects
+
+                                    Fengjie Maa , Chuang Caob , Qixin Caob , Yilin Zhoua , Hua Zhanga,∗
+       a School of Mechanical and Automotive Engineering, Shanghai University of Engineering Science, 333 Longteng Road, Shanghai, 201620, China
+                    b School of Mechanical Engineering, Shanghai Jiao Tong University, 800 Dongchuan Road, Shanghai, 200240, China
+
+
+
+
+Abstract
+Fixed teleoperation parameters may not provide suitable interaction behavior across objects with different fragility, geometry, and
+grasping requirements. Existing object-conditioned approaches mainly adjust slave-side impedance, whereas the joint configuration
+of slave-side impedance, master-side haptic feedback, and gripper-execution parameters has received limited attention. To address
+this issue, this paper proposes an object-conditioned strategy-level parameter-configuration framework for haptic teleoperation of
+heterogeneous objects. Each detected object class is mapped to one of three manipulation strategies, and each strategy specifies
+a joint parameter configuration for the three channels. Low-rate visual perception is integrated asynchronously with a nominal
+200-Hz supervisory loop. The first mapped detection that satisfies the confidence threshold triggers a one-shot parameter update,
+and the selected strategy remains locked for the remainder of the trial. The framework was evaluated in a human-in-the-loop
+experiment involving three operators, six objects, five control modes, and 135 grasp-and-transfer trials arranged in 27 matched
+blocks. Compared with impedance-only reconfiguration, the complete multi-channel configuration reduced mean task completion
+time by 1.79 s (8.5%; matched-block bootstrap 95% CI, 1.10–2.51 s). The improvement was directionally consistent across operators
+and objects. Secondary outcomes were interpreted descriptively, and the individual contributions of the two added channels were not
+isolated. Overall, the proposed framework provides an interpretable one-shot configuration approach for the haptic teleoperation of
+heterogeneous objects.
+Keywords: haptic teleoperation, heterogeneous objects, impedance control, object-conditioned configuration, haptic feedback,
+human-in-the-loop evaluation
+
+
+1. Introduction                                                              stability. Conversely, higher stiffness or greater requested grasp
+                                                                             force may improve pose retention and grasp stability for rigid or
+    Teleoperation combines human decision-making with                        slip-prone objects but may also increase contact impact or defor-
+robotic execution, enabling remote robots to perform complex                 mation risk. Object categories can therefore serve as compact
+manipulation tasks that remain challenging for fully autonomous              semantic indicators of task-related interaction requirements and
+systems, including hazardous operations, flexible manufacturing,             support object-dependent parameter configuration.
+and manipulation in semi-structured or unstructured environ-                      Variable-impedance and bilateral-control approaches have
+ments. Haptic feedback conveys information about remote                      been developed to regulate remote-robot behavior according
+interactions to the operator, supporting the perception of contact           to operator motion, contact state, task phase, and environmen-
+conditions, grasp stability, and potential object slip. Effective            tal interaction [3–11]. In parallel, visual and multimodal per-
+teleoperation therefore requires the coordinated integration of              ception methods have been employed to select task-dependent
+bilateral control, environmental perception, robotic execution,              impedance parameters and generate interaction strategies [12–
+and human–machine interaction [1, 2].                                        15], while tactile and kinesthetic feedback modalities have sup-
+    Teleoperation becomes particularly challenging when ob-                  ported operator awareness and grasp execution [16–18]. Collec-
+jects with heterogeneous interaction requirements must be ma-                tively, these studies indicate that object- and task-level informa-
+nipulated within the same system. These objects may differ                   tion can support parameter selection and strategy adaptation.
+substantially in geometry, deformability, contact sensitivity, and                Despite these advances, many prior approaches have focused
+grasp-stability requirements, making it difficult for a single fixed         on individual aspects of teleoperation, particularly slave-side
+parameter configuration to provide both compliant contact and                impedance adaptation or control-authority allocation [4–11, 19–
+stable manipulation. For fragile or deformable objects, lower                21]. Teleoperation performance, however, depends jointly on
+robot stiffness and requested grasp force may reduce contact                 remote-robot interaction, the haptic information presented to
+impact but can also compromise positioning accuracy and grasp                the operator, and gripper execution. Slave-side impedance regu-
+                                                                             lates contact compliance, master-side haptic feedback shapes the
+  ∗ Corresponding author                                                     operator’s perception of remote interaction, and gripper parame-
+   Email address: huazhang@yeah.net (Hua Zhang)                              ters govern the execution of grasp commands. Although these
+channels affect different aspects of task execution, they play                     configuration against fixed-parameter, manual-selection,
+complementary roles in task efficiency, contact behavior, and                      semantic-display, and impedance-only reference condi-
+grasp stability. This observation motivates the use of object-level                tions.
+semantic information to establish an interpretable manipulation
+strategy and coordinate the initial configuration of multiple task-             The proposed framework targets semi-structured teleopera-
+related channels while retaining operator control.                          tion scenarios in which the platform and workspace remain fixed
+     Direct integration of visual-semantic inference into the               while object-level interaction requirements vary. Within this
+high-rate teleoperation loop introduces an additional system-               scope, it is intended to support consistent multi-channel configu-
+integration challenge. Visual inference generally operates at a             ration and efficient task execution during heterogeneous-object
+lower update rate and may be subject to computational latency               teleoperation.
+and detection fluctuations, whereas the teleoperation loop must
+remain continuously responsive to operator input. Using each                2. Methods and System Implementation
+perception result to trigger an immediate parameter update could
+delay supervisory processing, cause repeated switching, and                 2.1. System Overview and Multi-Rate Architecture
+produce inconsistent interaction behavior. A practical architec-                The experimental platform comprised an Omega.7 force-
+ture should therefore translate visual-semantic information into            feedback master device, a seven-degree-of-freedom Franka
+a stable task-level strategy without placing visual inference in            Panda manipulator equipped with a Franka Hand gripper [22],
+the high-rate supervisory path.                                             an Intel RealSense D435i camera, and a control computer
+     To address these configuration and integration issues, this            (Fig. 1). The D435i acquired 424 × 240 RGB frames at 15 fps
+paper proposes an object-conditioned strategy-level configu-                (nominally every 66.7 ms); the depth stream was not used in the
+ration framework for haptic teleoperation of heterogeneous ob-              present implementation. The control computer performed object
+jects. Detected object classes are mapped to manipulation strate-           detection, executed the nominal 200-Hz supervisory teleopera-
+gies (fragility-priority, balanced, and stability-priority), each of        tion loop, configured strategy-level parameters, rendered haptic
+which specifies a joint parameter configuration for slave-side              feedback, controlled the gripper, and logged data.
+impedance, master-side haptic feedback, and gripper execution.                  RGB frames were acquired at 15 fps (nominally every 66.7
+     Upon retrieving the first threshold-qualified result, the super-       ms) and passed through a single-slot frame queue to limit the
+visory loop performs a one-shot strategy-level parameter update             accumulation of stale frames. YOLO11n inference ran in a sep-
+and retains the selected strategy for the remainder of the trial.           arate process and returned object-class labels and confidence
+This one-shot, strategy-locked design decouples low-rate visual-            scores through a two-slot result queue. The nominal 200-Hz
+semantic inference from the nominal 200-Hz supervisory loop.                supervisory loop polled the result queue every 5 ms without
+It prevents repeated switching caused by detection fluctuations             blocking for inference, allowing image acquisition, visual infer-
+and maintains a consistent parameter configuration while pre-               ence, and operator-driven teleoperation to proceed concurrently.
+serving operator control.                                                   Per-image processing time was characterized separately using a
+     The framework was evaluated on an Omega.7–Franka Panda                 controlled image test. Table 1 summarizes the operating rates or
+platform using three operators, six objects, five modes, and 135            trigger conditions and the associated data flows of the main sys-
+trials arranged in 27 matched blocks. Task completion time was              tem modules. Figure 2 illustrates the timing relationships among
+the primary endpoint, with the primary comparison between
+complete multi-channel configuration (mode C) and impedance-
+only reconfiguration (mode E). Modes A, B, and D provided
+fixed-parameter, timed manual-selection, and semantic-display
+reference conditions, respectively.
+     The main contributions of this work are summarized as fol-
+lows:
+   1. Cross-subsystem strategy-level configuration. An in-
+      terpretable strategy layer maps detected object classes to
+      manipulation strategies that jointly configure slave-side
+      impedance, master-side haptic feedback, and gripper exe-
+      cution.
+   2. Asynchronous non-blocking strategy deployment.
+      Bounded queues and non-blocking polling decouple
+      low-rate visual inference from the supervisory loop; one-
+      shot triggering with trial-level strategy locking prevents
+      repeated intra-trial switching.
+   3. Matched human-in-the-loop comparative evaluation.                     Figure 1: Experimental teleoperation platform showing the Omega.7 master
+      A 27-block, 135-trial, five-mode experiment with three op-            device, a Franka Panda manipulator equipped with a Franka Hand gripper, the
+      erators and six objects evaluates complete multi-channel              Intel RealSense D435i camera, the control computer, and the object workspace.
+
+                                                                        2
+   Time (ms)                                 0                                           66.7                                   133.3                           200.0
+
+                                                                  66.7 ms                                 66.7 ms
+              1.Camera acquisition
+                (15 fps)                   Frame n                                  Frame n+1                                 Frame n+2
+
+              2.Frame queue                                latest frame only
+                                            put n                                      put n+1                                    put n+2
+                (cap. 1)
+
+              3.YOLO11n inference                          inference n                                inference n+1                          inference n+2
+                (mean 48.19 ms)                             48.19 ms                                    48.19 ms                               48.19 ms
+
+              4.Result queue
+                                                        result n ready                             result n+1 ready                         result n+2 ready
+                (cap. 2)
+                                                                                               non-blocking poll / read
+              5.200 Hz supervisory loop
+                (5 ms period)
+
+                                           first valid mapped result                                                                                           no further intra-
+              6.Parameter scheduler                                            one-shot             K, D smooth transition (~300 ms)                           trial switching
+                                                 (conf. ≥ 0.25)                target update
+
+
+              7.Operator / robot task                                              task and operator motion start immediately
+                (motion allowed)
+
+
+
+Figure 2: Not-to-scale timing schematic of the asynchronous perception–control architecture. Frames and inference results were exchanged through bounded queues,
+while the nominal 200-Hz supervisory loop polled the result queue without blocking. The first threshold-qualified result (≥ 0.25 confidence) triggered a single
+strategy-level update, after which the selected strategy remained locked for the trial; impedance parameters transitioned over approximately 300 ms. The schematic
+shows nominal module timing; end-to-end trigger latency was not measured.
+
+
+image acquisition, visual inference, supervisory teleoperation,                                2.2.2. Slave-side Cartesian impedance control
+and strategy-level parameter configuration within the multi-rate                                   Following the standard impedance-control formulation [23],
+asynchronous architecture.                                                                     a compact task-space representation of the slave-side Cartesian
+                                                                                               impedance action was written as
+2.2. Teleoperation Mapping and Mechatronic Control Channels
+2.2.1. Master–slave motion mapping                                                                                            wc = K(c)e + D(c)ė,                                 (3)
+    Only the translational motion of the Omega.7 was mapped to
+the Panda end effector. At supervisory step k, the master-device                                                  K(c) = diag(Kt , Kt , Kt , Kr , Kr , Kr ),                       (4)
+position increment and the desired slave end-effector position                                                            6
+                                                                                                     where wc ∈ R denotes the Cartesian impedance action;
+were updated as                                                                                e, ė ∈ R6 are the pose-error and pose-error-rate vectors; and c
+                                                                                               denotes the detected object class that indexes the active con-
+                     ∆pm (k) = pm (k) − pm (k − 1),                                (1)         figuration. The matrices K(c) and D(c) denote the associated
+                                                                                               stiffness and effective damping actions, respectively. The scalar
+                   pd (k) = pd (k − 1) + S C∆pm (k),                               (2)         values Kt and Kr specify translational and rotational stiffness,
+                                                                                               respectively. The error vector e combines translational error
+    where pm (k) ∈ R3 denotes the measured Omega.7 posi-                                       relative to the desired position pd and rotational error relative
+tion, ∆pm (k) ∈ R3 is its incremental displacement, and pd (k) ∈                               to the fixed desired orientation Rd . With Rd fixed, Kr set the
+R3 denotes the desired Panda end-effector position at super-                                   rotational stiffness against disturbances and deviations from the
+visory step k. The position-scaling factor was S = 3.0, and                                    prescribed orientation. No rotational command was supplied by
+C = diag(−1, −1, 1) defined the axis-direction mapping between                                 the operator.
+the master and slave coordinate conventions. The desired end-                                        The slave-controller API constructed an internal damping
+effector orientation Rd was held at a prescribed value through-                                quantity DAPI (c) from the active diagonal stiffness matrix K(c)
+out each trial; operator-commanded rotational motion was not                                   and the configuration-dependent dimensionless damping-scaling
+mapped to the Panda.                                                                           parameter ζ(c) according to
+
+                                                                                                                          DAPI (c) = 2ζ(c) K(c).
+                                                                                                                                          p
+                                                                                                                                                                                   (5)
+                                                                                          3
+                                     Table 1: Timing, triggers, and data flow of the multi-rate mechatronic system.
+Module                         Timing or trigger                           Data flow
+Master input                   200 Hz                                      Omega.7 translational position and button states → master-state update.
+Slave control                  200 Hz                                      Desired pose and impedance parameters → Panda command.
+Image acquisition              15 fps (66.7 ms/frame)                      D435i RGB stream → 424 × 240 RGB frame.
+YOLO11n inference              Asynchronous; per-image process-            Latest available frame → object class and confidence score.
+                               ing time characterized separately
+Strategy scheduling            First threshold-qualified detection         Object class and confidence → target parameter vector Θ(s).
+Haptic rendering               200 Hz                                      Force-related state → Omega.7 force command.
+Gripper command                Button event                                Gripper input and command parameters → Franka Hand command.
+                       Note: YOLO11n inference ran in a separate process and did not block the nominal 200-Hz supervisory loop.
+
+
+    The square root in Eq. (5) was applied elementwise to the di-               the Franka Hand grasp() API. The target-width argument was
+agonal entries of K(c). DAPI (c) represents the controller-internal             fixed at 0 m, and the tolerance parameters epsilon_inner
+damping construction; because no effective Cartesian inertia ma-                (0.005 m) and epsilon_outer (0.080 m) remained constant
+trix was identified, ζ(c) is treated as a dimensionless parameter               across strategies. After contact and entry into the HOLDING state,
+and is not interpreted as a critical-damping ratio.                             the gripper maintained the grasp through its internal controller
+                                                                                until the prescribed release command. The requested-force input
+2.2.3. Master-side haptic rendering                                             Fg did not represent an independently measured fingertip force.
+    For master-side haptic rendering, the Franka internal state                      The three parameter channels acted on distinct components
+estimator provided a slave-side external-force estimate. The                    of the teleoperation system: slave-side impedance regulated the
+three translational components of this estimate, Fext , expressed               Panda response to pose error and disturbances, master-side hap-
+in newtons, were used as inputs to the force-feedback calculation.              tic settings mapped the external-force estimate and master-side
+The baseline force-feedback command along Cartesian axis i                      aperture cue to the Omega.7 force command, and Franka Hand
+was computed as                                                                 settings specified gripper execution. The proposed framework
+                                                                                coordinated these channels through a common strategy-level
+                                                                            parameter bundle.
+  h,i = sgn K f F ext,i max K f F ext,i − d, 0 ,
+ ubase                                               i ∈ {x, y, z}, (6)
+                                                                                2.3. Object-Conditioned Strategy-Level Parameter Configura-
+    Here, ubase
+           h,i denotes the baseline master-side force command                        tion
+along axis i, K f is a dimensionless force-scaling factor, and d                2.3.1. Object-class-to-strategy and strategy-to-parameter map-
+is the per-axis dead-zone threshold in newtons. Equation (6)                           ping
+applies force scaling and a symmetric dead zone independently                       The framework implemented a two-stage mapping: each
+to each Cartesian component.                                                    detected object class was first mapped to a manipulation strategy,
+    In addition to the baseline force-feedback command, a                       and the selected strategy was then mapped to a multi-channel
+separate cue along the positive z-axis was generated from the                   parameter vector:
+Omega.7 gripper angle θΩ :
+                                                                                                                                 Kt (s) 
+                                                                                                                                                        
+                              θmax − θΩ
+                                               !
+                   αg = clip             , 0, 1 ,
+                                                                                                                                   K (s) 
+                                                             (7)                                                                     r 
+                             θmax − θmin                                                                                               ζ(s) 
+                                                                                                   s = f (c),         Θ(s) = K f (s) .
+                                                                                                                                                       
+                                                                                                                                                              (9)
+                                                                                                                                            d(s) 
+                                                                                                                                                     
+ ug = min αgGcue Fcue,max , Fcue,max ,                 h,z + ug .
+                                               uh,z = ubase          (8)                                                                      v (s) 
+                                                                                                                                                g 
+    Here, αg ∈ [0, 1] is the normalized Omega.7 gripper-aperture                                                                                 Fg (s)
+variable. With Gcue = 0.3 and Fcue,max = 1.0 N, ug = 0.3αg N,                       Here, c denotes the detected object class, and s ∈ S is the cor-
+yielding an aperture cue within [0, 0.3] N along the positive                   responding manipulation strategy. The strategy set S comprised
+z-axis. The cue increased as the Omega.7 gripper moved toward                   the fragility-priority, balanced, and stability-priority strategies.
+the open state and was updated during each supervisory cycle.                   The parameter vector Θ(s) contains the slave-side impedance
+No slave-gripper aperture or independently measured grasp-                      parameters {Kt , Kr , ζ}, the master-side haptic parameters {K f , d},
+force signal entered the cue calculation.                                       and the gripper-execution parameters {vg , Fg }. For compact no-
+                                                                                tation in the preceding control-channel equations, quantities
+2.2.4. Gripper-execution channel                                                indexed by c denote values selected through this two-stage map-
+    For grasp execution, vg specified the gripper closing and                   ping.
+opening speed, and Fg specified the requested-force input to
+                                                                            4
+    The three strategies reflected task-relevant interaction               2.5. Mode-Dependent Runtime Procedure
+priorities—deformation sensitivity, contact impact, slip risk,                 The supervisory loop executed teleoperation, haptic render-
+pose retention, and grasp stability—that motivated the assign-             ing, gripper control, and data logging across all five modes.
+ment of two objects to each strategy (Table 2). The assignments            Visual inference and the visual-semantic display were enabled
+were operational labels for the present platform and task rather           only in modes C–E, whereas mode B used manual strategy selec-
+than a general classification of materials. The parameter-level            tion after trial timing began. Upon a strategy event (automatic
+design rationale is provided in Supplementary Table S1.                    in modes C and E and manual in mode B), only the parameter
+                                                                           channels enabled by the active mode were updated: mode C
+2.3.2. One-shot triggering, strategy locking, and parameter                updated all three channels, mode E updated only the slave-side
+       transition                                                          impedance channel, and mode B updated all channels manually.
+    At runtime, the first result with confidence ≥ 0.25 retrieved          Mode D displayed the visual-semantic output while retaining
+by the supervisory loop triggered a one-shot update of the                 Θ0 throughout the trial. In modes B, C, and E, the selected strat-
+parameter channels enabled in the active experimental mode.                egy was locked after the first update. Teleoperation continued
+The selected strategy was then locked for the remainder of                 regardless of the trial outcome, and the master-side trajectory,
+the trial. Impedance parameters Kt , Kr , and ζ were transi-               gripper input, active parameter state, and task completion time
+tioned over T s = 0.30 s using standard smoothstep interpolation           were logged. The mode definitions and channel-update logic are
+(h(τ) = 3τ2 − 2τ3 ):                                                       summarized in Table 3.
+
+                                                                         2.6. Fallback Logic and Operational Safeguards
+     q(t) = q0 + h(τ) qtarget − q0 ,      q ∈ {Kt , Kr , ζ}.   (10)
+                                                                                When no threshold-qualified result was available, the ini-
+     The smoothstep interpolation smoothed the commands to                 tialized parameter state was retained. A result with confidence
+avoid abrupt impedance changes [24, 25]. During the transi-                ≥ 0.25 but without an explicit class-to-strategy mapping in-
+tion, DAPI was recomputed from the current values of K and ζ.              voked the balanced default strategy. Fallback selection was
+The enabled haptic parameters {K f , d} and gripper parameters             restricted to these predefined targets, and only the parameter
+{vg , Fg } were updated immediately upon the strategy event.               channels enabled by the active mode were updated. Operational
+     The class-to-strategy mapping was defined manually for                safeguards included the robot collision-detection function, zero-
+the known object classes used in this study. Each recognized               force commands on controller exit, a standardized initial pose,
+class invoked one of the three predefined strategies, providing            and a manually accessible emergency stop. The master-gripper-
+a bounded and repeatable parameter configuration across the                aperture cue ug was limited to 0.3 N along the positive z-axis.
+slave robot, haptic interface, and gripper. Online estimation of           The baseline force-feedback command was transmitted without
+the objects’ physical properties was not included in the mapping.          additional application-layer saturation.
+Extending the framework to a new object requires a detector
+capable of reliably recognizing the corresponding class and an
+                                                                           3. Experimental Design
+explicit assignment to one of the predefined strategies before the
+associated parameter vector can be invoked.                                3.1. Experimental Objectives, Comparisons, and Outcome Hi-
+     Figure 3 summarizes the two-stage object-class-to-strategy-                erarchy
+to-parameter mapping, the one-shot strategy event, and the three
+                                                                               The experiment was designed to evaluate the task-level per-
+parameter channels.
+                                                                           formance of object-conditioned strategy-level parameter config-
+2.4. Parameter Sets and Initialization                                     uration during heterogeneous-object haptic teleoperation. Task
+                                                                           completion time was specified as the primary endpoint. The
+    The initialized baseline parameter vector was
+                                                                           primary planned comparison was between the complete multi-
+                                                                           channel configuration mode (C) and the impedance-only recon-
+          Θ0 = [ 150, 10, 1.0, 0.5, 0.3, 0.10, 20 ]T ,
+                                                                           figuration mode (E).
+    following the order [Kt , Kr , ζ, K f , d, vg , Fg ]T defined in           The primary C–E comparison assessed the system-level
+Eq. (9). This baseline vector was retained unless replaced by              contribution of jointly configuring the master-side haptic and
+a strategy update; in automatic modes, a threshold-qualified               gripper-execution channels beyond impedance-only reconfig-
+class without an explicit mapping invoked the balanced strategy            uration. Because the two added channels changed together,
+vector (Table 2).                                                          the comparison was interpreted at the bundled system level.
+    The strategy-level operating points were selected through              Secondary contrasts (C–A, C–B, and C–D) provided fixed-
+engineering screening before formal data collection: candidate             parameter, manual-selection, and semantic-display references,
+settings were excluded when associated with sustained oscil-               respectively. Observed task success and Raw NASA-TLX were
+lation, noticeable haptic discomfort, grasp failure, or visible            treated as secondary descriptive outcomes; master-side trajectory
+object damage. They represent screened operating points for                length and pause count were analyzed as exploratory process
+the present platform, objects, and task, not optimized values or           measures. All analyses were interpreted as repeated-measures
+damage limits. Parameter-level rationale is provided in Supple-            evidence for the three-operator sample.
+mentary Table S1.
+                                                                       5
+Table 2: Strategy-level parameter settings and assigned objects. Kt is reported in N/m, Kr in N m/rad, d in N, and vg in m/s. Fg denotes the requested-force input to
+grasp() in newtons. The damping-scaling parameter ζ and force-scaling factor K f are dimensionless.
+
+Strategy                         Assigned objects                       Slave-side impedance              Master-side haptic                  Gripper execution
+                                                                                                          feedback
+Fragility-priority               Apple, banana                          Kt = 50 N/m; Kr = 5               K f = 0.2; d = 0.3 N                vg = 0.02 m/s; Fg = 8 N
+                                                                        N m/rad; ζ = 0.8
+Balanced                         Paper cup, bottle                      Kt = 150 N/m; Kr = 10             K f = 0.5; d = 0.4 N                vg = 0.05 m/s; Fg = 15 N
+                                                                        N m/rad; ζ = 1.0
+Stability-priority               Mouse, scissors                        Kt = 200 N/m; Kr = 13             K f = 0.7; d = 0.5 N                vg = 0.10 m/s; Fg = 20 N
+                                                                        N m/rad; ζ = 1.2
+            Note: Fg is the requested-force input to the Franka Hand grasp() API and does not represent an independently measured fingertip force.
+
+
+
+           Asynchronous perception thread (15 fps)
+
+           D435i RGB                  Single-slot                       YOLO11n                      Object class +              Two-slot result
+           frames                     frame queue                       (detection)                  confidence                  queue (class, conf.)
+
+                                                                                                    non-blocking poll (5 ms)
+                                             One-shot strategy scheduler                                                                    No result or con<0.25:
+                                 First threshold-qualified result (confidence ≥ 0.25)                                                       keep initial Θ₀
+                              object class c → strategy s=f(c) → parameter vector Θ(c)                                                       Unmapped class:
+                                Lock selected strategy for the remainder of the trial                                                        balanced default
+
+
+
+                 Haptic-interface channel                   Slave-side impedance channel                       Gripper-execution channel
+                            Kf, d                                       Kt, Kr, ζ                                           vg, Fg
+
+
+
+           Human-in-the-loop teleoperation supervisor (200 Hz)                                                                   In modes C–E, visual inference
+                                                                                                                                 does not gate operator motion
+                           operator command                                         robot command
+                                           Omega.7 master                           Panda + Franka Hand                                     Object
+               Operator
+                                           (haptic input)                           (impedance / grasp / transport)                         workspace
+
+
+                                                             force & state feedback
+                                                  asynchronous perception & one-shot updates                     continuous teleoperation
+
+
+Figure 3: Object-conditioned strategy-level parameter-configuration architecture. D435i RGB frames were processed asynchronously by YOLO11n, and object-class
+labels and confidence scores were returned through bounded queues. The nominal 200-Hz supervisory loop polled the result queue without blocking. The first
+result with confidence ≥ 0.25 triggered the object-class-to-strategy mapping and a one-shot update of the enabled slave-side impedance, master-side haptic, and
+gripper-execution parameter channels. The selected strategy remained locked for the trial. When no threshold-qualified result was available, the initialized parameter
+state was retained; a detected class without an explicit mapping invoked the balanced default strategy. The continuous operator–robot motion and force-feedback loop
+remained active throughout task execution.
+
+
+    Table 3 defines the five experimental modes and summa-                                basic teleoperation training and completed a 10–15-min familiar-
+rizes their channel-update logic and comparison roles. The C–E                            ization session immediately before formal data collection. Dur-
+comparison was the primary planned contrast.                                              ing familiarization, they practiced master-device motion, gripper
+                                                                                          operation, and the complete task procedure. Written informed
+3.2. Operators, Objects, and Matched-Block Design                                         consent was obtained from all operators before participation.
+    Three operators participated in the main experiment (P01–                                  The six objects were selected to represent different contact,
+P03; 23–24 years of age; two male and one female; all right-                              grasping, and transfer requirements. Their relevant characteris-
+handed). Because the Omega.7 was positioned on the left side of                           tics included deformation sensitivity, smooth or irregular surface
+the platform, all operators used their left hand to control the de-                       geometry, and elongated shape. Each object was assigned to the
+vice in every trial. The device position and operating hand were                          fragility-priority, balanced, or stability-priority strategy to select
+held constant across operators and experimental modes to stan-                            the corresponding parameter vector for the present platform and
+dardize the physical interface condition. All operators received
+                                                                                      6
+                                   Table 3: Experimental modes, information conditions, channel-update logic, and comparison roles.
+Mode                      Operator information / selection              Slave-side       Master-side haptic   Gripper execution   Comparison role
+                                                                        impedance            feedback
+
+A:     Fixed-Parameter  No visual-semantic display or strategy se-        Fixed                Fixed               Fixed          Fixed-parameter reference condition.
+Baseline                lection
+B: Timed Manual-        No visual-semantic display; operator identi-     Manual               Manual              Manual          Timed manual-workflow reference.
+Selection Workflow      fies the object and selects a complete strat-
+                        egy after timing begins.
+C: Complete Multi- Object class, selected strategy, confidence          Automatic           Automatic            Automatic        Complete multi-channel condition; primary
+Channel Configuration   score, and color-coded bounding box                                                                       condition in the C–E comparison.
+D: Visual-Semantic Dis- Same visual-semantic display as mode C            Fixed                Fixed               Fixed          Semantic-display control condition.
+play with Fixed Parame-
+ters
+E: Impedance-Only Re- Same visual-semantic display as mode C            Automatic              Fixed               Fixed          Impedance-only reference for the primary C–E
+configuration                                                                                                                     comparison.
+
+Note: Automatic denotes a one-shot update triggered by the first detection result with confidence ≥ 0.25. Manual denotes a one-shot complete-strategy update after
+operator selection, with identification and selection included in trial timing. Fixed denotes retention of the initialized parameter state. In modes C–E, no parameter
+update occurred if no result was available or if the confidence score was below 0.25. A threshold-qualified class without an explicit mapping invoked the balanced
+   default strategy; mode D displayed the visual-semantic output while retaining Θ0 . Visual inference was not used in modes A or B. The C–E comparison was
+                      interpreted at the bundled system level because the master-side haptic and gripper-execution channels changed together.
+
+
+task. The assignments served as operational labels for parameter                         visual inference, and teleoperation began concurrently at task
+selection in the specified grasp-and-transfer task and were not                          initiation. Operator-driven motion was permitted while visual
+intended as a general classification of material properties. Ta-                         inference proceeded asynchronously. In mode B, trial timing
+ble 4 summarizes the approximate physical profiles, assigned                             began before manual object identification and button-based strat-
+strategies, and principal manipulation considerations for the                            egy selection. Robot motion was enabled after the operator
+six objects. The paper cup and scissors represented contrast-                            completed the selection step. The end of the manual selection
+ing examples of deformation-sensitive handling and orientation-                          step was not recorded with a separate timestamp.
+sensitive transfer, respectively.                                                            A trial was classified as successful when the object was
+    The main experiment comprised 27 matched task blocks.                                grasped, transferred, and placed without a drop, observable slip,
+Each block was defined by a unique combination of operator,                              or visible damage. A trial involving any of these events was
+object, and repetition index and contained one trial under each                          recorded as a failure. Failure labels were assigned by a desig-
+of modes A–E. Accordingly, 27 blocks × 5 modes per block                                 nated researcher through direct observation; systematic video
+yielded 135 trials. The five mode-specific observations within                           recording and independent blinded re-evaluation were not per-
+each block therefore formed the matched set for the completion-                          formed (see Section 5.5). Failures did not terminate trial timing,
+time analysis.                                                                           regrasping was not permitted, and successful and failed trials
+    For each operator and strategy category, three matched                               shared the same predefined timing endpoint. The retained dataset
+blocks were allocated between the two assigned objects in a 2:1                          included the master-side trajectory, gripper input, active parame-
+ratio. This allocation was reversed across operators (Table 5).                          ter state, task completion time, and outcome label. Event-level
+The same object was used for all five mode trials within a block,                        object-class labels, confidence scores, strategy-trigger times-
+preserving object-matched comparisons.                                                   tamps, and synchronized trigger-to-contact timestamps were not
+    Mode orders were preassigned using nine different sequences                          logged (Section 5.5).
+across the operator × strategy groups and were not fully coun-                               Task completion time was measured from task initiation to
+terbalanced (Supplementary Table S2). With three operators,                              the common predefined terminal state and was retained for both
+mode order, object allocation, and operator effects could not                            successful and failed trials. Observed success rate was calculated
+be estimated independently; the C–E comparison was therefore                             as the number of successful trials divided by the total number
+treated as a paired contrast within the observed sample.                                 of trials in each mode. It was reported descriptively because the
+                                                                                         outcome labels were assigned from direct observation without
+3.3. Task Procedure and Outcome Measures                                                 independent re-evaluation.
+     Before each trial, the test object was manually placed within                           Subjective workload was assessed using the Raw NASA-
+a predefined workspace region and aligned with the prescribed                            TLX questionnaire [26]. Each of the six dimensions was rated
+orientation as closely as practicable. Small trial-to-trial varia-                       on a 0–100 scale, and the unweighted arithmetic mean of the six
+tions in object position and orientation remained after manual                           ratings was used as the Raw NASA-TLX score. Each operator
+placement; the same placement protocol was applied across                                completed one questionnaire immediately after completing the
+all five modes. Only translational master-device motion was                              three trials associated with a given strategy × mode condition.
+mapped to the Panda end effector, whereas the desired end-                               The three trials combined the two objects assigned to that strat-
+effector orientation remained fixed throughout the trial.                                egy according to the operator-specific 2:1 allocation. The work-
+     Each trial comprised six stages: reset, approach, grasp, trans-                     load dataset therefore comprised 3 × 3 × 5 = 45 questionnaires
+fer, release, and termination. In modes C–E, camera acquisition,                         (three operators, three strategies, and five modes), corresponding
+
+                                                                                     7
+                       Table 4: Test objects, assigned strategies, approximate physical profiles, and principal manipulation considerations.
+Object                    Assigned strategy                Approximate physical profile                        Principal manipulation consideration
+Apple                     Fragility-priority               ∼200 g; smooth surface; diameter 70–80              Contact impact and slip; gentle grasping
+                                                           mm                                                  required.
+Banana                    Fragility-priority               ∼120 g; smooth surface; 20 × 160 mm                 Compression-related deformation and slip.
+Paper cup                 Balanced                         ∼5 g; paper; diameter 55 mm; height 60              High deformation sensitivity with a concurrent
+                                                           mm                                                  stability requirement.
+Bottle                    Balanced                         ∼30 g; smooth plastic; diameter 65 mm;              Transfer slip and the balance between gentle
+                                                           height 100 mm                                       contact and grasp stability.
+Mouse                     Stability-priority               ∼100 g; smooth plastic; 65 × 100 × 35 mm            Rigid, irregular geometry and potential transfer
+                                                                                                               slip.
+Scissors                  Stability-priority               ∼150 g; metal and plastic; 50 × 130 × 15            Elongated rigid geometry and a high
+                                                           mm                                                  orientation-retention requirement.
+
+
+
+                                                                                     using Wilcoxon signed-rank tests with Holm adjustment for
+Table 5: Distribution of matched task blocks and trials across strategies and
+objects.                                                                             multiple comparisons.
+                                                                                         For each matched block b, the primary C–E completion-time
+Object                                   Blocks                         Trials
+                                                                                     difference was defined as
+Fragility-priority
+Apple                                       4                             20                                    ∆T b = T E,b − TC,b ,                     (11)
+Banana                                      5                             25
+Balanced                                                                                 so that a positive value favored mode C. The analysis re-
+Paper cup                                   5                             25         ported the mean paired difference ∆T , the relative reduction
+Bottle                                      4                             20         with mode E as the reference, and a matched-block percentile
+Stability-priority                                                                   bootstrap 95% confidence interval. The interval was calculated
+Mouse                                       5                             25         from 10,000 resamples with replacement of the 27 matched-
+Scissors                                    4                             20         block differences. Operator-specific mean paired differences
+Total (six objects)                        27                            135         were reported to assess directional consistency across operators.
+                                                                                     A leave-one-operator-out sensitivity analysis was additionally
+Note: Each matched block contains five trials—one under each experimental
+mode—so the numbers of trials equal five times the corresponding numbers of
+                                                                                     performed to evaluate whether the overall C–E difference was
+                                 blocks.                                             dominated by any single operator.
+                                                                                         Observed success outcomes were summarized as counts and
+                                                                                     percentages for each mode, and paired C–E outcomes were
+to nine questionnaire units per mode. This questionnaire struc-                      cross-tabulated within the matched blocks. Given the small
+ture supported descriptive comparisons at the mode and strategy                      number of discordant C–E pairs, the exact two-sided McNemar
+levels. Object-specific workload was not measured separately.                        test was treated as a supplementary analysis. Raw NASA-TLX
+    Master-side trajectory length and pause count were analyzed                      was summarized descriptively across the nine operator × strategy
+as exploratory process measures. Before analysis, a pause was                        questionnaire units per mode; no inferential test or bootstrap
+operationally defined as a continuous interval during which the                      confidence interval was calculated.
+master-device translational speed remained below 0.005 m/s                               Master-side trajectory length and pause count were treated
+for at least 0.30 s. Master-device speed was obtained by differ-                     as exploratory process measures. For the C–E trajectory-length
+entiating the raw master-side position trajectories, which were                      comparison, the mean paired difference and a matched-block per-
+sampled at approximately 200 Hz; pause intervals were then                           centile bootstrap 95% confidence interval were reported using
+identified using the predefined speed and duration thresholds.                       the same 10,000-resample procedure. Pause counts were summa-
+    Visual performance was characterized separately in a con-                        rized descriptively; no formal hypothesis test was prespecified
+trolled image test using object-class accuracy, class-to-strategy                    or performed. Non-binary outcomes were summarized using
+mapping accuracy, confidence score, and per-image processing                         median [interquartile range (IQR)] and mean ± standard devi-
+time.                                                                                ation (SD), as appropriate; categorical success outcomes were
+                                                                                     reported as counts and percentages. Because the 27 matched
+3.4. Statistical Analysis                                                            blocks were nested within only three operators, the resulting
+    Completion time across the five modes was analyzed us-                           p-values and matched-block bootstrap intervals were interpreted
+ing a Friedman test, treating the 27 operator-nested matched                         conditionally for the observed repeated-measures sample and
+task blocks as the repeated-measures units. When the omnibus                         were not treated as estimates of population-level participant
+Friedman test was significant, the four planned paired contrasts                     effects.
+comparing mode C with modes A, B, D, and E were evaluated
+
+                                                                                 8
+4. Results                                                               completion time than mode E in 22 of the 27 matched task
+                                                                         blocks.
+4.1. Controlled Visual Test and Supervisory-Loop Timing                      A post hoc sensitivity analysis restricted to the 23 blocks
+    The separate, controlled, closed-set visual test used 180            in which both trials were successful yielded a similar estimate
+photographs, with 30 images per object class, acquired under             (mean paired difference, 1.80 s; 19/23 blocks favoring mode C).
+conditions with a fixed viewpoint, background, and lighting. All             For the paired success outcomes, 23 matched blocks were
+180 images were classified correctly and mapped to the intended          successful in both modes, three were successful in mode C
+manipulation strategy. The mean confidence score was 0.853,              only, one was successful in mode E only, and none failed in
+and the mean per-image processing time was 48.19 ms (Fig. 4).            both modes. The exact two-sided McNemar test yielded p =
+Class-wise results and the confusion matrix are provided in              0.625 and, given only four discordant pairs, did not provide
+Supplementary Table S3 and Supplementary Fig. S1.                        clear evidence of a mode-related difference in observed success.
+    These results characterize closed-set recognition and strategy       Accordingly, the observed success-rate difference was treated as
+mapping for the six tested object instances under the specified          supplementary descriptive evidence.
+controlled imaging conditions. They do not quantify the correct-             Median master-side trajectory length was 0.697 m in mode
+ness of online strategy triggering, trigger-to-contact timing, or        C and 0.732 m in mode E. With ∆L = LE − LC , the mean
+performance on untested objects.                                         paired trajectory-length difference was 0.024 m, with a matched-
+    The median logged duration of the nominal 200-Hz supervi-            block bootstrap 95% confidence interval of -0.014 to 0.059 m.
+sory cycle was 5.07 ms.                                                  Because the interval included zero, the data did not provide clear
+                                                                         evidence of a C–E difference in master-side trajectory length.
+4.2. Overall Results Across the Five Modes                               Pause counts were lower on average in mode C, although the
+    Table 6 provides descriptive context across all five modes;          two modes had the same median pause count.
+the primary paired C–E evidence is reported separately in Ta-                Using the predefined pause criterion in Section 3.3, mode
+ble 7 and Fig. 7. Across the five modes, mode C showed the               C had a median [IQR] pause count of 3 [2, 3.5] and a mean of
+lowest median completion time, the highest observed success              2.74 ± 1.23, whereas mode E had a median pause count of 3
+rate, the lowest median Raw NASA-TLX score, and the lowest               and a mean of 3.41 ± 1.67. The mean pause count was lower in
+median master-side trajectory length (Table 6 and Figs. 5–6).            mode C within each of the three manipulation strategies, while
+According to the trial-level data in Supplementary Table S4, the         the overall median remained 3 in both modes. Pause count
+mean completion time was 19.28 ± 1.30 s in mode C, compared              was treated descriptively, and no formal hypothesis test was
+with 21.42 ± 1.58 s in mode A, 21.01 ± 1.61 s in mode B, 20.91           performed. The robustness of the result to alternative speed or
+± 1.10 s in mode D, and 21.07 ± 1.56 s in mode E. With each              duration thresholds was not evaluated.
+comparison mode used as the reference, the corresponding mean
+reductions in mode C were 10.0%, 8.2%, 7.8%, and 8.5%, re-               4.4. Observed Failure Outcomes
+spectively. Consistent with the predefined outcome hierarchy,                 Across the 135 trials, 18 were classified as failures: 5, 6, 1,
+the inferential analyses focused on task completion time as the          3, and 3 in modes A–E, respectively. The observed failure out-
+primary endpoint.                                                        comes involved object drops, observable slip, or visible damage
+    Using the 27 operator-nested matched task blocks as                  according to the predefined criteria in Section 3.3. Table 8 sum-
+repeated-measures units, the Friedman test indicated an overall          marizes these descriptive mode-level counts and representative
+difference in completion time across the five modes (χ2 (4) =            trial observations.
+30.904, p < 0.001). Holm-adjusted Wilcoxon signed-rank tests                  Among the five modes, mode C had the lowest observed
+indicated lower completion times in mode C than in modes                 failure count, with 1 failure in 27 trials.
+A, B, D, and E, with all adjusted p-values below 0.01. These
+comparisons were interpreted as conditional repeated-measures            4.5. Directional Consistency Across Operators and Objects
+evidence for the observed three-operator sample. Descriptively,              The mean paired C–E completion-time difference favored
+mode C yielded the lowest Raw NASA-TLX score within each                 mode C for each of the three operators and each of the six tested
+of the nine operator × strategy questionnaire units.                     objects.
+                                                                             At the operator level, the mean paired differences ∆T =
+4.3. Primary C–E Comparison and Exploratory Process Mea-                 T E − TC were 1.66, 2.56, and 1.16 s for P01, P02, and P03, re-
+     sures                                                               spectively, with mode C being faster in 7/9, 9/9, and 6/9 matched
+    The primary paired comparison between modes C and E is               blocks. The leave-one-operator-out mean paired differences
+summarized in Table 7 and Fig. 7.                                        were 1.86, 1.41, and 2.11 s, all of which remained positive.
+    Median task completion time was 19.57 s in mode C and                Operator-level medians [IQR] are shown in Fig. 8.
+20.73 s in mode E. Defining the block-level difference as ∆T =               At the object level, mode C had the lowest mean task com-
+T E − TC , the mean paired difference was 1.79 s, with a matched-        pletion time among the five modes for each of the six tested
+block bootstrap 95% confidence interval of 1.10–2.51 s. Relative         objects (Supplementary Table S5). Relative to mode E, the mean
+to the mean completion time in mode E, this difference corre-            completion-time reduction in mode C ranged from 3.3% for
+sponded to an 8.5% reduction in mode C. Mode C had a lower               the bottle to 13.2% for the scissors. The mean C–E difference
+
+                                                                     9
+Figure 4: Confidence scores and per-image processing times in the controlled closed-set visual test (n = 30 images per object class). Bars indicate mean ± SD; half
+violins, points, segments, and open circles indicate distributions, individual observations, IQRs, and medians, respectively. Reference lines indicate the confidence
+threshold of 0.25 and the overall means for confidence (0.853) and processing time (48.19 ms). The reported processing time does not represent end-to-end task-trigger
+latency.
+
+
+                                  Table 6: Descriptive task-performance and workload results across the five experimental modes.
+Mode                 Task completion time (s)                Master-side trajectory length           Observed success, n/N (%)               Raw NASA-TLX
+                                                             (m)
+A                    21.18 [20.62, 22.08]                    0.757 [0.693, 0.816]                    22/27 (81.5%)                           62.50 [59.67, 64.50]
+B                    20.89 [20.12, 21.83]                    0.787 [0.721, 0.861]                    21/27 (77.8%)                           56.17 [55.00, 59.33]
+C                    19.57 [18.41, 20.05]                    0.697 [0.660, 0.769]                    26/27 (96.3%)                           48.67 [47.67, 51.83]
+D                    20.79 [20.32, 21.16]                    0.722 [0.678, 0.768]                    24/27 (88.9%)                           60.33 [57.33, 62.50]
+E                    20.73 [19.95, 22.25]                    0.732 [0.678, 0.799]                    24/27 (88.9%)                           53.67 [51.83, 57.83]
+Note: Continuous outcomes are reported as median [IQR], whereas observed success is reported as successful trials/total trials (%). Task completion time, master-side
+trajectory length, and observed success use n = 27 trial-level observations per mode. Raw NASA-TLX uses n = 9 operator × strategy questionnaire units per mode.
+                     Mode definitions are provided in Table 3, and the trial-level task-performance data are provided in Supplementary Table S4.
+
+
+                    Table 7: Primary within-sample comparison of complete multi-channel configuration and impedance-only reconfiguration.
+Outcome                          Mode C, median [IQR]             Mode E, median [IQR]             Mean paired difference ∆         Operator-level direction
+                                                                                                   (E–C) [95% CI]
+Task completion time (s)         19.57 [18.41, 20.05]             20.73 [19.95, 22.25]             1.79 [1.10, 2.51]                3/3 favored C
+Master-side    trajectory        0.697 [0.660, 0.769]             0.732 [0.678, 0.799]             0.024 [-0.014, 0.059]            Mixed
+length (m)
+Raw NASA-TLX                     48.67 [47.67, 51.83]             53.67 [51.83, 57.83]             4.87 [not calculated]            3/3 favored C
+Note: Differences were defined as mode E minus mode C, so positive ∆ values favor mode C for all three outcomes. Task completion time and master-side trajectory
+ length use n = 27 matched task blocks. Raw NASA-TLX uses n = 9 paired operator × strategy questionnaire units per mode. Confidence intervals for completion
+time and trajectory length are matched-block bootstrap 95% intervals based on 10,000 resamples and are conditional on the observed block structure. No bootstrap
+                                                     confidence interval was calculated for Raw NASA-TLX.
+
+
+favored mode C for all six objects, while the magnitude varied                        5. Discussion
+across objects.
+                                                                                      5.1. Principal Findings and Interpretation of the Five-Mode
+                                                                                           Design
+                                                                                         In the primary C–E comparison, complete multi-channel
+                                                                                      configuration reduced mean completion time by 1.79 s (8.5%;
+                                                                                      bootstrap 95% CI, 1.10–2.51 s), and this direction was consistent
+
+                                                                                 10
+                                   Table 8: Observed failure counts and representative trial observations by experimental mode.
+Mode                               Observed      failures,    Representative trial observations
+                                   n/N
+A                                  5/27                       Paper-cup deformation and difficulty maintaining the scissors’ pose were noted in failed
+                                                              trials.
+B                                  6/27                       No consistent failure pattern could be assigned from the retained trial records.
+C                                  1/27                       Observable mouse slip during transfer.
+D                                  3/27                       Object drops or loss of grasp after grasp establishment.
+E                                  3/27                       Observed drops, slip, or visible damage during grasp establishment or transfer.
+    Note: Mode definitions are provided in Table 3. Failure labels were assigned during the experiment using the predefined criteria in Section 3.3. The listed
+observations are representative rather than exhaustive. Systematic video recording and independent blinded re-evaluation were not performed; the observations should
+                                                       not be interpreted as confirmed root-cause classifications.
+
+
+                                                                                        5.2. Asynchronous Perception–Control Integration
+                                                                                            Because visual output was used only for the one-shot strat-
+                                                                                        egy event, the perception process did not need to operate at the
+                                                                                        supervisory rate. Through bounded queues and non-blocking
+                                                                                        polling, the multi-rate architecture decoupled the 15-fps image
+                                                                                        stream and visual-inference process from the 200-Hz supervi-
+                                                                                        sory loop, placing semantic perception outside the high-rate
+                                                                                        critical path. The mean per-image processing time (48.19 ms)
+                                                                                        substantially exceeded one supervisory period (median, 5.07
+                                                                                        ms), highlighting the importance of this decoupling. The archi-
+                                                                                        tecture was designed for one-shot strategy configuration with
+                                                                                        subsequent locking; continuous visual servoing was outside the
+                                                                                        implemented control structure. Hard real-time guarantees and
+                                                                                        end-to-end trigger-to-contact timing remain uncharacterized.
+
+                                                                                        5.3. Variation Across Operators and Objects
+                                                                                             The positive mean C–E difference was consistent across
+                                                                                        all three operators and persisted in the leave-one-operator-out
+Figure 5: Task completion time across the five experimental modes (n = 27               analyses (Fig. 8). Mode C also had a lower mean completion
+matched task blocks per mode). Filled circles, thick horizontal segments,               time than mode E for each of the six objects, with descriptive
+whiskers, and open circles indicate medians, IQRs, 1.5×IQR ranges, and outliers,
+respectively. This descriptive panel displays marginal mode distributions; the          reductions ranging from 3.3% (bottle) to 13.2% (scissors). The
+paired C–E observations are shown in Fig. 7.                                            larger reductions for the paper cup and scissors were consistent
+                                                                                        with the possibility that complete multi-channel configuration
+                                                                                        may be particularly valuable when deformation management
+across all operators and objects. The five-mode design distin-                          or orientation retention is more demanding. Each object-level
+guished the contribution of parameter configuration at three                            summary was based on four or five matched blocks and was
+levels: C–D separated semantic display from parameter configu-                          therefore interpreted descriptively.
+ration, C–E compared the joint configuration of the master-side
+haptic and gripper-execution channels with impedance-only re-                           5.4. Relation to Previous Work and Mechatronic Design Impli-
+configuration, and C–A and C–B provided fixed-parameter and                                  cations
+manual-selection references, respectively. Because the two ad-
+                                                                                            Prior tele-impedance and variable-impedance studies have
+ditional channels changed together, the C–E comparison was
+                                                                                        adapted slave-side impedance using human-state information,
+interpreted at the bundled system level.
+                                                                                        contact-force information, demonstrations, or task phase [4–11].
+    The trajectory-length confidence interval included zero, and
+                                                                                        Vision-based methods have mapped object attributes, geometry,
+the two modes had the same median pause count (although the
+                                                                                        or vision–language representations to stiffness or impedance
+mean was lower in mode C). This pattern suggests that the time
+                                                                                        settings [12–15]. Human-commanded stiffness interfaces can
+reduction may be associated with fewer corrective interruptions
+                                                                                        also exhibit coupling with force feedback in bilateral tele-
+in some trials rather than shorter geometric paths; this process-
+                                                                                        impedance [27]. Related work on automatic switching, shared
+level interpretation remains exploratory.
+                                                                                        control, multi-stiffness interfaces, and teleoperated grasping
+                                                                                        has addressed mode selection, control-authority allocation, and
+
+
+                                                                                   11
+Figure 6: Descriptive workload and observed task-success results across the five experimental modes. (a) Raw NASA-TLX scores: connected markers show each
+operator’s mean across the three strategy-level questionnaire units within each mode (n = 9 operator × strategy units per mode), and marker shape identifies the
+operator. (b) Number of successful trials out of 27 trials per mode. Both panels are descriptive; no confidence intervals or primary inferential tests are shown.
+
+
+                                                                                       plications such as flexible sorting, remote maintenance, and dis-
+                                                                                       mantling, where a limited set of recurring object or task classes
+                                                                                       can be associated with predefined and experimentally screened
+                                                                                       operating strategies. Extending the framework to larger class
+                                                                                       sets would require systematic maintenance of the object-class-
+                                                                                       to-strategy mapping and may require a richer strategy space than
+                                                                                       the three levels evaluated here. Tactile or contact-state sensing
+                                                                                       could be added as a post-contact verification layer, enabling cor-
+                                                                                       rective updates after contact without requiring the visual process
+                                                                                       to operate within the nominal 200-Hz supervisory execution
+                                                                                       path.
+Figure 7: Paired task completion times for modes C and E across 27 matched
+task blocks. Points below the identity line indicate shorter completion time in        5.5. Scope and Future Extensions
+mode C. For the paired difference ∆T = T E − TC , positive values favor mode
+                                                                                           The experimental evidence was obtained from three oper-
+C. The violin, horizontal segment, and diamond show the distribution, median,
+and mean of the paired differences, respectively. The mean paired difference           ators, six known objects, translational master motion, a fixed
+was 1.79 s (matched-block bootstrap 95% CI, 1.10–2.51 s), and 22 of 27 blocks          end-effector orientation, prescribed object placement, and pre-
+favored mode C.                                                                        assigned mode orders without complete counterbalancing. The
+                                                                                       class-to-strategy mapping was manually defined. The findings
+gripper impedance based on tactile deformation or grip-safety                          therefore characterize the present platform and task within the
+information [19–21, 28, 29].                                                           tested sample.
+    The present framework complements these directions by                                  Several measurement and design limitations should be con-
+using a single object-conditioned strategy event to coordinate                         sidered in future work. First, because the C–E contrast changed
+a strategy-level operating state across slave-side impedance,                          the master-side haptic and gripper-execution channels together,
+master-side haptic feedback, and gripper execution. The prin-                          separate channel-level ablations are required to resolve their in-
+cipal contribution is therefore a cross-subsystem, strategy-level                      dividual contributions. Second, the trial logs did not retain event-
+configuration architecture together with a system-level evalua-                        level object-class labels, confidence scores, or synchronized
+tion of the resulting multi-channel coordination. At the software-                     strategy-event/contact timestamps; trial-level verification of on-
+architecture level, bounded queues, non-blocking polling, one-                         line trigger timing requires synchronized visual, strategy-event,
+shot triggering, and strategy locking decouple low-rate semantic                       and contact logging. Third, outcome labels were based on direct
+perception from the nominal 200-Hz supervisory execution path                          observation without independent video-based re-rating. Fourth,
+and prevent repeated parameter switching within a trial.                               although smoothstep interpolation was used for impedance tran-
+    This design principle may be useful in semi-structured ap-                         sitions, no formal transient-stability analysis of the complete
+                                                                                       teleoperation system was performed. Finally, the retained haptic
+                                                                                  12
+Figure 8: Operator- and object-level summaries of task completion time for modes C and E. (a) Mean task completion time by operator (n = 9 matched task blocks
+per operator). (b) Mean task completion time by object (n = 4 or 5 matched task blocks per object). Markers and horizontal error bars indicate mean ± SD for each
+mode. Right-side annotations report the mean paired difference (∆T = T E − TC ) and the number of blocks in which mode C was faster divided by the total number of
+blocks. Positive ∆T values favor mode C. Error bars show within-group variability and are not confidence intervals for the paired differences.
+
+
+data characterize the commanded signal but not the realized de-                     Supplementary Material
+vice output, and no saturation-status signal was recorded. Future
+experiments should combine synchronized logging, indepen-                              Supplementary Tables S1–S5 and Supplementary Fig. S1 are
+dent video-based outcome assessment, formal stability analysis,                     provided in a separate supplementary file.
+direct measurements of contact and realized haptic output, satu-
+ration monitoring, and systematic parameter optimization.                           Declarations
+
+                                                                                    Ethics statement
+6. Conclusion
+                                                                                        The school confirmed that formal ethics committee review
+    This study presented an object-conditioned strategy-level                       was not required for this low-risk, non-invasive study. All partic-
+parameter-configuration framework that coordinates slave-side                       ipants provided written informed consent before participation.
+impedance, master-side haptic feedback, and gripper execution.                      The experimental procedure was conducted in accordance with
+The framework uses an intermediate object-to-strategy mapping                       relevant institutional guidelines; no personally identifiable infor-
+to coordinate a one-shot, strategy-locked parameter deployment                      mation was collected, and all data were anonymized.
+based on asynchronous visual inference.
+    Across 27 matched blocks (135 trials), complete multi-                          Funding
+channel configuration reduced mean task completion time by                             This research did not receive any specific grant from funding
+1.79 s (8.5%; bootstrap 95% CI, 1.10–2.51 s) compared with                          agencies in the public, commercial, or not-for-profit sectors.
+impedance-only reconfiguration. The direction of this difference
+was consistent across all three operators and all six tested ob-                    Declaration of competing interests
+jects. Secondary descriptive outcomes (success rate and Raw
+                                                                                        The authors declare that they have no known competing
+NASA-TLX) also favored the complete configuration, whereas
+                                                                                    financial interests or personal relationships that could have ap-
+the trajectory-length confidence interval included zero.
+                                                                                    peared to influence the work reported in this paper.
+    These findings support a within-sample, bundled system-
+level benefit of coordinating the three parameter channels under
+                                                                                    Data availability
+the tested conditions. Individual channel contributions remain
+to be isolated through ablation experiments.                                            Data will be made available on request.
+
+
+
+
+                                                                               13
+CRediT authorship contribution statement                                   [9] Z. Wang, X. Xu, D. Yang, B. Güleçyüz, F. Meng, E. Stein-
+                                                                               bach, Teleoperation with haptic sensor-aided variable
+Fengjie Ma: Conceptualization, Methodology, Software, Inves-                   impedance control based on environment and human stiff-
+tigation, Data curation, Formal analysis, Visualization, Writing –             ness estimation, IEEE Sens J 24 (14) (2024) 22168–77.
+original draft, Writing – review & editing. Chuang Cao: Con-                   doi:10.1109/JSEN.2024.3369758.
+ceptualization, Methodology, Validation. Qixin Cao: Resources,
+Investigation, Validation. Yilin Zhou: Investigation, Validation.         [10] Y. Michel, Y. Abdelhalem, G. Cheng, Passivity-based
+Hua Zhang: Supervision, Project administration, Writing – re-                  teleoperation with variable rotational impedance con-
+view & editing.                                                                trol, IEEE Robot Autom Lett 9 (12) (2024) 11658–65.
+                                                                               doi:10.1109/LRA.2024.3490260.
+Declaration of generative AI and AI-assisted technologies in              [11] H. Lee, J. Han, G.-H. Yang, Development of variable scal-
+the manuscript preparation process                                             ing teleoperation framework for improving teleoperation
+                                                                               performance, Int J Control Autom Syst 22 (3) (2024) 936–
+    The authors used ChatGPT solely for grammar and language                   45. doi:10.1007/s12555-022-1099-z.
+checking. No scientific content was generated using AI. The
+authors reviewed and edited the manuscript and take full respon-          [12] Y.-C. Huang, D. Abbink, L. Peternel, A semi-autonomous
+sibility for the published article.                                            tele-impedance method based on vision and voice inter-
+                                                                               faces, in: Proceedings of the 20th International Confer-
+                                                                               ence on Advanced Robotics (ICAR), 2021, pp. 180–6.
+References
+                                                                               doi:10.1109/ICAR53236.2021.9659427.
+ [1] D. Lawrence, Stability and transparency in bilateral tele-           [13] A. Oliva, P. Giordano, F. Chaumette, A general visual-
+     operation, IEEE Trans Robot Autom 9 (5) (1993) 624–37.                    impedance framework for effectively combining vision and
+     doi:10.1109/70.258054.
+                                                                               force sensing in feature space, IEEE Robot Autom Lett
+ [2] C. Passenberg, A. Peer, M. Buss, A survey of environment-                 6 (3) (2021) 4441–8. doi:10.1109/LRA.2021.3068911.
+     , operator-, and task-adapted controllers for teleoper-              [14] G. Siegemund, A. Díaz Rosales, A. Glodde, F. Di-
+     ation systems, Mechatronics 20 (7) (2010) 787–801.                        etrich, L. Peternel, Semi-autonomous teleimpedance
+     doi:10.1016/j.mechatronics.2010.04.005.                                   based on visual detection of object geometry and ma-
+ [3] F. Abu-Dakka, M. Saveriano, Variable impedance control                    terial and its relation to environment, in: Proceed-
+     and learning—a review, Front Robot AI 7 (2020) 590681.                    ings of the IEEE-RAS 23rd International Conference
+     doi:10.3389/frobt.2020.590681.                                            on Humanoid Robots (Humanoids), 2024, pp. 779–86.
+                                                                               doi:10.1109/Humanoids58906.2024.10769858.
+ [4] D. Walker, R. Wilson, G. Niemeyer, User-controlled
+     variable impedance teleoperation, in: Proceedings                    [15] H. H. A. Jekel, A. Díaz Rosales, L. Peternel,
+     of the IEEE International Conference on Robotics                          Visio-verbal teleimpedance interface: Enabling semi-
+     and Automation (ICRA), 2010, pp. 5352–57.                                 autonomous control of physical interaction via eye track-
+     doi:10.1109/ROBOT.2010.5509811.                                           ing and speech, Front Robot AI 13 (2026) 1749105.
+                                                                               doi:10.3389/frobt.2026.1749105.
+ [5] A. Ajoudani, N. Tsagarakis, A. Bicchi, Tele-impedance:
+     Teleoperation with impedance regulation using a body–                [16] S. Park, Y. Park, J. Bae, Performance evaluation
+     machine interface, Int J Robot Res 31 (13) (2012) 1642–56.                of a tactile and kinesthetic finger feedback system
+     doi:10.1177/0278364912464668.                                             for teleoperation, Mechatronics 87 (2022) 102898.
+                                                                               doi:10.1016/j.mechatronics.2022.102898.
+ [6] M. Laghi, A. Ajoudani, M. Catalano, A. Bicchi, Unifying
+     bilateral teleoperation and tele-impedance for enhanced              [17] M. Lippi, M. Welle, M. Wozniak, A. Gasparri, D. Kragic,
+     user experience, Int J Robot Res 39 (4) (2020) 514–39.                    Low-cost teleoperation with haptic feedback through
+     doi:10.1177/0278364919891773.                                             vision-based tactile sensors for rigid and soft object ma-
+                                                                               nipulation, in: Proceedings of the 33rd IEEE International
+ [7] Y. Michel, R. Rahal, C. Pacchierotti, P. R. Giordano,                     Conference on Robot and Human Interactive Communi-
+     D. Lee, Bilateral teleoperation with adaptive impedance                   cation (RO-MAN), 2024, pp. 1963–9. doi:10.1109/RO-
+     control for contact tasks, IEEE Robot Autom Lett 6 (3)                    MAN60168.2024.10731383.
+     (2021) 5429–36. doi:10.1109/LRA.2021.3066974.
+                                                                          [18] N. Riaziat, O. Erin, A. Krieger, J. Brown, Investigating
+ [8] R. Li, M. Cheng, R. Ding, Passivity-based bilateral                       haptic feedback in vision-deficient millirobot telemanip-
+     shared variable impedance control for teleoperation                       ulation, IEEE Robot Autom Lett 9 (7) (2024) 6178–85.
+     compliant assembly, Mechatronics 95 (2023) 103057.                        doi:10.1109/LRA.2024.3397529.
+     doi:10.1016/j.mechatronics.2023.103057.
+
+
+                                                                     14
+[19] M. Bowman, J. Zhang, X. Zhang, Intent-based task-
+     oriented shared control for intuitive telemanipulation, J
+     Intell Robot Syst 110 (4) (2024) 167. doi:10.1007/s10846-
+     024-02185-1.
+
+[20] W. Li, F. Huang, Z. Chen, Z. Chen, Automatic-
+     switching-based teleoperation framework for mo-
+     bile manipulator with asymmetrical mapping and
+     force feedback, Mechatronics 99 (2024) 103164.
+     doi:10.1016/j.mechatronics.2024.103164.
+[21] R. Balachandran, M. D. Stefano, H. Mishra, C. Ott,
+     A. Albu-Schäffer, Passive arbitration in adaptive
+     shared control of robots with variable force and
+     stiffness scaling, Mechatronics 90 (2023) 102930.
+     doi:10.1016/j.mechatronics.2022.102930.
+[22] S. Haddadin, S. Parusel, L. Johannsmeier, S. Golz,
+     S. Gabl, F. Walch, et al., The Franka Emika robot:
+     A reference platform for robotics research and educa-
+     tion, IEEE Robot Autom Mag 29 (2) (2022) 46–64.
+     doi:10.1109/MRA.2021.3138382.
+[23] N. Hogan, Impedance control: An approach to manipu-
+     lation: Part I—theory, J Dyn Syst Meas Control 107 (1)
+     (1985) 1–7. doi:10.1115/1.3140702.
+[24] K. Kronander, A. Billard, Stability considerations for vari-
+     able impedance control, IEEE Trans Robot 32 (5) (2016)
+     1298–305. doi:10.1109/TRO.2016.2593492.
+
+[25] F. Ferraguti, C. Secchi, C. Fantuzzi, A tank-based ap-
+     proach to impedance control with variable stiffness, in:
+     Proceedings of the IEEE International Conference on
+     Robotics and Automation (ICRA), 2013, pp. 4948–53.
+     doi:10.1109/ICRA.2013.6631284.
+
+[26] S. Hart, NASA task load index (NASA-TLX); 20 years
+     later, in: Proc Hum Factors Ergon Soc Annu Meet, Vol. 50,
+     2006, pp. 904–8. doi:10.1177/154193120605000909.
+[27] L. Doornebosch, D. Abbink, L. Peternel, Analysis of cou-
+     pling effect in human-commanded stiffness during bilateral
+     tele-impedance, IEEE Trans Robot 37 (4) (2021) 1282–97.
+     doi:10.1109/TRO.2020.3047064.
+[28] A. Díaz Rosales, J. Rodriguez-Nogueira, E. Mathe-
+     son, D. Abbink, L. Peternel, Interactive multi-stiffness
+     mixed reality interface: Controlling and visualizing
+     robot and environment stiffness, in: Proceedings of
+     the IEEE/RSJ International Conference on Intelligent
+     Robots and Systems (IROS), 2024, pp. 13479–86.
+     doi:10.1109/IROS58592.2024.10801866.
+[29] B. Güleçyüz, R. Balachandran, M. Panzirsch, H. Singh,
+     T. Hulin, X. Xu, et al., Enhancing shared autonomy in
+     teleoperation under network delay: Transparency- and
+     confidence-aware arbitration, IEEE Robot Autom Lett
+     10 (10) (2025) 9654–61. doi:10.1109/LRA.2025.3596436.
+
+
+                                                                    15
+

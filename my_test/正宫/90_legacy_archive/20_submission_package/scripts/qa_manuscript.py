@@ -1,0 +1,177 @@
+#!/usr/bin/env python3
+"""Check the framework-first manuscript against frozen clean-analysis outputs."""
+
+from __future__ import annotations
+
+import argparse
+import csv
+import json
+import math
+import re
+from pathlib import Path
+
+
+def read_csv(path: Path) -> list[dict[str, str]]:
+    with path.open("r", encoding="utf-8-sig", newline="") as handle:
+        return list(csv.DictReader(handle))
+
+
+def resolve_root(root: Path | None) -> Path:
+    candidate = Path(__file__).resolve().parents[2] if root is None else root.resolve()
+    if (candidate / "03_clean_analysis").is_dir():
+        return candidate
+    nested = candidate / "my_test" / "paper2_sci"
+    if (nested / "03_clean_analysis").is_dir():
+        return nested
+    raise FileNotFoundError(f"Could not locate paper2_sci below {candidate}")
+
+
+def close(actual: float, expected: float, tolerance: float = 5e-5) -> bool:
+    return math.isclose(actual, expected, rel_tol=0.0, abs_tol=tolerance)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--root", type=Path, default=None)
+    args = parser.parse_args()
+    root = resolve_root(args.root)
+    clean = root / "03_clean_analysis"
+    manuscript_path = root / "18_manuscript_v1" / "manuscript_v1_en.md"
+    supplement_path = root / "20_submission_package" / "supplementary_material.md"
+    report_path = root / "20_submission_package" / "manuscript_qa_report.json"
+
+    manuscript = manuscript_path.read_text(encoding="utf-8")
+    supplement = supplement_path.read_text(encoding="utf-8")
+    trials = read_csv(clean / "trial_level_fidelity_metrics.csv")
+    stats = read_csv(clean / "statistics_summary.csv")
+    lineage = read_csv(clean / "data_lineage_audit.csv")
+
+    checks: list[dict[str, object]] = []
+
+    def check(name: str, actual: object, expected: object, passed: bool) -> None:
+        checks.append({"check": name, "actual": actual, "expected": expected, "passed": bool(passed)})
+
+    modes = {mode: [row for row in trials if row["mode_code"] == mode] for mode in "AGEF"}
+    check("trial count", len(trials), 180, len(trials) == 180)
+    check("45 trials per mode", {key: len(value) for key, value in modes.items()}, {key: 45 for key in "AGEF"}, all(len(value) == 45 for value in modes.values()))
+    participants = sorted({row["participant"] for row in trials})
+    check("independent participants", participants, ["P01", "P02", "P03", "P04", "P05"], participants == ["P01", "P02", "P03", "P04", "P05"])
+
+    binary_expectations = [
+        ("A fixed-command fidelity", modes["A"], "A_fixed_command_compliance_task_to_end", 1, 45),
+        ("G executable compliance", modes["G"], "executable_logic_compliance", 1, 45),
+        ("G pre-contact activation", modes["G"], "pre_contact_activation", 1, 43),
+        ("F nominal timing compliance", modes["F"], "nominal_activation_timing_compliance", 1, 3),
+        ("F pre-contact activation", modes["F"], "pre_contact_activation", 1, 0),
+    ]
+    for name, rows, column, target, expected in binary_expectations:
+        actual = sum(int(float(row[column])) == target for row in rows if row[column] != "")
+        check(name, actual, expected, actual == expected)
+
+    def median(rows: list[dict[str, str]], column: str) -> float:
+        values = sorted(float(row[column]) for row in rows if row[column] != "")
+        midpoint = len(values) // 2
+        return values[midpoint] if len(values) % 2 else (values[midpoint - 1] + values[midpoint]) / 2
+
+    f_latency = median(modes["F"], "contact_to_adaptation_latency_s")
+    f_error = median(modes["F"], "activation_timing_error_s")
+    check("F median activation", round(f_latency, 4), 0.0533, close(f_latency, 0.0533))
+    check("F median timing error", round(f_error, 4), -0.1467, close(f_error, -0.1467))
+
+    def exposure_counts(rows: list[dict[str, str]], column: str) -> dict[str, int]:
+        values = [float(row[column]) for row in rows if row[column] != ""]
+        return {
+            "full": sum(value >= 1.0 - 1e-9 for value in values),
+            "partial": sum(1e-9 < value < 1.0 - 1e-9 for value in values),
+            "zero": sum(value <= 1e-9 for value in values),
+        }
+
+    exposure_expectations = [
+        ("E vision exposure", modes["E"], "vision_configuration_outcome_window_overlap", {"full": 39, "partial": 2, "zero": 4}),
+        ("F vision exposure", modes["F"], "vision_configuration_outcome_window_overlap", {"full": 42, "partial": 0, "zero": 3}),
+        ("F adaptation exposure", modes["F"], "adaptation_outcome_window_overlap", {"full": 35, "partial": 7, "zero": 3}),
+        ("F joint exposure", modes["F"], "outcome_window_overlap", {"full": 35, "partial": 7, "zero": 3}),
+    ]
+    for name, rows, column, expected in exposure_expectations:
+        actual = exposure_counts(rows, column)
+        check(name, actual, expected, actual == expected)
+
+    selected = [row for row in lineage if row["included_main_clean"] == "1"]
+    hash_count = sum(int(float(row[column])) for row in selected for column in ("csv_hash_verified", "events_hash_verified", "summary_hash_verified"))
+    check("selected acquisition links", len(selected), 180, len(selected) == 180)
+    check("selected-file hashes", hash_count, 540, hash_count == 540)
+
+    ea = next(row for row in stats if row["metric"] == "primary_excess_impulse_Ns_0p2_1p0" and row["contrast"] == "E-A")
+    frozen_ea = {
+        "difference": float(ea["raw_mean_difference"]),
+        "ci_low": float(ea["ci95_low"]),
+        "ci_high": float(ea["ci95_high"]),
+        "paired_t_p": float(ea["paired_t_p"]),
+        "sign_flip_p": float(ea["exact_sign_flip_p"]),
+        "wilcoxon_p": float(ea["wilcoxon_p"]),
+        "holm_p": float(ea["paired_t_p_holm"]),
+    }
+    expected_ea = {"difference": -0.3489, "ci_low": -0.6080, "ci_high": -0.0898, "paired_t_p": 0.0201, "sign_flip_p": 0.0625, "wilcoxon_p": 0.0625, "holm_p": 0.0633}
+    for key, expected in expected_ea.items():
+        check(f"E-A {key}", round(frozen_ea[key], 4), expected, close(frozen_ea[key], expected))
+
+    abstract_match = re.search(r"## Abstract\s+(.*?)\s+\*\*Keywords:", manuscript, flags=re.S)
+    # Journal word counters generally treat hyphenated technical compounds as one
+    # space-delimited word; use that conservative, reproducible convention here.
+    abstract_words = abstract_match.group(1).split() if abstract_match else []
+    check("abstract length", len(abstract_words), "200–250 words", 200 <= len(abstract_words) <= 250)
+    section_order = [manuscript.find(marker) for marker in ("# 2. Realized-Intervention Fidelity Framework", "# 3. Teleoperation Case Study", "# 4. Fidelity Audit Results", "# 5. Exploratory Pilot Outcome Patterns")]
+    check("framework-first section order", section_order, "strictly increasing", all(value >= 0 for value in section_order) and section_order == sorted(section_order))
+
+    required_strings = [
+        "45/45 trials",
+        "43/45 trials",
+        "3/45",
+        "+0.0533 s",
+        "−0.1467",
+        "39 trials, partial in 2, and zero in 4",
+        "35 trials, partial in 7, and zero in 3",
+        "540 selected-file SHA-256 hashes",
+        "-0.3489 N·s",
+        "-0.6080 to -0.0898",
+    ]
+    for value in required_strings:
+        check(f"manuscript contains frozen statement: {value}", value in manuscript, True, value in manuscript)
+
+    forbidden = ["baseline-corrected excess-force impulse", "vision significantly improved safety", "our controller outperformed", "first-ever framework", "novel universal framework"]
+    for phrase in forbidden:
+        check(f"forbidden phrase absent: {phrase}", phrase in manuscript.lower(), False, phrase not in manuscript.lower())
+
+    main_figures = [root / "19_publication_figures" / "figures" / name for name in (
+        "Fig01_realized_intervention_framework.png",
+        "Fig02_system_and_lineage.png",
+        "Fig03_realized_intervention_fidelity.png",
+        "Fig04_participant_EA_outcomes.png",
+        "Fig05_contact_aligned_trajectories.png",
+    )]
+    check("main Figures 1–5 exist", [path.name for path in main_figures], "all non-empty", all(path.is_file() and path.stat().st_size > 1000 for path in main_figures))
+    check("legacy Figures 6–7 absent from main manuscript", "Fig06" in manuscript or "Fig07" in manuscript, False, "Fig06" not in manuscript and "Fig07" not in manuscript)
+    check("Supplementary Figure S1 linked", "Fig06_participant_lopo_stability.png" in supplement, True, "Fig06_participant_lopo_stability.png" in supplement)
+    check("Supplementary Figure S2 linked", "Fig07_lineage_trace_examples.png" in supplement, True, "Fig07_lineage_trace_examples.png" in supplement)
+
+    report = {
+        "status": "PASS" if all(item["passed"] for item in checks) else "FAIL",
+        "n_checks": len(checks),
+        "n_passed": sum(item["passed"] for item in checks),
+        "manuscript": str(manuscript_path.relative_to(root)).replace("\\", "/"),
+        "frozen_sources": [
+            "03_clean_analysis/trial_level_fidelity_metrics.csv",
+            "03_clean_analysis/statistics_summary.csv",
+            "03_clean_analysis/data_lineage_audit.csv",
+        ],
+        "checks": checks,
+    }
+    report_path.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
+    print(json.dumps({key: report[key] for key in ("status", "n_checks", "n_passed")}, indent=2))
+    if report["status"] != "PASS":
+        failed = [item for item in checks if not item["passed"]]
+        raise SystemExit(f"Manuscript QA failed: {failed}")
+
+
+if __name__ == "__main__":
+    main()

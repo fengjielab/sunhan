@@ -1,0 +1,13 @@
+﻿measure,count,denominator,proportion,interpretation
+activated_before_task_start,42.0,45.0,0.9333333333333333,cumulative timing count
+activated_before_contact,43.0,45.0,0.9555555555555556,cumulative timing count
+activated_at_or_after_contact,2.0,45.0,0.044444444444444446,complement of before-contact count
+activated_before_force_baseline_ready,42.0,45.0,0.9333333333333333,shows G runs during PREP
+trial_baseline_mean_above_1N,25.0,45.0,0.5555555555555556,raw baseline often exceeds fixed deadband
+raw_force_at_activation_above_1N,45.0,45.0,1.0,direct activation condition
+activation_force_below_contact_threshold,13.0,45.0,0.28888888888888886,proves G can activate without contact detector
+cause_raw_force_baseline,,,,Supported: G uses uncorrected raw |F_ext|; baseline mean is not subtracted
+cause_fixed_1N_deadband,,,,Supported: activation occurs whenever raw |F_ext| exceeds the fixed 1 N deadband
+cause_contact_detection,,,,Contact detection is not used by the G update law
+cause_initialization,,,,Contributes: last-update is initialized to 0 and the update executes during PREP
+cause_timestamp,,,,No evidence that a mixed-clock comparison triggers G; its update interval uses wall-clock values consistently

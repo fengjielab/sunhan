@@ -1,0 +1,119 @@
+{
+  "schema_version": 3,
+  "mode": "W1",
+  "subject_id": "PILOT",
+  "object_id": "bottle",
+  "trial_id": "PILOT_07_bottle_W1",
+  "started_at_unix": 1785991122.748617,
+  "phase": "COMPLETE",
+  "completed": true,
+  "incomplete": false,
+  "recognition_time_s": null,
+  "operation_time_s": 16.95042181700046,
+  "force_baseline_mean_N": 0.6663557925614563,
+  "force_baseline_std_N": 0.06517460839669392,
+  "force_threshold_N": 1.0,
+  "events": [
+    {
+      "event": "system_start",
+      "system_time": 0.0,
+      "phase": "PREP"
+    },
+    {
+      "event": "prior_applied",
+      "system_time": 8.255093560000205,
+      "phase": "PREP",
+      "actual_object": "bottle",
+      "condition_code": "W1",
+      "prior_condition": "overstiff",
+      "posterior_correction": true,
+      "prior_K_N_per_m": 200.0,
+      "safe_anchor_K_N_per_m": 50.0,
+      "applied_prior_label": "deliberately_overstiff",
+      "config_hash": "e4e9fff51377f7b5"
+    },
+    {
+      "event": "vision_start",
+      "system_time": 8.255146135999894,
+      "phase": "PREP"
+    },
+    {
+      "event": "force_baseline_ready",
+      "system_time": 9.062114446999658,
+      "phase": "PREP",
+      "mean_N": 0.6663557925614563,
+      "std_N": 0.06517460839669392,
+      "threshold_N": 1.0
+    },
+    {
+      "event": "system_ready",
+      "system_time": 9.062114446999658,
+      "phase": "READY"
+    },
+    {
+      "event": "task_start",
+      "system_time": 9.062114446999658,
+      "phase": "APPROACH",
+      "trigger": "system_ready"
+    },
+    {
+      "event": "first_frame",
+      "system_time": 9.078638216999934,
+      "phase": "APPROACH"
+    },
+    {
+      "event": "first_detection",
+      "system_time": 10.699630580000303,
+      "phase": "APPROACH",
+      "confidence": 0.9384791254997253,
+      "detected_class": "bottle"
+    },
+    {
+      "event": "contact_onset",
+      "system_time": 11.39744100200005,
+      "phase": "APPROACH",
+      "threshold_N": 1.0
+    },
+    {
+      "event": "posterior_override_start",
+      "system_time": 11.676024780999796,
+      "phase": "APPROACH",
+      "contact_relative_s": 0.27858377899974585,
+      "force_N": 1.5133197429678398,
+      "force_guard_N": 1.5,
+      "prior_trust_before": 1.0,
+      "prior_trust_after": 0.999840163084386,
+      "command_K_N_per_m": 199.99280733879738,
+      "config_hash": "e4e9fff51377f7b5"
+    },
+    {
+      "event": "prior_trust_floor",
+      "system_time": 12.925833244000387,
+      "phase": "APPROACH",
+      "contact_relative_s": 1.5283922420003364,
+      "command_K_N_per_m": 71.76677768925455
+    },
+    {
+      "event": "grasp_start",
+      "system_time": 17.388317633000042,
+      "phase": "GRASP"
+    },
+    {
+      "event": "grasp_success",
+      "system_time": 19.00851343999966,
+      "phase": "TRANSPORT",
+      "grasp_success": true
+    },
+    {
+      "event": "release_start",
+      "system_time": 24.197939081000186,
+      "phase": "RELEASE"
+    },
+    {
+      "event": "task_end",
+      "system_time": 26.01253626400012,
+      "phase": "COMPLETE",
+      "success": true
+    }
+  ]
+}

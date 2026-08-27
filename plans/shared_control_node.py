@@ -91,6 +91,24 @@ CONF_THRESHOLD = 0.25
 # 默认阻抗
 DEFAULT_IMPEDANCE = np.diag([200.0, 200.0, 200.0, 10.0, 10.0, 10.0])
 
+# ── 安全限制 ──
+
+# 碰撞阈值 (10 Nm / 10 N → 更宽松的值，避免轻微触碰即触发 Reflex)
+# 正常运行时: 关节扭矩 20 Nm, 笛卡尔力 25 N
+# 加速/减速时: 关节扭矩 30 Nm, 笛卡尔力 35 N
+COLLISION_TORQUE_NOMINAL = 20.0       # [Nm] 正常运行时关节扭矩阈值
+COLLISION_TORQUE_ACCEL = 30.0         # [Nm] 加速/减速时关节扭矩阈值
+COLLISION_FORCE_NOMINAL = 25.0        # [N]  正常运行时笛卡尔力阈值
+COLLISION_FORCE_ACCEL = 35.0          # [N]  加速/减速时笛卡尔力阈值
+
+# 笛卡尔工作空间边界（相对于初始位姿 _virtual_ref 的偏移范围）
+POS_BOUND_X = (-0.30, 0.30)   # [m] X 方向范围
+POS_BOUND_Y = (-0.30, 0.30)   # [m] Y 方向范围
+POS_BOUND_Z = (-0.25, 0.30)   # [m] Z 方向范围（负值向下，避免撞地）
+
+# 末端最大线速度（Omega 快速抖动保护）
+MAX_EE_VELOCITY = 0.25        # [m/s]
+
 
 # ═══════════════════════════════════════════
 # YOLO 独立进程（拥有独立 GIL，不受控制循环争用）
@@ -111,7 +129,7 @@ def _yolo_process_main(
     以 daemon 方式运行，主进程退出时自动终止。
     """
     _sys = __import__("sys")
-    _sys.path.insert(0, "/home/mfj/sunhan")
+    _sys.path.insert(0, "/home/mfj/sunh里的an")
 
     import queue as _q
     import numpy as _np
@@ -196,6 +214,11 @@ class SharedControlNode:
         self.running = False
         self._enable_visualize = True  # 默认显示摄像头画面
 
+        # ── 位置数据（用于按压实验） ──
+        self._target_pos = np.zeros(3)
+        self._actual_pos = np.zeros(3)
+        self._last_target_pos = np.zeros(3)  # 速度限幅：上一周期目标位置
+
         # ── 检测保持（holdover）状态 ──
         self._last_seen_class = "N/A"       # 最后检测到的物体类别
         self._last_seen_label = "unknown"   # 最后检测到的标签 soft/hard/medium
@@ -277,7 +300,15 @@ class SharedControlNode:
         self.panda = panda_py.Panda(ROBOT_IP)
         self.panda.recover()
         self.panda.set_default_behavior()
-        print("   ✓ 机械臂已连接")
+        # 设置更宽松的碰撞阈值（默认 10 Nm/10 N 太灵敏，轻微触碰即触发 Reflex）
+        _robot = self.panda.get_robot()  # 获取底层 libfranka.Robot 对象
+        _robot.set_collision_behavior(
+            [COLLISION_TORQUE_ACCEL]*7, [COLLISION_TORQUE_ACCEL]*7,
+            [COLLISION_TORQUE_NOMINAL]*7, [COLLISION_TORQUE_NOMINAL]*7,
+            [COLLISION_FORCE_ACCEL]*6, [COLLISION_FORCE_ACCEL]*6,
+            [COLLISION_FORCE_NOMINAL]*6, [COLLISION_FORCE_NOMINAL]*6,
+        )
+        print(f"   ✓ 机械臂已连接 (碰撞阈值: 关节{COLLISION_TORQUE_NOMINAL}Nm/笛卡尔{COLLISION_FORCE_NOMINAL}N)")
 
         # 3. Franka 夹爪
         print("[初始化] Franka Hand ...")
@@ -326,7 +357,7 @@ class SharedControlNode:
 
         # 初始 profile（所有模式共用，避免后续 None 引用导致 AttributeError）
         self._default_profile = PhysicsProfile(
-            K_trans=0.4, K_grip=0.3, F_target=10.0,
+            K_trans=0.4, K_fb=0.3,
             deadband=0.3, admittance_K=100.0,
             approach_speed=0.03, label="unknown",
         )
@@ -661,7 +692,7 @@ class SharedControlNode:
                 elif self.mode == "b":
                     # 模式B: 固定增益 K_trans=0.6
                     profile = PhysicsProfile(
-                        K_trans=0.6, K_grip=0.5, F_target=15.0,
+                        K_trans=0.6, K_fb=0.5,
                         deadband=0.4, admittance_K=150.0,
                         approach_speed=0.03, label="medium",
                     )
@@ -684,6 +715,26 @@ class SharedControlNode:
                 # ── 5. 位置映射 ──
                 delta = raw_pos - self._omega_home
                 target_pos = self._virtual_ref + delta * SCALE_POS * SIGN
+
+                # ── 5a. 笛卡尔工作空间边界钳制（相对于初始位姿） ──
+                ref = self._virtual_ref
+                target_pos = np.clip(target_pos,
+                    [ref[0] + POS_BOUND_X[0], ref[1] + POS_BOUND_Y[0], ref[2] + POS_BOUND_Z[0]],
+                    [ref[0] + POS_BOUND_X[1], ref[1] + POS_BOUND_Y[1], ref[2] + POS_BOUND_Z[1]],
+                )
+
+                # ── 5b. 末端速度限幅（Omega 快速抖动保护） ──
+                dt_pos_val = 1.0 / POS_CTRL_FREQ  # 0.005s
+                max_delta = MAX_EE_VELOCITY * dt_pos_val
+                delta_pos = target_pos - self._last_target_pos
+                delta_mag = np.linalg.norm(delta_pos)
+                if delta_mag > max_delta:
+                    target_pos = self._last_target_pos + (delta_pos / delta_mag) * max_delta
+                self._last_target_pos = target_pos.copy()
+
+                # ── 保存位置状态（用于按压实验数据记录） ──
+                self._target_pos = target_pos.copy()
+                self._actual_pos = state.O_T_EE[12:15]  # 实际末端位置 (x,y,z)
 
                 # ── 6. 发给 Franka ──
                 self.ctrl.set_control(target_pos, self._init_ori)
@@ -842,35 +893,39 @@ class SharedControlNode:
             pass
 
     def _print_status(self, loop_count: int):
-        """打印状态信息"""
+        """打印状态信息（扩展版：含按压实验所需字段）"""
         F = self._F_haptic_current
         F_ext = self._F_ext_current[:3]
         f_grip = self._f_grip_current
 
+        # ── 当前控制参数 ──
+        K_trans = self.feedback_sched._K_trans if hasattr(self.feedback_sched, '_K_trans') else 0.0
+        admittance_K = self.current_profile.admittance_K if self.current_profile else 100.0
+        deadband = self.current_profile.deadband if self.current_profile else 0.0
+
+        # ── 位置数据 ──
+        target = getattr(self, '_target_pos', np.zeros(3))
+        actual = getattr(self, '_actual_pos', np.zeros(3))
+        pos_error = target - actual  # 位置跟踪误差
+
         # ── 用 Omega.7 意图状态决定显示内容 ──
         if self._enable_vision and self._last_detection_time > 0:
             if self._profile_locked:
-                # 参数已锁定（首次识别后保持到实验结束）
                 profile_class = f"🔒{self._locked_class}"
                 profile_label = f"{self._locked_label}(locked)"
             elif self._user_grasping:
-                # 全捏合锁定
                 profile_class = f"🔒{self._last_seen_class}"
                 profile_label = f"{self._last_seen_label}(lock)"
             elif self._user_active:
-                # 半捏合保持
                 profile_class = f"⏸{self._last_seen_class}"
                 profile_label = self._last_seen_label
             elif self._is_holding:
-                # 保持期内（<5s）
                 profile_class = f" ⏸{self._last_seen_class}"
                 profile_label = self._last_seen_label
             else:
-                # 超时回退
                 profile_class = "⚠️回退默认"
                 profile_label = "default"
         else:
-            # 无视觉或从未检测到
             profile_class = f" {self._last_seen_class}"
             profile_label = "unknown"
 
@@ -879,7 +934,9 @@ class SharedControlNode:
               f"物体={profile_class:<14} label={profile_label:<14} "
               f"F_ext=({F_ext[0]:+.2f},{F_ext[1]:+.2f},{F_ext[2]:+.2f}) "
               f"F_fb=({F[0]:+.2f},{F[1]:+.2f},{F[2]:+.2f}) "
-              f"grip={f_grip:.2f}")
+              f"grip={f_grip:.2f} "
+              f"Kt={K_trans:.2f} Ka={admittance_K:.0f} db={deadband:.2f} "
+              f"tgt_z={target[2]:+.3f} act_z={actual[2]:+.3f} err_z={pos_error[2]:+.4f}")
 
     def _shutdown(self):
         """安全关闭"""
@@ -921,12 +978,49 @@ def main():
         "--visualize", action="store_true",
         help="显示 YOLO 检测实时画面窗口（默认已开启，此选项保留向后兼容）",
     )
+    parser.add_argument(
+        "--force-label", type=str, default=None,
+        choices=["soft", "medium", "hard"],
+        help="强制使用指定 label 的 PhysicsProfile，跳过 YOLO 检测（用于手动材质指定）",
+    )
     args = parser.parse_args()
 
     node = SharedControlNode(mode=args.mode)
     # 摄像头画面默认开启（_enable_visualize 已在构造函数中设为 True）
     # 向后兼容：保留 --visualize 参数，但无需额外赋值
     node.initialize()
+
+    # ── 若指定了 force-label，则在初始化后覆盖 profile ──
+    if args.force_label is not None:
+        mapping = {
+            "soft": {"admittance_K": 30, "K_trans": 0.6, "deadband": 0.5},
+            "medium": {"admittance_K": 150, "K_trans": 0.6, "deadband": 0.4},
+            "hard": {"admittance_K": 300, "K_trans": 0.85, "deadband": 0.5},
+        }
+        params = mapping[args.force_label]
+        # 使用 PhysicsProfile 替代 SimpleNamespace（需要 to_dict() 方法）
+        fake = PhysicsProfile(
+            admittance_K=params["admittance_K"],
+            K_trans=params["K_trans"],
+            deadband=params["deadband"],
+            K_fb=30.0,
+            approach_speed=0.1,
+            label=args.force_label,
+            description=f"manual_{args.force_label}",
+        )
+        node._profile_lock.acquire()
+        node.current_profile = fake
+        node._profile_lock.release()
+        # 同步刷新到子模块
+        if hasattr(node, 'admittance') and node.admittance:
+            node.admittance.apply_profile(fake)
+        if hasattr(node, 'feedback_sched') and node.feedback_sched:
+            node.feedback_sched.set_profile(fake)
+        print(f"[main] 🔧 手动指定 label={args.force_label}: "
+              f"K={params['admittance_K']} N/m, "
+              f"K_trans={params['K_trans']}, "
+              f"deadband={params['deadband']} N")
+
     node.run()
 
 

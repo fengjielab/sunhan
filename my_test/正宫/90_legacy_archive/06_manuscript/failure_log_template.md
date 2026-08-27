@@ -1,0 +1,1 @@
+attempt_id,operator,object_class,actual_object_id,mode,block,attempt_time,completed,grasp_success,drop_occurred,collision_occurred,emergency_stop,failure_stage,failure_reason,recovery_action,include_in_success_rate,notes

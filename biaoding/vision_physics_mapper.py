@@ -40,47 +40,86 @@ import numpy as np
 
 @dataclass
 class PhysicsProfile:
-    """物体物理-控制参数配置"""
-    K_trans: float         # 平移刚度比例 (N/m 或 0~1 增益)
-    K_grip: float          # 夹爪刚度系数
-    F_target: float        # 目标夹持力 N
-    deadband: float        # 力控死带 m
-    admittance_K: float    # 导纳刚度 N/m
-    approach_speed: float  # 接近速度 m/s
-    label: str = "unknown" # 语义标签: soft/hard/medium/unknown
-    description: str = ""  # 人类可读描述
+    """物体物理-控制参数配置（增强版：含旋转刚度/阻尼/质量/夹爪速度）"""
+    # === 阻抗控制参数 ===
+    K_trans: float          # 平动刚度 (N/m)
+    K_rot: float = 10.0     # 旋转刚度 (Nm/rad)
+    D_trans: float = 24.5   # 平动阻尼 (Ns/m)
+    D_rot: float = 6.3      # 旋转阻尼 (Nms/rad)
+    M: float = 1.0          # 等效质量 (kg)
+
+    # === 力反馈参数 ===
+    K_fb: float = 0.5       # 力反馈增益（从原 K_grip 重命名）
+    deadband: float = 0.4   # 力控死区 (N)
+
+    # === 夹爪参数（新增） ===
+    gripper_speed: float = 0.05     # 夹爪闭合速度 (m/s)
+    gripper_force_limit: float = 20.0  # 夹爪力上限 (N)
+
+    # === 导纳参数 ===
+    admittance_K: float = 150.0     # 导纳刚度 (N/m)
+    approach_speed: float = 0.05    # 接近速度 (m/s)
+
+    # === 元数据 ===
+    label: str = "unknown"          # 语义标签: soft/medium/hard/unknown
+    description: str = ""           # 人类可读描述
 
     def to_dict(self) -> dict:
         return asdict(self)
 
     @classmethod
     def from_dict(cls, d: dict) -> "PhysicsProfile":
-        return cls(
-            K_trans=d["K_trans"],
-            K_grip=d["K_grip"],
-            F_target=d["F_target"],
-            deadband=d["deadband"],
-            admittance_K=d["admittance_K"],
-            approach_speed=d["approach_speed"],
-            label=d.get("label", "unknown"),
-            description=d.get("description", ""),
-        )
+        """兼容新旧两种字典格式"""
+        # 新格式: K_fb 存在
+        if "K_fb" in d:
+            return cls(
+                K_trans=d["K_trans"],
+                K_rot=d.get("K_rot", 10.0),
+                D_trans=d.get("D_trans", 24.5),
+                D_rot=d.get("D_rot", 6.3),
+                M=d.get("M", 1.0),
+                K_fb=d["K_fb"],
+                deadband=d["deadband"],
+                gripper_speed=d.get("gripper_speed", 0.05),
+                gripper_force_limit=d.get("gripper_force_limit", 20.0),
+                admittance_K=d["admittance_K"],
+                approach_speed=d["approach_speed"],
+                label=d.get("label", "unknown"),
+                description=d.get("description", ""),
+            )
+        # 旧格式兼容: 使用 K_grip → K_fb，F_target 丢弃
+        else:
+            return cls(
+                K_trans=d["K_trans"],
+                K_rot=d.get("K_rot", 10.0),
+                D_trans=d.get("D_trans", 24.5),
+                D_rot=d.get("D_rot", 6.3),
+                M=d.get("M", 1.0),
+                K_fb=d.get("K_grip", 0.5),  # K_grip → K_fb
+                deadband=d["deadband"],
+                gripper_speed=d.get("gripper_speed", 0.05),
+                gripper_force_limit=d.get("gripper_force_limit", 20.0),
+                admittance_K=d["admittance_K"],
+                approach_speed=d["approach_speed"],
+                label=d.get("label", "unknown"),
+                description=d.get("description", ""),
+            )
 
     def to_grasp_strategy(self) -> dict:
         """
         转换为 grasp_controller_node 所需的策略字典格式
         兼容 GraspControllerNode.select_grasp_strategy() 的返回结构
         """
-        # 将标量 K_trans 展开为 [K, K, Kz] 列表（Z 方向略软）
-        K_val = self.K_trans * 1000  # 比例 → 绝对刚度 (示例)
+        # K_trans 已经是绝对刚度 (N/m)
+        K_val = self.K_trans
         Kz = K_val * 0.5 if self.label == "soft" else K_val
         return {
-            "stiffness": [K_val, K_val, Kz, 10, 10, 10],
-            "force": self.F_target,
+            "stiffness": [K_val, K_val, Kz, self.K_rot, self.K_rot, self.K_rot],
+            "force": self.gripper_force_limit * 0.5,  # 目标力取力上限一半
             "approach_speed": self.approach_speed,
             "admittance_K": self.admittance_K,
             "deadband": self.deadband,
-            "K_grip": self.K_grip,
+            "K_grip": self.K_fb,   # 兼容旧字段命名
             "label": self.label,
             "description": self.description,
         }
@@ -95,92 +134,123 @@ class VisionPhysicsMapper:
         B) 纯查表: 不加载模型，调用 lookup(class_name)
     """
 
-    # ── 内建默认查表（基于经验值，可 JSON 覆盖）──
+    # ── 内建默认查表（基于实验核心参数表）──
     DEFAULT_TABLE: Dict[str, dict] = {
-        # ===== soft =====
-        # 力反馈增益提升(0.6~0.65)：软物体需要更清晰的力觉感知来精细操控
-        # 导纳刚度保持低值(30~60)：物理上保护物体不受冲击
+        # ===== soft (K_trans=50, K_rot=5, D_trans=14.1, D_rot=4.5, M=0.5) =====
         "apple": {
-            "K_trans": 0.65, "K_grip": 0.2, "F_target": 8.0,
-            "deadband": 0.3, "admittance_K": 50.0,
-            "approach_speed": 0.02, "label": "soft",
-            "description": "软物体-苹果: 低导纳刚度保护+中高等力反馈增益",
+            "K_trans": 50, "K_rot": 5, "D_trans": 14.1, "D_rot": 4.5, "M": 0.5,
+            "K_fb": 0.3, "deadband": 0.3,
+            "gripper_speed": 0.02, "gripper_force_limit": 8.0,
+            "admittance_K": 50.0, "approach_speed": 0.02,
+            "label": "soft",
+            "description": "软-苹果: 低刚度 50N/m, 慢速夹爪 20mm/s",
         },
         "banana": {
-            "K_trans": 0.65, "K_grip": 0.2, "F_target": 6.0,
-            "deadband": 0.3, "admittance_K": 50.0,
-            "approach_speed": 0.015, "label": "soft",
-            "description": "软物体-香蕉: 低导纳刚度保护+中高等力反馈增益、超慢速",
+            "K_trans": 50, "K_rot": 5, "D_trans": 14.1, "D_rot": 4.5, "M": 0.5,
+            "K_fb": 0.3, "deadband": 0.3,
+            "gripper_speed": 0.02, "gripper_force_limit": 8.0,
+            "admittance_K": 50.0, "approach_speed": 0.015,
+            "label": "soft",
+            "description": "软-香蕉: 低刚度 50N/m, 极慢速接近 15mm/s",
         },
         "orange": {
-            "K_trans": 0.65, "K_grip": 0.25, "F_target": 7.0,
-            "deadband": 0.25, "admittance_K": 60.0,
-            "approach_speed": 0.02, "label": "soft",
-            "description": "软物体-橙子: 低导纳刚度保护+中高等力反馈增益",
+            "K_trans": 50, "K_rot": 5, "D_trans": 14.1, "D_rot": 4.5, "M": 0.5,
+            "K_fb": 0.3, "deadband": 0.25,
+            "gripper_speed": 0.02, "gripper_force_limit": 8.0,
+            "admittance_K": 60.0, "approach_speed": 0.02,
+            "label": "soft",
+            "description": "软-橙子: 低刚度 50N/m, 略小死区",
+        },
+        "lemon": {
+            "K_trans": 50, "K_rot": 5, "D_trans": 14.1, "D_rot": 4.5, "M": 0.5,
+            "K_fb": 0.3, "deadband": 0.25,
+            "gripper_speed": 0.02, "gripper_force_limit": 8.0,
+            "admittance_K": 60.0, "approach_speed": 0.02,
+            "label": "soft",
+            "description": "软-柠檬: 低刚度 50N/m, 略小死区",
         },
         "teddy bear": {
-            "K_trans": 0.6, "K_grip": 0.1, "F_target": 3.0,
-            "deadband": 0.5, "admittance_K": 30.0,
-            "approach_speed": 0.01, "label": "soft",
-            "description": "软物体-毛绒玩具: 极低导纳刚度+中等力反馈增益",
+            "K_trans": 50, "K_rot": 5, "D_trans": 14.1, "D_rot": 4.5, "M": 0.5,
+            "K_fb": 0.2, "deadband": 0.5,
+            "gripper_speed": 0.01, "gripper_force_limit": 5.0,
+            "admittance_K": 30.0, "approach_speed": 0.01,
+            "label": "soft",
+            "description": "软-毛绒玩具: 极低刚度, 极慢速 10mm/s",
         },
-        # ===== medium =====
+        # ===== medium (K_trans=150, K_rot=10, D_trans=24.5, D_rot=6.3, M=1.0) =====
         "bottle": {
-            "K_trans": 0.6, "K_grip": 0.4, "F_target": 15.0,
-            "deadband": 0.4, "admittance_K": 150.0,
-            "approach_speed": 0.03, "label": "medium",
-            "description": "中硬-瓶子: 中等刚度+中等力反馈",
+            "K_trans": 150, "K_rot": 10, "D_trans": 24.5, "D_rot": 6.3, "M": 1.0,
+            "K_fb": 0.5, "deadband": 0.4,
+            "gripper_speed": 0.05, "gripper_force_limit": 20.0,
+            "admittance_K": 150.0, "approach_speed": 0.03,
+            "label": "medium",
+            "description": "中-瓶子: 中等刚度 150N/m, 中速夹爪 50mm/s",
         },
         "cup": {
-            "K_trans": 0.6, "K_grip": 0.4, "F_target": 12.0,
-            "deadband": 0.4, "admittance_K": 150.0,
-            "approach_speed": 0.025, "label": "medium",
-            "description": "中硬-杯子: 中等刚度+中等力反馈",
+            "K_trans": 150, "K_rot": 10, "D_trans": 24.5, "D_rot": 6.3, "M": 1.0,
+            "K_fb": 0.5, "deadband": 0.4,
+            "gripper_speed": 0.05, "gripper_force_limit": 20.0,
+            "admittance_K": 150.0, "approach_speed": 0.025,
+            "label": "medium",
+            "description": "中-杯子: 中等刚度 150N/m",
         },
         "bowl": {
-            "K_trans": 0.55, "K_grip": 0.35, "F_target": 10.0,
-            "deadband": 0.35, "admittance_K": 120.0,
-            "approach_speed": 0.025, "label": "medium",
-            "description": "中硬-碗: 中等刚度+中等力反馈",
+            "K_trans": 150, "K_rot": 10, "D_trans": 24.5, "D_rot": 6.3, "M": 1.0,
+            "K_fb": 0.5, "deadband": 0.35,
+            "gripper_speed": 0.05, "gripper_force_limit": 20.0,
+            "admittance_K": 120.0, "approach_speed": 0.025,
+            "label": "medium",
+            "description": "中-碗: 中等刚度 150N/m",
         },
-        # ===== hard =====
-        # 硬物体力反馈增益适当降低(0.8~1.0)：避免过强的突兀感
+        # ===== hard (K_trans=800, K_rot=50, D_trans=56.6, D_rot=14.1, M=2.0) =====
         "book": {
-            "K_trans": 0.85, "K_grip": 0.8, "F_target": 25.0,
-            "deadband": 0.5, "admittance_K": 300.0,
-            "approach_speed": 0.05, "label": "hard",
-            "description": "硬物体-书本: 正常刚度+中高力反馈",
+            "K_trans": 800, "K_rot": 50, "D_trans": 56.6, "D_rot": 14.1, "M": 2.0,
+            "K_fb": 1.0, "deadband": 0.5,
+            "gripper_speed": 0.10, "gripper_force_limit": 60.0,
+            "admittance_K": 300.0, "approach_speed": 0.05,
+            "label": "hard",
+            "description": "硬-书本: 高刚度 800N/m, 快速夹爪 100mm/s",
         },
         "cell phone": {
-            "K_trans": 0.85, "K_grip": 0.8, "F_target": 20.0,
-            "deadband": 0.5, "admittance_K": 300.0,
-            "approach_speed": 0.04, "label": "hard",
-            "description": "硬物体-手机: 中高刚度+中高力反馈",
+            "K_trans": 800, "K_rot": 50, "D_trans": 56.6, "D_rot": 14.1, "M": 2.0,
+            "K_fb": 1.0, "deadband": 0.5,
+            "gripper_speed": 0.10, "gripper_force_limit": 60.0,
+            "admittance_K": 300.0, "approach_speed": 0.04,
+            "label": "hard",
+            "description": "硬-手机: 高刚度 800N/m",
         },
         "keyboard": {
-            "K_trans": 0.85, "K_grip": 0.8, "F_target": 22.0,
-            "deadband": 0.5, "admittance_K": 300.0,
-            "approach_speed": 0.05, "label": "hard",
-            "description": "硬物体-键盘: 正常刚度+中高力反馈",
+            "K_trans": 800, "K_rot": 50, "D_trans": 56.6, "D_rot": 14.1, "M": 2.0,
+            "K_fb": 1.0, "deadband": 0.5,
+            "gripper_speed": 0.10, "gripper_force_limit": 60.0,
+            "admittance_K": 300.0, "approach_speed": 0.05,
+            "label": "hard",
+            "description": "硬-键盘: 高刚度 800N/m",
         },
         "mouse": {
-            "K_trans": 0.8, "K_grip": 0.7, "F_target": 18.0,
-            "deadband": 0.45, "admittance_K": 250.0,
-            "approach_speed": 0.04, "label": "hard",
-            "description": "硬物体-鼠标: 中等刚度+中高力反馈",
+            "K_trans": 800, "K_rot": 50, "D_trans": 56.6, "D_rot": 14.1, "M": 2.0,
+            "K_fb": 0.8, "deadband": 0.45,
+            "gripper_speed": 0.10, "gripper_force_limit": 60.0,
+            "admittance_K": 250.0, "approach_speed": 0.04,
+            "label": "hard",
+            "description": "硬-鼠标: 高刚度 800N/m, 略低力反馈",
         },
         "scissors": {
-            "K_trans": 1.0, "K_grip": 1.0, "F_target": 30.0,
-            "deadband": 0.6, "admittance_K": 400.0,
-            "approach_speed": 0.06, "label": "hard",
-            "description": "硬物体-剪刀: 高刚度+高力反馈",
+            "K_trans": 800, "K_rot": 50, "D_trans": 56.6, "D_rot": 14.1, "M": 2.0,
+            "K_fb": 1.0, "deadband": 0.6,
+            "gripper_speed": 0.10, "gripper_force_limit": 60.0,
+            "admittance_K": 400.0, "approach_speed": 0.06,
+            "label": "hard",
+            "description": "硬-剪刀: 高刚度 800N/m",
         },
-        # ===== unknown / default =====
+        # ===== unknown / default (使用 medium 级别) =====
         "__default__": {
-            "K_trans": 0.4, "K_grip": 0.3, "F_target": 10.0,
-            "deadband": 0.3, "admittance_K": 100.0,
-            "approach_speed": 0.03, "label": "unknown",
-            "description": "默认策略: 中等保守参数",
+            "K_trans": 150, "K_rot": 10, "D_trans": 24.5, "D_rot": 6.3, "M": 1.0,
+            "K_fb": 0.5, "deadband": 0.4,
+            "gripper_speed": 0.05, "gripper_force_limit": 20.0,
+            "admittance_K": 150.0, "approach_speed": 0.03,
+            "label": "unknown",
+            "description": "默认: 中等参数 (medium 级别)",
         },
     }
 

@@ -1,0 +1,13 @@
+case_id,case_label,nominal_spec,n_to_c,c_to_r,exposure,provenance,n_to_c_detail,expected_diagnostic_codes,expected_identity_status,expected_comparison_level
+S00,complete evidence chain,available,pass,pass,full,valid,none,NO_DETECTED_FIDELITY_BREAK,retained,nominal_identity_retained
+S01,nominal specification unavailable,unavailable,not_evaluable,pass,full,valid,none,NOMINAL_SPEC_UNAVAILABLE,indeterminate,realized_configuration
+S02,guard mismatch with implementation-faithful realization,available,fail,pass,full,valid,guard,SPEC_IMPLEMENTATION_MISMATCH|GUARD_MISMATCH,unsupported,implemented_or_realized_configuration
+S03,clock-domain mismatch with implementation-faithful realization,available,fail,pass,full,valid,clock,SPEC_IMPLEMENTATION_MISMATCH|CLOCK_DOMAIN_MISMATCH,unsupported,implemented_or_realized_configuration
+S04,runtime delivery mismatch,available,pass,fail,full,valid,none,IMPLEMENTATION_REALIZATION_MISMATCH,unsupported,realized_delivery
+S05,partial outcome-window exposure,available,pass,pass,partial,valid,none,PARTIAL_WINDOW_EXPOSURE,exposure_qualified,assignment_with_exposure_distribution
+S06,zero outcome-window exposure,available,pass,pass,zero,valid,none,ZERO_WINDOW_EXPOSURE,unsupported,assignment_with_zero_window_exposure
+S07,realization record unavailable,available,pass,not_evaluable,unavailable,valid,none,REALIZATION_EVIDENCE_UNAVAILABLE|EXPOSURE_UNAVAILABLE,not_evaluable,implementation_only
+S08,invalid intervention-outcome provenance,available,pass,pass,full,invalid,none,PROVENANCE_INVALID,not_evaluable,none
+S09,guard mismatch plus partial exposure,available,fail,pass,partial,valid,guard,SPEC_IMPLEMENTATION_MISMATCH|GUARD_MISMATCH|PARTIAL_WINDOW_EXPOSURE,unsupported,implemented_or_realized_configuration
+S10,runtime mismatch plus invalid provenance,available,pass,fail,full,invalid,none,PROVENANCE_INVALID|IMPLEMENTATION_REALIZATION_MISMATCH,not_evaluable,none
+

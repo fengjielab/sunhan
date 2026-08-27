@@ -1,0 +1,122 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="600" viewBox="0 0 1000 600">
+  <defs>
+    <pattern id="patternA" width="8" height="8" patternUnits="userSpaceOnUse">
+      <rect width="8" height="8" fill="#ffffff"/>
+      <circle cx="2" cy="2" r="1.1" fill="#666666"/>
+      <circle cx="6" cy="6" r="1.1" fill="#666666"/>
+    </pattern>
+    <pattern id="patternB" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="8" height="8" fill="#eeeeee"/>
+      <line x1="0" y1="0" x2="0" y2="8" stroke="#777777" stroke-width="2"/>
+    </pattern>
+    <pattern id="patternD" width="8" height="8" patternUnits="userSpaceOnUse">
+      <rect width="8" height="8" fill="#bdbdbd"/>
+      <path d="M0 0L8 8M8 0L0 8" stroke="#777777" stroke-width="1"/>
+    </pattern>
+    <style>
+      .zh { font-family: "Times New Roman", "SimSun", serif; fill: #111; }
+      .axis { stroke: #222; stroke-width: 1.6; }
+      .grid { stroke: #c9c9c9; stroke-width: 1; stroke-dasharray: 5 5; }
+      .tick { font-size: 16px; }
+      .label { font-size: 17px; }
+      .value { font-family: "Times New Roman", serif; font-size: 15px; font-weight: 700; fill: #111; }
+      .bar { stroke: #222; stroke-width: 1.2; }
+    </style>
+  </defs>
+
+  <rect width="1000" height="600" fill="#ffffff"/>
+
+  <!-- Legend -->
+  <g class="zh label">
+    <rect class="bar" x="125" y="35" width="28" height="20" fill="#4C78A8"/>
+    <text x="163" y="51">A 固定参数</text>
+    <rect class="bar" x="330" y="35" width="28" height="20" fill="#F58518"/>
+    <text x="368" y="51">B 人工选择</text>
+    <rect class="bar" x="535" y="35" width="28" height="20" fill="#54A24B"/>
+    <text x="573" y="51" font-weight="700">C 视觉自动</text>
+    <rect class="bar" x="740" y="35" width="28" height="20" fill="#B279A2"/>
+    <text x="778" y="51">D 视觉消融</text>
+  </g>
+
+  <!-- Grid and y axis: plot y=90..490 -->
+  <g>
+    <line class="grid" x1="100" y1="490" x2="930" y2="490"/>
+    <line class="grid" x1="100" y1="410" x2="930" y2="410"/>
+    <line class="grid" x1="100" y1="330" x2="930" y2="330"/>
+    <line class="grid" x1="100" y1="250" x2="930" y2="250"/>
+    <line class="grid" x1="100" y1="170" x2="930" y2="170"/>
+    <line class="grid" x1="100" y1="90" x2="930" y2="90"/>
+    <line class="axis" x1="100" y1="90" x2="100" y2="490"/>
+    <line class="axis" x1="100" y1="490" x2="930" y2="490"/>
+  </g>
+
+  <g class="zh tick" text-anchor="end">
+    <text x="88" y="496">0</text>
+    <text x="88" y="416">20</text>
+    <text x="88" y="336">40</text>
+    <text x="88" y="256">60</text>
+    <text x="88" y="176">80</text>
+    <text x="88" y="96">100</text>
+  </g>
+  <text class="zh label" x="28" y="300" text-anchor="middle" transform="rotate(-90 28 300)">成功率 / %</text>
+
+  <!-- soft: A 100.0, B 88.9, C 100.0, D 100.0 -->
+  <g>
+    <rect class="bar" x="135" y="90" width="34" height="400" fill="#4C78A8"/>
+    <rect class="bar" x="177" y="134.4" width="34" height="355.6" fill="#F58518"/>
+    <rect class="bar" x="219" y="90" width="34" height="400" fill="#54A24B"/>
+    <rect class="bar" x="261" y="90" width="34" height="400" fill="#B279A2"/>
+    <text class="value" x="152" y="80" text-anchor="middle">100.0</text>
+    <text class="value" x="194" y="124" text-anchor="middle">88.9</text>
+    <text class="value" x="236" y="80" text-anchor="middle">100.0</text>
+    <text class="value" x="278" y="80" text-anchor="middle">100.0</text>
+  </g>
+
+  <!-- medium: A 66.7, B 88.9, C 100.0, D 77.8 -->
+  <g>
+    <rect class="bar" x="335" y="223.2" width="34" height="266.8" fill="#4C78A8"/>
+    <rect class="bar" x="377" y="134.4" width="34" height="355.6" fill="#F58518"/>
+    <rect class="bar" x="419" y="90" width="34" height="400" fill="#54A24B"/>
+    <rect class="bar" x="461" y="178.8" width="34" height="311.2" fill="#B279A2"/>
+    <text class="value" x="352" y="213" text-anchor="middle">66.7</text>
+    <text class="value" x="394" y="124" text-anchor="middle">88.9</text>
+    <text class="value" x="436" y="80" text-anchor="middle">100.0</text>
+    <text class="value" x="478" y="169" text-anchor="middle">77.8</text>
+  </g>
+
+  <!-- hard: A 77.8, B 55.6, C 88.9, D 88.9 -->
+  <g>
+    <rect class="bar" x="535" y="178.8" width="34" height="311.2" fill="#4C78A8"/>
+    <rect class="bar" x="577" y="267.6" width="34" height="222.4" fill="#F58518"/>
+    <rect class="bar" x="619" y="134.4" width="34" height="355.6" fill="#54A24B"/>
+    <rect class="bar" x="661" y="134.4" width="34" height="355.6" fill="#B279A2"/>
+    <text class="value" x="552" y="169" text-anchor="middle">77.8</text>
+    <text class="value" x="594" y="258" text-anchor="middle">55.6</text>
+    <text class="value" x="636" y="124" text-anchor="middle">88.9</text>
+    <text class="value" x="678" y="124" text-anchor="middle">88.9</text>
+  </g>
+
+  <!-- Separate aggregate results -->
+  <line x1="730" y1="78" x2="730" y2="515" stroke="#777777" stroke-width="1.2" stroke-dasharray="7 6"/>
+
+  <!-- overall: A 81.5, B 77.8, C 96.3, D 88.9 -->
+  <g>
+    <rect class="bar" x="755" y="164" width="34" height="326" fill="#4C78A8"/>
+    <rect class="bar" x="797" y="178.8" width="34" height="311.2" fill="#F58518"/>
+    <rect class="bar" x="839" y="104.8" width="34" height="385.2" fill="#54A24B"/>
+    <rect class="bar" x="881" y="134.4" width="34" height="355.6" fill="#B279A2"/>
+    <text class="value" x="772" y="154" text-anchor="middle">81.5</text>
+    <text class="value" x="814" y="169" text-anchor="middle">77.8</text>
+    <text class="value" x="856" y="95" text-anchor="middle">96.3</text>
+    <text class="value" x="898" y="124" text-anchor="middle">88.9</text>
+  </g>
+
+  <g class="zh label" text-anchor="middle">
+    <text x="215" y="525">soft</text>
+    <text x="415" y="525">medium</text>
+    <text x="615" y="525">hard</text>
+    <text x="835" y="525">总体</text>
+  </g>
+
+  <text class="zh tick" x="515" y="568" text-anchor="middle">物体类别</text>
+</svg>

@@ -1,0 +1,13 @@
+﻿case_id,case_label,nominal_spec,n_to_c,c_to_r,exposure,provenance,diagnostic_codes,identity_status,comparison_level,exact_oracle_match
+S00,complete evidence chain,available,pass,pass,full,valid,NO_DETECTED_FIDELITY_BREAK,retained,nominal_identity_retained,1
+S01,label without recoverable nominal specification,unavailable,not_evaluable,pass,full,valid,NOMINAL_SPEC_UNAVAILABLE,indeterminate,realized_configuration,1
+S02,guard mismatch with implementation-faithful realization,available,fail,pass,full,valid,SPEC_IMPLEMENTATION_MISMATCH|GUARD_MISMATCH,unsupported,implemented_or_realized_configuration,1
+S03,clock-domain mismatch with implementation-faithful realization,available,fail,pass,full,valid,SPEC_IMPLEMENTATION_MISMATCH|CLOCK_DOMAIN_MISMATCH,unsupported,implemented_or_realized_configuration,1
+S04,runtime delivery mismatch,available,pass,fail,full,valid,IMPLEMENTATION_REALIZATION_MISMATCH,unsupported,realized_delivery,1
+S05,one-millisecond partial window exposure,available,pass,pass,partial,valid,PARTIAL_WINDOW_EXPOSURE,exposure_qualified,assignment_with_exposure_distribution,1
+S06,zero outcome-window exposure,available,pass,pass,zero,valid,ZERO_WINDOW_EXPOSURE,unsupported,assignment_with_zero_window_exposure,1
+S07,realization and exposure evidence unavailable,available,pass,not_evaluable,unavailable,valid,C_TO_R_NOT_EVALUABLE|EXPOSURE_UNAVAILABLE,not_evaluable,implementation_only,1
+S08,invalid intervention-outcome provenance,available,pass,pass,full,invalid,PROVENANCE_INVALID,not_evaluable,none,1
+S09,guard mismatch plus partial exposure,available,fail,pass,partial,valid,SPEC_IMPLEMENTATION_MISMATCH|GUARD_MISMATCH|PARTIAL_WINDOW_EXPOSURE,unsupported,implemented_or_realized_configuration,1
+S10,runtime mismatch plus invalid provenance,available,pass,fail,full,invalid,PROVENANCE_INVALID|IMPLEMENTATION_REALIZATION_MISMATCH,not_evaluable,none,1
+S11,guard and clock mismatches with unreplayed C-to-R but recoverable partial exposure,available,fail,not_evaluable,partial,valid,SPEC_IMPLEMENTATION_MISMATCH|GUARD_MISMATCH|CLOCK_DOMAIN_MISMATCH|C_TO_R_NOT_EVALUABLE|PARTIAL_WINDOW_EXPOSURE,unsupported,recorded_realized_configuration,1

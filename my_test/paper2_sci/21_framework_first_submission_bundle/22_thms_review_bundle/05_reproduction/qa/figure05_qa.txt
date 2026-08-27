@@ -1,0 +1,52 @@
+Figure 5 QA — Contact-aligned force and commanded-stiffness trajectories
+STATUS: PASS
+
+Inputs:
+- F:\sun\sunhan\my_test\paper2_sci\21_framework_first_submission_bundle\03_clean_analysis\contact_aligned_summary.csv
+- F:\sun\sunhan\my_test\paper2_sci\21_framework_first_submission_bundle\03_clean_analysis\contact_aligned_trajectories.csv
+- F:\sun\sunhan\my_test\paper2_sci\21_framework_first_submission_bundle\03_clean_analysis\trial_level_fidelity_metrics.csv
+
+Checks:
+[PASS] clean summary rows by configuration | actual={'A': 201, 'E': 201, 'F': 201, 'G': 201} | expected={'A': 201, 'G': 201, 'E': 201, 'F': 201}
+[PASS] A clean time grid -0.50 to +1.50 s at 0.01 s | actual=(201, -0.5, 1.5) | expected=(201, -0.5, 1.5)
+[PASS] G clean time grid -0.50 to +1.50 s at 0.01 s | actual=(201, -0.5, 1.5) | expected=(201, -0.5, 1.5)
+[PASS] E clean time grid -0.50 to +1.50 s at 0.01 s | actual=(201, -0.5, 1.5) | expected=(201, -0.5, 1.5)
+[PASS] F clean time grid -0.50 to +1.50 s at 0.01 s | actual=(201, -0.5, 1.5) | expected=(201, -0.5, 1.5)
+[PASS] summary participant count at every time point | actual=[5] | expected=[5]
+[PASS] missing plotted summary values | actual=0 | expected=0
+[PASS] frozen aligned trajectory rows | actual=36180 | expected=36180
+[PASS] aligned trajectory trial identities | actual=180 | expected=180
+[PASS] aligned trajectory participants | actual=5 | expected=5
+[PASS] aligned points per trial | actual=[201] | expected=[201]
+[PASS] trials averaged within each participant/configuration | actual=[9] | expected=[9]
+[PASS] hierarchical reconstruction matches excess_force_N_mean | actual=4.4408920985e-16 | expected=<= 1e-10
+[PASS] hierarchical reconstruction matches excess_force_N_ci95_low | actual=4.4408920985e-16 | expected=<= 1e-10
+[PASS] hierarchical reconstruction matches excess_force_N_ci95_high | actual=6.66133814775e-16 | expected=<= 1e-10
+[PASS] hierarchical reconstruction matches stiffness_trans_N_m_mean | actual=5.68434188608e-14 | expected=<= 1e-10
+[PASS] hierarchical reconstruction matches stiffness_trans_N_m_ci95_low | actual=5.68434188608e-14 | expected=<= 1e-10
+[PASS] hierarchical reconstruction matches stiffness_trans_N_m_ci95_high | actual=8.52651282912e-14 | expected=<= 1e-10
+[PASS] hierarchical CI uses five participant curves | actual=[5] | expected=[5]
+[PASS] A commanded K_t at contact: median/min/max (N/m) | actual=(200.0, 200.0, 200.0) | expected=(200.0, 200.0, 200.0)
+[PASS] G commanded K_t at contact: median/min/max (N/m) | actual=(198.3, 178.9, 200.0) | expected=(198.3, 178.9, 200.0)
+[PASS] E commanded K_t at contact: median/min/max (N/m) | actual=(120.0, 50.0, 200.0) | expected=(120.0, 50.0, 200.0)
+[PASS] F commanded K_t at contact: median/min/max (N/m) | actual=(120.0, 50.0, 200.0) | expected=(120.0, 50.0, 200.0)
+[PASS] F commanded K_t at contact +0.20 s: median/min/max (N/m) | actual=(116.1, 41.1, 189.2) | expected=(116.1, 41.1, 189.2)
+
+Underlying trial-level commanded K_t summaries (QA only; not plotted as inference):
+mode_code       timepoint  median_N_m    min_N_m  max_N_m
+        A         contact  200.000000 200.000000    200.0
+        G         contact  198.261276 178.883443    200.0
+        E         contact  120.000000  50.000000    200.0
+        F         contact  120.000000  50.000000    200.0
+        F contact +0.20 s  116.081813  41.101283    189.2
+
+Maximum absolute differences between reconstructed hierarchical summaries and clean summary:
+- excess_force_N_mean: 4.4408920985e-16
+- excess_force_N_ci95_low: 4.4408920985e-16
+- excess_force_N_ci95_high: 6.66133814775e-16
+- stiffness_trans_N_m_mean: 5.68434188608e-14
+- stiffness_trans_N_m_ci95_low: 5.68434188608e-14
+- stiffness_trans_N_m_ci95_high: 8.52651282912e-14
+
+No pointwise significance testing is run by this figure script.
+No smoothing or interpolation is applied by this figure script; it reads the frozen aligned outputs.
