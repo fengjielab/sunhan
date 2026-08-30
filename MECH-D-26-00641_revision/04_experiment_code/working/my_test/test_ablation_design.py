@@ -3,6 +3,7 @@ import math
 
 from ablation_design import CONDITIONS, FIXED_BASELINE, resolve_parameters
 from experiment_protocol import json_safe
+from run_scheduled_trial import group_directory_name
 
 
 PROFILE = {
@@ -73,6 +74,24 @@ class AblationDesignTests(unittest.TestCase):
     def test_json_safe_replaces_non_finite_values(self):
         cleaned = json_safe({"finite": 1.0, "missing": math.nan})
         self.assertEqual(cleaned, {"finite": 1.0, "missing": None})
+
+    def test_group_directory_keeps_four_conditions_together(self):
+        common = {"object_order": "4", "object_id": "banana", "repetition": "1"}
+        names = {
+            group_directory_name({**common, "condition": condition})
+            for condition in CONDITIONS
+        }
+        self.assertEqual(names, {"G04_banana_R1"})
+
+    def test_group_directory_separates_repetitions(self):
+        first = group_directory_name({
+            "object_order": "2", "object_id": "cup", "repetition": "1",
+        })
+        second = group_directory_name({
+            "object_order": "2", "object_id": "cup", "repetition": "2",
+        })
+        self.assertEqual(first, "G02_cup_R1")
+        self.assertEqual(second, "G02_cup_R2")
 
 
 if __name__ == "__main__":

@@ -122,6 +122,12 @@ Pilot with one or two operators. Formal collection is prohibited until all items
   recorded in `FORMAL_LOCK.md` and not changed thereafter;
 - ethics institution, determination/reference number, and date are documented.
 
+The repaired pilot schedule includes a 12-trial PILOT02 supplement covering banana,
+scissors, and bottle. Together with cup, mouse, and apple in PILOT02 session 1, this
+provides one four-condition hardware block for every formal object and a 24-trial
+session-load check before formal lock. New files are grouped by object order and
+repetition as `G##_object_R#`; existing raw files are never moved or renamed.
+
 Pilot data are descriptive safety/feasibility data only.
 
 ## Pilot_v0 findings and restart rule

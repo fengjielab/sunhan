@@ -1,8 +1,10 @@
 # 预实验现场操作说明
 
-预实验使用 `PILOT01`、`PILOT02`，每人12次，共24次。每人依次测试
-cup（medium）、apple（soft）、mouse（hard）三个代表物体，每个物体完成
-`I`、`I_H`、`I_G`、`I_H_G` 四个条件。顺序只能来自 `pilot_schedule.csv`。
+原始预实验部分使用 `PILOT01`、`PILOT02`，每人12次，测试 cup（medium）、
+apple（soft）、mouse（hard）三个代表物体。为在正式锁定前覆盖全部六种物体，
+`PILOT02` 增加第二会话12次：banana、scissors、bottle 各完成 `I`、`I_H`、
+`I_G`、`I_H_G` 四个条件。`PILOT01` 为1-12次；`PILOT02` 为1-24次。
+顺序只能来自 `pilot_schedule.csv`。
 
 ## 一、实验前一次性准备
 
@@ -30,7 +32,7 @@ python simulate_ablation.py --output ../../../07_analysis/ablation_mapping_check
 python -m py_compile interactive_teleop.py experiment_protocol.py run_scheduled_trial.py
 ```
 
-必须看到消融设计7项测试、分析工具2项测试通过，并看到模拟结果 `PASS`。
+必须看到消融设计9项测试、分析工具2项测试通过，并看到模拟结果 `PASS`。
 
 修复版还必须先完成一次硬件冒烟试验。冒烟试验的 validation JSON 中不得有
 `errors`，并应确认物体锁定、H/G操纵检查和严格JSON均通过。控制周期若仍有
@@ -63,7 +65,7 @@ Windows命令行不使用反斜杠续行时，可把上述命令写成同一行�
 
 程序将依次：
 
-1. 在 `05_pilot_data/PILOT01/PILOT01_S1` 写入不可覆盖的运行配置；
+1. 在 `05_pilot_data/PILOT01/PILOT01_S1/G##_object_R1` 写入不可覆盖的运行配置；
 2. 连接 Omega.7、Franka、夹爪和 RealSense；
 3. 采集静止外力基线；
 4. 识别 cup、锁定策略并完成平滑参数切换；
@@ -99,8 +101,17 @@ Windows命令行不使用反斜杠续行时，可把上述命令写成同一行�
 
 ## 七、继续下一条
 
-把 `--trial-order 1` 改成2、3……12。每次都先不加 `--execute`核对物体和条件，
-确认后再执行。PILOT02同理，将 `--subject-id` 改为 `PILOT02`。
+把 `--trial-order 1` 逐次递增。每次都先不加 `--execute`核对物体和条件，
+确认后再执行。`PILOT01` 到12；`PILOT02` 到24，其中T13-T24位于第二会话。
+
+新采集数据自动按四条件物体组归档。例如PILOT02补充香蕉四条件均进入：
+
+```text
+05_pilot_data/PILOT02/PILOT02_S2/G04_banana_R1/
+```
+
+剪刀进入 `G05_scissors_R1`，瓶子进入 `G06_bottle_R1`。已有平铺原始数据不移动、
+不改名；分析脚本会递归读取新旧两种结构。
 
 ## 八、立即停止条件
 
@@ -111,11 +122,11 @@ Windows命令行不使用反斜杠续行时，可把上述命令写成同一行�
 
 ## 九、预实验通过标准
 
-- 两名预实验者共24条计划行均有记录；中断有明确原因。
-- 三类物体均能在10 s内稳定识别并完成参数切换。
+- `PILOT01` 12条与 `PILOT02` 24条计划行均有记录；中断有明确原因。
+- 六种物体均能在10 s内稳定识别并完成参数切换。
 - 四条件映射全部正确，日志字段完整，无命令越过软件力上限。
 - 阶段顺序正确，成功终点无误判。
-- 无危险振荡或异常运动，单人12次没有不可接受的疲劳。
+- 无危险振荡或异常运动，PILOT02完成24次没有不可接受的疲劳。
 
 预实验通过后仍不能直接采集正式数据。应先把模型哈希、伦理信息、安全评估和
 最终参数写入 `FORMAL_LOCK.md`，将状态改为正式锁定。

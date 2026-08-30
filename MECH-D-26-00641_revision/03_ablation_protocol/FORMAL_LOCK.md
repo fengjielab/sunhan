@@ -3,7 +3,8 @@
 Status: **NOT LOCKED**
 
 Pilot_v0 (`PILOT01`) is retained as engineering/feasibility data and is not eligible
-for confirmatory analysis. Pilot_v1 hardware smoke test is pending.
+for confirmatory analysis. Repaired PILOT02 session 1 and the 12-trial session 2
+supplement (banana, scissors, bottle) must be completed before formal lock.
 
 - Protocol ID: MECH-D-26-00641-ABLATION-v1
 - Pilot participants completed:

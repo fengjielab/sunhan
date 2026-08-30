@@ -19,12 +19,13 @@ def main():
     if subject not in {"PILOT01", "PILOT02"}:
         raise SystemExit("编号只能是 PILOT01 或 PILOT02")
 
+    maximum = 12 if subject == "PILOT01" else 24
     try:
-        trial_order = int(input("第几次（1-12）: ").strip())
+        trial_order = int(input(f"第几次（1-{maximum}）: ").strip())
     except ValueError:
-        raise SystemExit("次数必须是1-12的整数")
-    if not 1 <= trial_order <= 12:
-        raise SystemExit("次数必须在1-12之间")
+        raise SystemExit(f"次数必须是1-{maximum}的整数")
+    if not 1 <= trial_order <= maximum:
+        raise SystemExit(f"次数必须在1-{maximum}之间")
     if not MODEL.is_file():
         raise SystemExit(f"找不到YOLO模型，请修改 pilot.py 中的 MODEL：{MODEL}")
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -21,6 +22,21 @@ def load_row(schedule: Path, subject_id: str, trial_order: int):
     return matches[0]
 
 
+def group_directory_name(row):
+    """Return one deterministic folder for a four-condition object/repetition block."""
+    object_id = str(row["object_id"])
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", object_id):
+        raise SystemExit(f"Unsafe object_id in schedule: {object_id!r}")
+    try:
+        object_order = int(row["object_order"])
+        repetition = int(row["repetition"])
+    except (KeyError, TypeError, ValueError) as error:
+        raise SystemExit(f"Invalid grouping fields in schedule row: {error}") from error
+    if object_order < 1 or repetition < 1:
+        raise SystemExit("object_order and repetition must be positive")
+    return f"G{object_order:02d}_{object_id}_R{repetition}"
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--schedule", type=Path, required=True)
@@ -33,7 +49,8 @@ def main():
     parser.add_argument("--execute", action="store_true")
     args = parser.parse_args()
     row = load_row(args.schedule, args.subject_id, args.trial_order)
-    output_dir = args.data_root / row["subject_id"] / row["session_id"]
+    group_dir = group_directory_name(row)
+    output_dir = args.data_root / row["subject_id"] / row["session_id"] / group_dir
     command = [
         sys.executable, str(Path(__file__).with_name("interactive_teleop.py")),
         "--mode", row["condition"], "--run-kind", args.run_kind,
@@ -46,6 +63,7 @@ def main():
         "--yolo-model", str(args.yolo_model.resolve()),
     ]
     print("Scheduled row:", row)
+    print("Group directory:", output_dir)
     print("Command:", subprocess.list2cmdline(command))
     if not args.execute:
         print("Dry run only; add --execute after checking the object and workspace.")
