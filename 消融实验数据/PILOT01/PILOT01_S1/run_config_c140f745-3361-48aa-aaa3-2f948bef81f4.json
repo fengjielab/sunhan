@@ -1,0 +1,75 @@
+{
+  "schema_version": 3,
+  "source_baseline_commit": "1c1ad02b07e4d269e09423b0c14879acd482eeab",
+  "source_baseline_tag": "MECH-D-26-00641-submitted",
+  "run_uuid": "c140f745-3361-48aa-aaa3-2f948bef81f4",
+  "run_kind": "pilot",
+  "trajectory_dir": "/home/mfj/sunhan/MECH-D-26-00641_revision/05_pilot_data/PILOT01/PILOT01_S1",
+  "condition": "I",
+  "session_id": "PILOT01_S1",
+  "schedule_id": "MECH-D-26-00641-PILOT-v1-seed260642",
+  "subject_id": "PILOT01",
+  "object_id": "cup",
+  "trial_id": "PILOT01_T01",
+  "trial_order": 1,
+  "repetition": 1,
+  "haptic_force_limit_N": 3.0,
+  "design": {
+    "schema_version": 3,
+    "fixed_baseline": {
+      "K_trans": 150.0,
+      "K_rot": 10.0,
+      "damping_ratio": 1.0,
+      "K_fb": 0.5,
+      "deadband": 0.4,
+      "scale": 3.0,
+      "gripper_speed": 0.05,
+      "gripper_force": 15.0
+    },
+    "conditions": {
+      "I": {
+        "condition_id": "I",
+        "adaptive_impedance": true,
+        "adaptive_haptics": false,
+        "adaptive_gripper": false
+      },
+      "I_H": {
+        "condition_id": "I_H",
+        "adaptive_impedance": true,
+        "adaptive_haptics": true,
+        "adaptive_gripper": false
+      },
+      "I_G": {
+        "condition_id": "I_G",
+        "adaptive_impedance": true,
+        "adaptive_haptics": false,
+        "adaptive_gripper": true
+      },
+      "I_H_G": {
+        "condition_id": "I_H_G",
+        "adaptive_impedance": true,
+        "adaptive_haptics": true,
+        "adaptive_gripper": true
+      }
+    }
+  },
+  "host": {
+    "hostname": "mfj-NUC11PAHi5",
+    "platform": "Linux-5.15.202-rt94-x86_64-with-glibc2.29",
+    "python": "3.8.10"
+  },
+  "code": {
+    "/home/mfj/sunhan/MECH-D-26-00641_revision/04_experiment_code/working/my_test/interactive_teleop.py": "1774373b7fdf42d84f7aeda62d380288c189541233c17fd33009a2619dbb6803",
+    "/home/mfj/sunhan/MECH-D-26-00641_revision/04_experiment_code/working/my_test/ablation_design.py": "a32d5f24cac0f14dd8315c2e89c06ecec85a71a3b9d998a14b6a9ff3c95770e4",
+    "/home/mfj/sunhan/MECH-D-26-00641_revision/04_experiment_code/working/my_test/experiment_protocol.py": "cadf8ee2c9779175d5e8b8dc529697fa7f5b82ecc168c0e497fc19276e6aa490",
+    "/home/mfj/sunhan/MECH-D-26-00641_revision/04_experiment_code/working/my_test/force_metrics.py": "00b27753a5825f2b3b425c08a6bd68fba28bfee4fbe9d02cec2486aeb93d4504",
+    "/home/mfj/sunhan/MECH-D-26-00641_revision/04_experiment_code/working/plans/force_estimator.py": "c3b873ddc6381a1db880af32230bd56f9b6d2647f358cee7071db89cfabea901",
+    "/home/mfj/sunhan/MECH-D-26-00641_revision/04_experiment_code/working/biaoding/vision_physics_mapper.py": "cfe46b28b1aec1930f1b6418a1c85dc5f1df5e0de3ef410ab25beeff4522cdc9"
+  },
+  "vision_model": {
+    "path": "/home/mfj/sunhan/yolo/ultralytics-8.3.163/yolo11n.pt",
+    "sha256": "0ebbc80d4a7680d14987a577cd21342b65ecfd94632bd9a8da63ae6417644ee1",
+    "confidence_threshold": 0.25
+  },
+  "created_wall_time_ns": 1788069849517406208
+}
