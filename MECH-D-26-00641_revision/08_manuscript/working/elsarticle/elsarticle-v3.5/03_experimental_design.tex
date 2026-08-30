@@ -1,0 +1,122 @@
+\section{Experimental Design}
+\subsection{Experimental Objectives, Comparisons, and Outcome Hierarchy}
+The experiment was designed to evaluate the task-level performance of object-conditioned strategy-level parameter configuration during heterogeneous-object haptic teleoperation. Task completion time was specified as the primary endpoint. The primary planned comparison was between the complete multi-channel configuration mode (C) and the impedance-only reconfiguration mode (E).
+
+The primary C--E comparison assessed the system-level contribution of jointly configuring the master-side haptic and gripper-execution channels beyond impedance-only reconfiguration. Because the two added channels changed together, the comparison was interpreted at the bundled system level. Secondary contrasts (C--A, C--B, and C--D) provided fixed-parameter, manual-selection, and semantic-display references, respectively. Observed task success and Raw NASA-TLX were treated as secondary descriptive outcomes; master-side trajectory length and pause count were analyzed as exploratory process measures. All analyses were interpreted as repeated-measures evidence for the three-operator sample.
+
+Table~\ref{tab:3} defines the five experimental modes and summarizes their channel-update logic and comparison roles. The C--E comparison was the primary planned contrast.
+
+\begin{table*}[!t]
+\centering
+\caption{Experimental modes, information conditions, channel-update logic, and comparison roles.}
+\label{tab:3}
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.20}
+\begin{tabularx}{\textwidth}{@{}p{0.13\textwidth}p{0.23\textwidth}>{\centering\arraybackslash}p{0.105\textwidth}>{\centering\arraybackslash}p{0.105\textwidth}>{\centering\arraybackslash}p{0.105\textwidth}Y@{}}
+\toprule
+Mode & Operator information / selection & Slave-side impedance & Master-side haptic feedback & Gripper execution & Comparison role \\
+\midrule
+A: Fixed-Parameter Baseline & No visual-semantic display or strategy selection & Fixed & Fixed & Fixed & Fixed-parameter reference condition. \\
+B: Timed Manual-Selection Workflow & No visual-semantic display; operator identifies the object and selects a complete strategy after timing begins. & Manual & Manual & Manual & Timed manual-workflow reference. \\
+C: Complete Multi-Channel Configuration & Object class, selected strategy, confidence score, and color-coded bounding box & Automatic & Automatic & Automatic & Complete multi-channel condition; primary condition in the C--E comparison. \\
+D: Visual-Semantic Display with Fixed Parameters & Same visual-semantic display as mode C & Fixed & Fixed & Fixed & Semantic-display control condition. \\
+E: Impedance-Only Reconfiguration & Same visual-semantic display as mode C & Automatic & Fixed & Fixed & Impedance-only reference for the primary C--E comparison. \\
+\bottomrule
+\end{tabularx}
+\par\smallskip
+\footnotesize\textit{Note:} Automatic denotes a one-shot update triggered by the first detection result with confidence $\geq 0.25$. Manual denotes a one-shot complete-strategy update after operator selection, with identification and selection included in trial timing. Fixed denotes retention of the initialized parameter state. In modes C--E, no parameter update occurred if no result was available or if the confidence score was below 0.25. A threshold-qualified class without an explicit mapping invoked the balanced default strategy; mode D displayed the visual-semantic output while retaining $\boldsymbol{\Theta}_0$. Visual inference was not used in modes A or B. The C--E comparison was interpreted at the bundled system level because the master-side haptic and gripper-execution channels changed together.
+\end{table*}
+
+\subsection{Operators, Objects, and Matched-Block Design}
+Three operators participated in the main experiment (P01--P03; 23--24 years of age; two male and one female; all right-handed). Because the Omega.7 was positioned on the left side of the platform, all operators used their left hand to control the device in every trial. The device position and operating hand were held constant across operators and experimental modes to standardize the physical interface condition. All operators received basic teleoperation training and completed a 10--15-min familiarization session immediately before formal data collection. During familiarization, they practiced master-device motion, gripper operation, and the complete task procedure. Written informed consent was obtained from all operators before participation.
+
+The six objects were selected to represent different contact, grasping, and transfer requirements. Their relevant characteristics included deformation sensitivity, smooth or irregular surface geometry, and elongated shape. Each object was assigned to the fragility-priority, balanced, or stability-priority strategy to select the corresponding parameter vector for the present platform and task. The assignments served as operational labels for parameter selection in the specified grasp-and-transfer task and were not intended as a general classification of material properties. Table~\ref{tab:5} summarizes the approximate physical profiles, assigned strategies, and principal manipulation considerations for the six objects. The paper cup and scissors represented contrasting examples of deformation-sensitive handling and orientation-sensitive transfer, respectively.
+
+\begin{table*}[!t]
+\centering
+\caption{Test objects, assigned strategies, approximate physical profiles, and principal manipulation considerations.}
+\label{tab:5}
+\small
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1.16}
+\begin{tabularx}{\textwidth}{@{}p{0.14\textwidth}p{0.18\textwidth}p{0.29\textwidth}Y@{}}
+\toprule
+Object & Assigned strategy & Approximate physical profile & Principal manipulation consideration \\
+\midrule
+Apple & Fragility-priority & $\sim$200 g; smooth surface; diameter 70--80 mm & Contact impact and slip; gentle grasping required. \\
+Banana & Fragility-priority & $\sim$120 g; smooth surface; $20\times160$ mm & Compression-related deformation and slip. \\
+Paper cup & Balanced & $\sim$5 g; paper; diameter 55 mm; height 60 mm & High deformation sensitivity with a concurrent stability requirement. \\
+Bottle & Balanced & $\sim$30 g; smooth plastic; diameter 65 mm; height 100 mm & Transfer slip and the balance between gentle contact and grasp stability. \\
+Mouse & Stability-priority & $\sim$100 g; smooth plastic; $65\times100\times35$ mm & Rigid, irregular geometry and potential transfer slip. \\
+Scissors & Stability-priority & $\sim$150 g; metal and plastic; $50\times130\times15$ mm & Elongated rigid geometry and a high orientation-retention requirement. \\
+\bottomrule
+\end{tabularx}
+\end{table*}
+
+The main experiment comprised 27 matched task blocks. Each block was defined by a unique combination of operator, object, and repetition index and contained one trial under each of modes A--E. Accordingly, $27$ blocks $\times$ $5$ modes per block yielded $135$ trials. The five mode-specific observations within each block therefore formed the matched set for the completion-time analysis.
+
+For each operator and strategy category, three matched blocks were allocated between the two assigned objects in a $2{:}1$ ratio. This allocation was reversed across operators (Table~\ref{tab:6}). The same object was used for all five mode trials within a block, preserving object-matched comparisons.
+
+\begin{table}[!t]
+\centering
+\caption{Distribution of matched task blocks and trials across strategies and objects.}
+\label{tab:6}
+\footnotesize
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1.16}
+\begin{tabular*}{\columnwidth}{@{\extracolsep{\fill}}lcc@{}}
+\toprule
+Object & Blocks & Trials \\
+\midrule
+\multicolumn{3}{@{}l}{\textit{Fragility-priority}} \\
+Apple & 4 & 20 \\
+Banana & 5 & 25 \\
+\addlinespace[2pt]
+\multicolumn{3}{@{}l}{\textit{Balanced}} \\
+Paper cup & 5 & 25 \\
+Bottle & 4 & 20 \\
+\addlinespace[2pt]
+\multicolumn{3}{@{}l}{\textit{Stability-priority}} \\
+Mouse & 5 & 25 \\
+Scissors & 4 & 20 \\
+\midrule
+Total (six objects) & 27 & 135 \\
+\bottomrule
+\end{tabular*}
+\par\smallskip
+\footnotesize\textit{Note:} Each matched block contains five trials---one under each experimental mode---so the numbers of trials equal five times the corresponding numbers of blocks.
+\end{table}
+
+Mode orders were preassigned using nine different sequences across the operator $\times$ strategy groups and were not fully counterbalanced (Supplementary Table~S2). With three operators, mode order, object allocation, and operator effects could not be estimated independently; the C--E comparison was therefore treated as a paired contrast within the observed sample.
+
+\subsection{Task Procedure and Outcome Measures}
+Before each trial, the test object was manually placed within a predefined workspace region and aligned with the prescribed orientation as closely as practicable. Small trial-to-trial variations in object position and orientation remained after manual placement; the same placement protocol was applied across all five modes. Only translational master-device motion was mapped to the Panda end effector, whereas the desired end-effector orientation remained fixed throughout the trial.
+
+Each trial comprised six stages: reset, approach, grasp, transfer, release, and termination. In modes C--E, camera acquisition, visual inference, and teleoperation began concurrently at task initiation. Operator-driven motion was permitted while visual inference proceeded asynchronously. In mode B, trial timing began before manual object identification and button-based strategy selection. Robot motion was enabled after the operator completed the selection step. The end of the manual selection step was not recorded with a separate timestamp.
+
+A trial was classified as successful when the object was grasped, transferred, and placed without a drop, observable slip, or visible damage. A trial involving any of these events was recorded as a failure. Failure labels were assigned by a designated researcher through direct observation; systematic video recording and independent blinded re-evaluation were not performed (see Section~5.5). Failures did not terminate trial timing, regrasping was not permitted, and successful and failed trials shared the same predefined timing endpoint. The retained dataset included the master-side trajectory, gripper input, active parameter state, task completion time, and outcome label. Event-level object-class labels, confidence scores, strategy-trigger timestamps, and synchronized trigger-to-contact timestamps were not logged (Section~5.5).
+
+Task completion time was measured from task initiation to the common predefined terminal state and was retained for both successful and failed trials. Observed success rate was calculated as the number of successful trials divided by the total number of trials in each mode. It was reported descriptively because the outcome labels were assigned from direct observation without independent re-evaluation.
+
+Subjective workload was assessed using the Raw NASA-TLX questionnaire \cite{ref27}. Each of the six dimensions was rated on a 0--100 scale, and the unweighted arithmetic mean of the six ratings was used as the Raw NASA-TLX score. Each operator completed one questionnaire immediately after completing the three trials associated with a given strategy $\times$ mode condition. The three trials combined the two objects assigned to that strategy according to the operator-specific $2{:}1$ allocation. The workload dataset therefore comprised $3 \times 3 \times 5 = 45$ questionnaires (three operators, three strategies, and five modes), corresponding to nine questionnaire units per mode. This questionnaire structure supported descriptive comparisons at the mode and strategy levels. Object-specific workload was not measured separately.
+
+Master-side trajectory length and pause count were analyzed as exploratory process measures. Before analysis, a pause was operationally defined as a continuous interval during which the master-device translational speed remained below 0.005 m/s for at least 0.30 s. Master-device speed was obtained by differentiating the raw master-side position trajectories, which were sampled at approximately 200 Hz; pause intervals were then identified using the predefined speed and duration thresholds.
+
+Visual performance was characterized separately in a controlled image test using object-class accuracy, class-to-strategy mapping accuracy, confidence score, and per-image processing time.
+
+\subsection{Statistical Analysis}
+Completion time across the five modes was analyzed using a Friedman test, treating the 27 operator-nested matched task blocks as the repeated-measures units. When the omnibus Friedman test was significant, the four planned paired contrasts comparing mode C with modes A, B, D, and E were evaluated using Wilcoxon signed-rank tests with Holm adjustment for multiple comparisons.
+
+For each matched block $b$, the primary C--E completion-time difference was defined as
+
+\begin{equation}
+\label{eq:ce-completion-difference}
+\Delta T_b=T_{E,b}-T_{C,b},
+\end{equation}
+
+so that a positive value favored mode C. The analysis reported the mean paired difference $\overline{\Delta T}$, the relative reduction with mode E as the reference, and a matched-block percentile bootstrap 95\% confidence interval. The interval was calculated from 10{,}000 resamples with replacement of the 27 matched-block differences. Operator-specific mean paired differences were reported to assess directional consistency across operators. A leave-one-operator-out sensitivity analysis was additionally performed to evaluate whether the overall C--E difference was dominated by any single operator.
+
+Observed success outcomes were summarized as counts and percentages for each mode, and paired C--E outcomes were cross-tabulated within the matched blocks. Given the small number of discordant C--E pairs, the exact two-sided McNemar test was treated as a supplementary analysis. Raw NASA-TLX was summarized descriptively across the nine operator $\times$ strategy questionnaire units per mode; no inferential test or bootstrap confidence interval was calculated.
+
+Master-side trajectory length and pause count were treated as exploratory process measures. For the C--E trajectory-length comparison, the mean paired difference and a matched-block percentile bootstrap 95\% confidence interval were reported using the same 10{,}000-resample procedure. Pause counts were summarized descriptively; no formal hypothesis test was prespecified or performed. Non-binary outcomes were summarized using median [interquartile range (IQR)] and mean $\pm$ standard deviation (SD), as appropriate; categorical success outcomes were reported as counts and percentages. Because the 27 matched blocks were nested within only three operators, the resulting $p$-values and matched-block bootstrap intervals were interpreted conditionally for the observed repeated-measures sample and were not treated as estimates of population-level participant effects.

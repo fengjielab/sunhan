@@ -1,0 +1,51 @@
+\documentclass[5p,times]{elsarticle}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb,booktabs,graphicx,tabularx,array}
+\usepackage{float,placeins}
+\usepackage{microtype}
+\setlength{\emergencystretch}{1em}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\biboptions{sort&compress}
+
+\journal{Mechatronics}
+
+\begin{document}
+
+\begin{frontmatter}
+\title{Object-Conditioned Strategy-Level Parameter Configuration for Haptic Teleoperation of Heterogeneous Objects}
+
+\author[a]{Fengjie Ma}
+\author[b]{Chuang Cao}
+\author[b]{Qixin Cao}
+\author[a]{Yilin Zhou}
+\author[a]{Hua Zhang\corref{cor1}}
+\ead{huazhang@yeah.net}
+\cortext[cor1]{Corresponding author}
+
+\affiliation[a]{organization={School of Mechanical and Automotive Engineering, Shanghai University of Engineering Science},
+addressline={333 Longteng Road}, city={Shanghai}, postcode={201620}, country={China}}
+\affiliation[b]{organization={School of Mechanical Engineering, Shanghai Jiao Tong University},
+addressline={800 Dongchuan Road}, city={Shanghai}, postcode={200240}, country={China}}
+
+\begin{abstract}
+Fixed teleoperation parameters may not provide suitable interaction behavior across objects with different fragility, geometry, and grasping requirements. Existing object-conditioned approaches mainly adjust slave-side impedance, whereas the joint configuration of slave-side impedance, master-side haptic feedback, and gripper-execution parameters has received limited attention. To address this issue, this paper proposes an object-conditioned strategy-level parameter-configuration framework for haptic teleoperation of heterogeneous objects. Each detected object class is mapped to one of three manipulation strategies, and each strategy specifies a joint parameter configuration for the three channels. Low-rate visual perception is integrated asynchronously with a nominal 200-Hz supervisory loop. The first mapped detection that satisfies the confidence threshold triggers a one-shot parameter update, and the selected strategy remains locked for the remainder of the trial. The framework was evaluated in a human-in-the-loop experiment involving three operators, six objects, five control modes, and 135 grasp-and-transfer trials arranged in 27 matched blocks. Compared with impedance-only reconfiguration, the complete multi-channel configuration reduced mean task completion time by 1.79 s (8.5\%; matched-block bootstrap 95\% CI, 1.10--2.51 s). The improvement was directionally consistent across operators and objects. Secondary outcomes were interpreted descriptively, and the individual contributions of the two added channels were not isolated. Overall, the proposed framework provides an interpretable one-shot configuration approach for the haptic teleoperation of heterogeneous objects.
+\end{abstract}
+
+\begin{keyword}
+haptic teleoperation \sep heterogeneous objects \sep impedance control \sep object-conditioned configuration \sep haptic feedback \sep human-in-the-loop evaluation
+\end{keyword}
+\end{frontmatter}
+
+\input{01_introduction}
+\input{02_methods}
+\input{03_experimental_design}
+\input{04_results}
+\input{05_discussion}
+\input{06_conclusion}
+
+\input{declarations}
+
+\bibliographystyle{elsarticle-num}
+\bibliography{references}
+\end{document}
