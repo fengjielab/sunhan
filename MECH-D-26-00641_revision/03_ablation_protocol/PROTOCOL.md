@@ -1,7 +1,7 @@
 # Confirmatory 2x2 ablation protocol
 
 Protocol ID: `MECH-D-26-00641-ABLATION-v1`  
-Status: **pilot-ready, not formal-locked**  
+Status: **repair candidate; pilot_v1 hardware smoke test required**
 Formal lock requires the pilot gate and ethics fields below to be completed.
 
 ## Research question and hypotheses
@@ -29,9 +29,9 @@ Disabled channels use one neutral baseline for every object and condition:
 | Translational stiffness initial value | 150 N/m |
 | Rotational stiffness initial value | 10 Nm/rad |
 | Damping ratio initial value | 1.0 |
-| Haptic gain `Kf` | 0.5 |
+| Haptic gain `Kf` | 0.4 |
 | Haptic deadband `d` | 0.4 N |
-| Effective external-force threshold `d/Kf` | 0.8 N |
+| Effective external-force threshold `d/Kf` | 1.0 N |
 | Position scale | 3.0 |
 | Gripper speed | 0.05 m/s |
 | Requested gripper force | 15 N |
@@ -123,3 +123,19 @@ Pilot with one or two operators. Formal collection is prohibited until all items
 - ethics institution, determination/reference number, and date are documented.
 
 Pilot data are descriptive safety/feasibility data only.
+
+## Pilot_v0 findings and restart rule
+
+`PILOT01` pilot_v0 completed all 12 scheduled rows, but it is engineering evidence
+only. The run exposed synchronous gripper-state reads in the control loop, an
+incorrect deadline definition, missing strict object-lock checks, and no effective
+H/G manipulation for the medium profile. Those issues were repaired before
+pilot_v1.
+
+Do not combine pilot_v0 with pilot_v1 or formal data. Before starting `PILOT02`, run
+one hardware smoke trial with the repaired code and require: strict validator PASS,
+the scheduled object and semantic label match, H/G manipulation checks pass, strict
+JSON files parse, and measured control timing is reported without a severe warning.
+If the nominal 200 Hz target remains infeasible after removing blocking I/O, lock and
+report the measured update rate and weaken the real-time claim rather than repeatedly
+retuning the experiment.

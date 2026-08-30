@@ -35,7 +35,7 @@ import forcedimension_core.drd as drd
 import panda_py
 from panda_py import controllers, libfranka
 
-from experiment_protocol import ExperimentTimeline, PHASE_PREP
+from experiment_protocol import ExperimentTimeline, PHASE_PREP, json_safe
 from ablation_design import (
     CONDITIONS as ABLATION_CONDITIONS,
     FIXED_BASELINE,
@@ -118,7 +118,8 @@ TRAJECTORY_CSV_HEADER = [
     "K_trans", "K_rot", "damping_ratio", "K_fb", "deadband", "scale",
     "gripper_state", "gripper_cmd_width", "gripper_width", "gripper_width_valid",
     "gripper_speed", "gripper_force", "grasp_success",
-    "vision_class", "vision_label", "vision_confidence", "vision_locked",
+    "vision_class", "vision_locked_class", "vision_label", "vision_confidence",
+    "vision_locked",
     "vision_frame_id", "capture_wall_time_ns", "capture_perf_time_ns",
     "frame_enqueue_perf_time_ns", "inference_start_perf_time_ns",
     "inference_end_perf_time_ns", "result_receive_perf_time_ns",
@@ -128,7 +129,8 @@ TRAJECTORY_CSV_HEADER = [
     "u_h_base_x", "u_h_base_y", "u_h_base_z", "u_g_aperture_N",
     "u_h_cmd_x", "u_h_cmd_y", "u_h_cmd_z", "u_h_cmd_norm_N",
     "haptic_force_limit_N", "haptic_saturated", "effective_force_threshold_N",
-    "fusion_delta_K", "fusion_active", "control_dt", "control_compute_time_s",
+    "fusion_delta_K", "fusion_active", "control_target_frequency_hz",
+    "control_target_dt_s", "control_dt", "control_compute_time_s",
     "control_overrun_s", "control_deadline_miss",
     "force_baseline_mean", "force_baseline_std", "force_threshold",
 ]
@@ -205,7 +207,7 @@ PRESETS = {
         "desc": "人工正确选择 medium 策略，与视觉 medium 前馈参数一致",
         "K_trans": 150.0, "K_rot": 10.0,
         "damping_ratio": 1.0, "K_fb": 0.5, "deadband": 0.4,
-        "scale": 3.0, "gripper_speed": 0.05, "gripper_force": 15.0,
+        "scale": 3.0, "gripper_speed": 0.05, "gripper_force": 20.0,
     },
     "hard_obj": {
         "name": "🪨 硬物体手感",
@@ -241,7 +243,7 @@ PRESETS = {
         "desc": "实验 D/E/F 的 medium 视觉前馈基线",
         "K_trans": 150.0, "K_rot": 10.0,
         "damping_ratio": 1.0, "K_fb": 0.5, "deadband": 0.4,
-        "scale": 3.0, "gripper_speed": 0.05, "gripper_force": 15.0,
+        "scale": 3.0, "gripper_speed": 0.05, "gripper_force": 20.0,
     },
     "vision_hard": {
         "name": "👁️ 视觉硬物体",
@@ -460,6 +462,8 @@ class InteractiveTeleop:
         self._vision_current_preset = "standard"  # 当前应用的 PRESET key
         self._vision_locked = False         # 参数是否已锁定（第一次检测后固定不变）
         self._vision_locked_label = "unknown"  # 融合模式中力反馈微调的语义类别
+        self._vision_locked_class = "unknown"
+        self._last_vision_mismatch_frame_id = -1
         self._vision_base_K_trans = DEFAULT_K_TRANS
         self._vision_base_K_rot = DEFAULT_K_ROT
         self._vision_base_damping = DEFAULT_DAMPING_RATIO
@@ -543,6 +547,8 @@ class InteractiveTeleop:
         self._gripper_width_actual = float("nan")
         self._gripper_width_valid = False
         self._grasp_success = False
+        self._gripper_io_lock = threading.Lock()
+        self._gripper_measure_busy = False
 
         # ── Franka 状态 ──
         self._init_pos = np.zeros(3)
@@ -1419,11 +1425,24 @@ class InteractiveTeleop:
         return float(np.clip(norm * self._max_width, GRIPPER_MIN_WIDTH, self._max_width))
 
     def _refresh_gripper_measurement(self):
-        """低频读取夹爪实测宽度；失败时不以命令宽度冒充实测值。"""
-        if self.gripper is None:
+        """Schedule a non-blocking gripper-width read outside the 200 Hz loop."""
+        if (self.gripper is None or self._gripper_measure_busy or
+                self._cmd_busy):
             return
+        self._gripper_measure_busy = True
+        threading.Thread(
+            target=self._execute_gripper_measurement, daemon=True
+        ).start()
+
+    def _execute_gripper_measurement(self):
+        """Read the gripper without blocking or racing command I/O."""
         try:
-            state = self.gripper.read_once()
+            if not self._gripper_io_lock.acquire(blocking=False):
+                return
+            try:
+                state = self.gripper.read_once()
+            finally:
+                self._gripper_io_lock.release()
             width = float(getattr(state, "width"))
             if np.isfinite(width):
                 self._gripper_width_actual = width
@@ -1431,8 +1450,8 @@ class InteractiveTeleop:
                 return
         except Exception:
             pass
-        self._gripper_width_actual = float("nan")
-        self._gripper_width_valid = False
+        finally:
+            self._gripper_measure_busy = False
 
     def _angle_to_width(self, angle_deg: float) -> float:
         """保留的兼容接口：夹钳角度 → 夹爪宽度 (m)"""
@@ -1445,7 +1464,8 @@ class InteractiveTeleop:
         if self.gripper is None:
             return False
         try:
-            self.gripper.stop()
+            with self._gripper_io_lock:
+                self.gripper.stop()
             time.sleep(STOP_SETTLE_TIME)
             return True
         except Exception as e:
@@ -1458,7 +1478,8 @@ class InteractiveTeleop:
             return
         self._cmd_busy = True
         try:
-            self.gripper.move(width, self._gripper_speed_cur)
+            with self._gripper_io_lock:
+                self.gripper.move(width, self._gripper_speed_cur)
             self._last_cmd_width = width
             self._gripper_width_actual = float("nan")
             self._gripper_width_valid = False
@@ -1476,10 +1497,11 @@ class InteractiveTeleop:
             return
         self._cmd_busy = True
         try:
-            success = self.gripper.grasp(
-                width, self._gripper_speed_cur, self._gripper_force_cur,
-                GRIPPER_EPS_INNER, GRIPPER_EPS_OUTER,
-            )
+            with self._gripper_io_lock:
+                success = self.gripper.grasp(
+                    width, self._gripper_speed_cur, self._gripper_force_cur,
+                    GRIPPER_EPS_INNER, GRIPPER_EPS_OUTER,
+                )
             self._last_cmd_width = width
             self._cmd_count += 1
             if success:
@@ -1517,12 +1539,14 @@ class InteractiveTeleop:
             if not self._gripper_stop():
                 raise RuntimeError("stop() 未能释放夹爪力控")
             # 第二步：move 到目标开度
-            moved = self.gripper.move(width, self._gripper_speed_cur)
+            with self._gripper_io_lock:
+                moved = self.gripper.move(width, self._gripper_speed_cur)
             if moved is False:
                 print("  ⚠️ 首次张开被拒绝，再次 stop 后重试...")
                 if not self._gripper_stop():
                     raise RuntimeError("重试前 stop() 失败")
-                moved = self.gripper.move(width, self._gripper_speed_cur)
+                with self._gripper_io_lock:
+                    moved = self.gripper.move(width, self._gripper_speed_cur)
             if moved is False:
                 raise RuntimeError("move() 两次均未能张开夹爪")
             self._last_cmd_width = width
@@ -2039,13 +2063,41 @@ class InteractiveTeleop:
                     with self._vision_lock:
                         profile = self._vision_profile
                         det_time = self._vision_last_time
+                        detection = self._vision_detection
+                        detected_class = str(
+                            detection.get("class", "unknown")
+                        ) if detection is not None else "unknown"
+                        detected_frame_id = self._vision_frame_id
                     now_ts = time.time()
 
                     if profile is not None and (now_ts - det_time) < VISION_DETECTION_HOLD_TIMEOUT:
                         # 有有效检测
                         if not self._vision_locked:
+                            detected_label = getattr(profile, "label", "unknown")
+                            expected_object = self._timeline.object_id
+                            strict_lock = self._run_kind in ("pilot", "formal")
+                            lock_eligible = (
+                                not strict_lock or
+                                (detected_class == expected_object and
+                                 detected_label != "unknown")
+                            )
+                            if (not lock_eligible and
+                                    detected_frame_id != self._last_vision_mismatch_frame_id):
+                                self._last_vision_mismatch_frame_id = detected_frame_id
+                                self._timeline.mark_repeatable(
+                                    "vision_object_mismatch",
+                                    expected_object=expected_object,
+                                    detected_class=detected_class,
+                                    semantic_label=detected_label,
+                                    frame_id=detected_frame_id,
+                                )
+                                print(
+                                    f"\n  WARNING: expected {expected_object}, "
+                                    f"detected {detected_class} ({detected_label}); "
+                                    "parameters remain unlocked"
+                                )
                             # ── 第一次检测到物体 → 锁定参数 ──
-                            preset_key = self._profile_to_preset(profile)
+                            preset_key = self._profile_to_preset(profile) if lock_eligible else None
                             self._vision_current_preset = preset_key
                             p = PRESETS.get(preset_key)
                             if p:
@@ -2061,7 +2113,8 @@ class InteractiveTeleop:
                                 self._scale_cur = applied["scale"]
                                 self._gripper_speed_cur = applied["gripper_speed"]
                                 self._gripper_force_cur = applied["gripper_force"]
-                                self._vision_locked_label = getattr(profile, "label", "unknown")
+                                self._vision_locked_label = detected_label
+                                self._vision_locked_class = detected_class
                                 self._vision_base_K_trans = applied["K_trans"]
                                 self._vision_base_K_rot = applied["K_rot"]
                                 self._vision_base_damping = applied["damping_ratio"]
@@ -2072,17 +2125,17 @@ class InteractiveTeleop:
                                         "     🔁 融合模式: 视觉参数作为前馈基线，"
                                         "接触后按外力微调刚度"
                                     )
-                            self._vision_locked = True
-                            self._timeline.mark(
-                                "vision_lock", detected_class=self._vision_class,
-                                semantic_label=self._vision_locked_label,
-                                confidence=self._vision_confidence,
-                                condition=self._experiment_condition,
-                                adaptive_haptics=self._condition.adaptive_haptics,
-                                adaptive_gripper=self._condition.adaptive_gripper,
-                                capture_perf_time_ns=self._vision_capture_perf_ns,
-                                result_receive_perf_time_ns=self._vision_result_receive_perf_ns,
-                            )
+                                self._vision_locked = True
+                                self._timeline.mark(
+                                    "vision_lock", detected_class=self._vision_locked_class,
+                                    semantic_label=self._vision_locked_label,
+                                    confidence=self._vision_confidence,
+                                    condition=self._experiment_condition,
+                                    adaptive_haptics=self._condition.adaptive_haptics,
+                                    adaptive_gripper=self._condition.adaptive_gripper,
+                                    capture_perf_time_ns=self._vision_capture_perf_ns,
+                                    result_receive_perf_time_ns=self._vision_result_receive_perf_ns,
+                                )
                         # 锁定后不再更新参数，即使检测结果变化也不响应
                     # 锁定后也不再执行超时回退
 
@@ -2103,8 +2156,11 @@ class InteractiveTeleop:
 
                 # ── 6b. 统一原始数据记录（状态更新完成后） ──
                 self._control_compute_time = time.perf_counter() - t_start
-                self._control_overrun = max(0.0, self._control_dt - dt)
-                self._control_deadline_miss = self._control_dt > dt
+                # A deadline is missed only when computation exceeds its budget.
+                # Comparing the full period to dt labels normal sleep jitter as a
+                # miss and produced the misleading ~100% rate in pilot_v0.
+                self._control_overrun = max(0.0, self._control_compute_time - dt)
+                self._control_deadline_miss = self._control_compute_time > dt
                 if self._trajectory_record:
                     self._traj_cycle += 1
                     if self._traj_cycle % TRAJECTORY_DECIMATION == 0:
@@ -2178,6 +2234,10 @@ class InteractiveTeleop:
             script_path.with_name("ablation_design.py"),
             script_path.with_name("experiment_protocol.py"),
             script_path.with_name("force_metrics.py"),
+            script_path.with_name("run_scheduled_trial.py"),
+            script_path.with_name("pilot.py"),
+            script_path.with_name("smoke.py"),
+            script_path.resolve().parents[3] / "07_analysis" / "validate_trial.py",
             WORKING_ROOT / "plans" / "force_estimator.py",
             WORKING_ROOT / "biaoding" / "vision_physics_mapper.py",
         ]
@@ -2197,6 +2257,11 @@ class InteractiveTeleop:
             "trial_order": self._trial_order,
             "repetition": self._repetition,
             "haptic_force_limit_N": self._haptic_force_limit,
+            "control": {
+                "target_frequency_hz": CTRL_FREQ,
+                "target_period_s": 1.0 / CTRL_FREQ,
+                "deadline_definition": "control_compute_time_s > target_period_s",
+            },
             "design": design_manifest(),
             "host": {
                 "hostname": socket.gethostname(),
@@ -2218,7 +2283,10 @@ class InteractiveTeleop:
             "created_wall_time_ns": time.time_ns(),
         }
         with config_path.open("x", encoding="utf-8") as stream:
-            json.dump(config, stream, ensure_ascii=False, indent=2)
+            json.dump(
+                json_safe(config), stream,
+                ensure_ascii=False, indent=2, allow_nan=False,
+            )
         self._run_config_path = str(config_path)
         print(f"Run configuration locked: {config_path}")
         return self._run_config_path
@@ -2280,6 +2348,7 @@ class InteractiveTeleop:
             "gripper_force": self._gripper_force_cur,
             "grasp_success": int(self._grasp_success),
             "vision_class": self._vision_class,
+            "vision_locked_class": self._vision_locked_class,
             "fusion_delta_K": self._fusion_delta_K,
             "fusion_active": int(self._fusion_active),
             "vision_label": self._vision_locked_label,
@@ -2316,6 +2385,8 @@ class InteractiveTeleop:
                 self._deadband_cur / self._K_fb_cur
                 if self._K_fb_cur > 0 else float("inf")
             ),
+            "control_target_frequency_hz": CTRL_FREQ,
+            "control_target_dt_s": 1.0 / CTRL_FREQ,
             "control_dt": self._control_dt,
             "control_compute_time_s": self._control_compute_time,
             "control_overrun_s": self._control_overrun,
@@ -2462,6 +2533,7 @@ class InteractiveTeleop:
             "vision_auto_map": self._vision_auto_map,
             "vision_force_fusion": self._vision_force_fusion,
             "vision_locked": self._vision_locked,
+            "vision_locked_class": self._vision_locked_class,
             "vision_label": self._vision_locked_label,
         }
         if self.mode in PRESETS:
@@ -2515,6 +2587,8 @@ class InteractiveTeleop:
             "final_params": final_params,
             "applied_condition_params": self._applied_condition_params,
             "timing": {
+                "control_target_frequency_hz": CTRL_FREQ,
+                "control_target_dt_s": 1.0 / CTRL_FREQ,
                 "parameter_transition_duration_ms": self._transition_duration_ms,
                 "vision_queue_age_ms_final": self._vision_queue_age_ms,
                 "control_deadline_miss_count": sum(
@@ -2529,7 +2603,10 @@ class InteractiveTeleop:
         }
 
         with open(fpath, "x", encoding="utf-8") as f:
-            _json.dump(summary, f, indent=2, ensure_ascii=False)
+            _json.dump(
+                json_safe(summary), f, indent=2,
+                ensure_ascii=False, allow_nan=False,
+            )
 
         print(f"  📊 汇总已保存: {fpath}")
         print(f"     时长={elapsed_total:.1f}s  轨迹={traj_len:.3f}m  "

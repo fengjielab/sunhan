@@ -24,6 +24,21 @@ PHASE_COMPLETE = "COMPLETE"
 PHASE_INCOMPLETE = "INCOMPLETE"
 
 
+def json_safe(value):
+    """Convert numpy values and non-finite floats to strict-JSON values."""
+    if isinstance(value, dict):
+        return {key: json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [json_safe(item) for item in value]
+    if isinstance(value, (float, np.floating)):
+        return float(value) if np.isfinite(value) else None
+    if isinstance(value, np.integer):
+        return int(value)
+    if isinstance(value, np.bool_):
+        return bool(value)
+    return value
+
+
 class ExperimentTimeline:
     """Track experiment events and phases using a monotonic clock.
 
@@ -257,13 +272,8 @@ class ExperimentTimeline:
 
     def save_events(self, path: Path) -> None:
         path = Path(path)
-        def clean(value):
-            if isinstance(value, dict):
-                return {k: clean(v) for k, v in value.items()}
-            if isinstance(value, list):
-                return [clean(v) for v in value]
-            if isinstance(value, (float, np.floating)) and not np.isfinite(value):
-                return None
-            return value
         with path.open("w", encoding="utf-8") as f:
-            json.dump(clean(self.to_dict()), f, ensure_ascii=False, indent=2, allow_nan=False)
+            json.dump(
+                json_safe(self.to_dict()), f,
+                ensure_ascii=False, indent=2, allow_nan=False,
+            )

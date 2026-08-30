@@ -18,7 +18,7 @@ PROFILES = {
     "medium": {
         "K_trans": 150.0, "K_rot": 10.0, "damping_ratio": 1.0,
         "K_fb": 0.5, "deadband": 0.4, "scale": 3.0,
-        "gripper_speed": 0.05, "gripper_force": 15.0,
+        "gripper_speed": 0.05, "gripper_force": 20.0,
     },
     "hard": {
         "K_trans": 200.0, "K_rot": 13.0, "damping_ratio": 1.2,
@@ -44,6 +44,19 @@ def verify():
                 assert values["gripper_speed"] == FIXED_BASELINE["gripper_speed"]
                 assert values["gripper_force"] == FIXED_BASELINE["gripper_force"]
             assert values["scale"] == FIXED_BASELINE["scale"]
+            if values["adaptive_haptics"]:
+                assert (
+                    values["K_fb"], values["deadband"]
+                ) != (
+                    FIXED_BASELINE["K_fb"], FIXED_BASELINE["deadband"]
+                ), f"{profile_name}/{condition_id} has no H manipulation"
+            if values["adaptive_gripper"]:
+                assert (
+                    values["gripper_speed"], values["gripper_force"]
+                ) != (
+                    FIXED_BASELINE["gripper_speed"],
+                    FIXED_BASELINE["gripper_force"],
+                ), f"{profile_name}/{condition_id} has no G manipulation"
         report["profiles"][profile_name] = resolved
     return report
 

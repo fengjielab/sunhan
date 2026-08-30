@@ -1,6 +1,8 @@
 import unittest
+import math
 
 from ablation_design import CONDITIONS, FIXED_BASELINE, resolve_parameters
+from experiment_protocol import json_safe
 
 
 PROFILE = {
@@ -12,6 +14,12 @@ PROFILE = {
     "scale": 9.0,
     "gripper_speed": 0.02,
     "gripper_force": 8.0,
+}
+
+MEDIUM_PROFILE = {
+    "K_trans": 150.0, "K_rot": 10.0, "damping_ratio": 1.0,
+    "K_fb": 0.5, "deadband": 0.4, "scale": 3.0,
+    "gripper_speed": 0.05, "gripper_force": 20.0,
 }
 
 
@@ -48,6 +56,23 @@ class AblationDesignTests(unittest.TestCase):
     def test_scale_is_never_a_hidden_factor(self):
         for condition_id in CONDITIONS:
             self.assertEqual(resolve_parameters(condition_id, PROFILE)["scale"], 3.0)
+
+    def test_medium_profile_has_real_h_and_g_manipulations(self):
+        baseline = resolve_parameters("I", MEDIUM_PROFILE)
+        haptic = resolve_parameters("I_H", MEDIUM_PROFILE)
+        gripper = resolve_parameters("I_G", MEDIUM_PROFILE)
+        self.assertNotEqual(
+            (baseline["K_fb"], baseline["deadband"]),
+            (haptic["K_fb"], haptic["deadband"]),
+        )
+        self.assertNotEqual(
+            (baseline["gripper_speed"], baseline["gripper_force"]),
+            (gripper["gripper_speed"], gripper["gripper_force"]),
+        )
+
+    def test_json_safe_replaces_non_finite_values(self):
+        cleaned = json_safe({"finite": 1.0, "missing": math.nan})
+        self.assertEqual(cleaned, {"finite": 1.0, "missing": None})
 
 
 if __name__ == "__main__":

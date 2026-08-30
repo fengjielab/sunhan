@@ -1,0 +1,57 @@
+MECH-D-26-00641 第二次预实验（PILOT02）启动检查
+================================================
+
+当前结论：不能直接开始PILOT02，必须先做1次修复版硬件冒烟试验。
+
+一、同步修复版
+
+将Windows中的以下目录同步到Ubuntu同名目录：
+
+MECH-D-26-00641_revision/04_experiment_code/working/my_test
+MECH-D-26-00641_revision/07_analysis
+
+不要覆盖或删除PILOT01 pilot_v0原始数据。
+
+二、Ubuntu软件检查
+
+cd /home/mfj/sunhan/MECH-D-26-00641_revision/04_experiment_code/working/my_test
+python3 -m unittest test_ablation_design.py
+python3 simulate_ablation.py
+
+cd /home/mfj/sunhan/MECH-D-26-00641_revision/07_analysis
+python3 -m unittest test_analysis_tools.py
+
+应看到：7项消融测试通过、模拟PASS、2项分析测试通过。
+
+三、硬件冒烟试验
+
+进入my_test目录后只运行：
+
+python3 smoke.py
+
+1. 将cup放到固定起点。
+2. 屏幕必须显示cup和I_H_G，确认后输入RUN。
+3. 程序只允许锁定cup/medium，不允许unknown或其他物体锁定。
+4. 完成抓取、搬运和释放，等待自动保存与验证。
+5. 冒烟数据自动隔离到05_pilot_data/SMOKE_V1，不混入PILOT02。
+6. validation必须status=pass且errors为空。
+7. H和G操纵检查都必须通过，summary必须能被严格JSON解析。
+8. 查看控制周期与deadline warning；若仍明显异常，先锁定实际更新率并削弱
+   实时性主张，不继续反复调参。
+
+四、允许开始PILOT02的条件
+
+[ ] 7项消融测试通过
+[ ] 2项分析测试通过
+[ ] simulate_ablation显示PASS
+[ ] 冒烟试验自动保存CSV、events、summary、validation和run_config
+[ ] validation status=pass且errors为空
+[ ] 锁定物体与计划物体一致
+[ ] medium条件H/G参数确实不同于固定基线
+[ ] 没有危险振荡、异常运动或不可接受的控制周期错误
+
+全部打勾后，才能执行：
+
+python3 pilot.py
+
+然后输入PILOT02和试次1。

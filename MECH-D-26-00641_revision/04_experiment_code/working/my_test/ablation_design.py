@@ -11,7 +11,9 @@ FIXED_BASELINE = {
     "K_trans": 150.0,
     "K_rot": 10.0,
     "damping_ratio": 1.0,
-    "K_fb": 0.5,
+    # The fixed haptic gain must not equal any object-adaptive profile;
+    # otherwise medium objects would receive no H-factor manipulation.
+    "K_fb": 0.4,
     "deadband": 0.4,
     "scale": 3.0,
     "gripper_speed": 0.05,

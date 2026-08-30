@@ -30,7 +30,11 @@ python simulate_ablation.py --output ../../../07_analysis/ablation_mapping_check
 python -m py_compile interactive_teleop.py experiment_protocol.py run_scheduled_trial.py
 ```
 
-必须看到5项测试通过和模拟结果 `PASS`。
+必须看到消融设计7项测试、分析工具2项测试通过，并看到模拟结果 `PASS`。
+
+修复版还必须先完成一次硬件冒烟试验。冒烟试验的 validation JSON 中不得有
+`errors`，并应确认物体锁定、H/G操纵检查和严格JSON均通过。控制周期若仍有
+warning，应记录实测频率并在正式锁定前决定降低主张或锁定较低目标频率。
 
 ## 三、检查下一条试验，但不启动硬件
 
@@ -115,3 +119,6 @@ Windows命令行不使用反斜杠续行时，可把上述命令写成同一行�
 
 预实验通过后仍不能直接采集正式数据。应先把模型哈希、伦理信息、安全评估和
 最终参数写入 `FORMAL_LOCK.md`，将状态改为正式锁定。
+
+当前 `PILOT01` 属于 pilot_v0，不与修复后的 pilot_v1 合并。完成修复版硬件
+冒烟试验并通过上述门槛后，才可开始 `PILOT02`。
