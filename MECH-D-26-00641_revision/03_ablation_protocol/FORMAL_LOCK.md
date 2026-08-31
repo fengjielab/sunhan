@@ -1,6 +1,6 @@
 # Formal experiment lock
 
-Status: **NOT LOCKED**
+Status: **LOCKED**
 
 Pilot_v0 (`PILOT01`) is retained as engineering/feasibility data and is not eligible
 for confirmatory analysis. Repaired PILOT02 session 1 and the 12-trial session 2
