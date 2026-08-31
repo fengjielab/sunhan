@@ -22,8 +22,8 @@ def load_row(schedule: Path, subject_id: str, trial_order: int):
     return matches[0]
 
 
-def group_directory_name(row):
-    """Return one deterministic folder for a four-condition object/repetition block."""
+def group_directory_parts(row):
+    """Return object-group and repetition folders for one four-condition block."""
     object_id = str(row["object_id"])
     if not re.fullmatch(r"[A-Za-z0-9_-]+", object_id):
         raise SystemExit(f"Unsafe object_id in schedule: {object_id!r}")
@@ -34,7 +34,7 @@ def group_directory_name(row):
         raise SystemExit(f"Invalid grouping fields in schedule row: {error}") from error
     if object_order < 1 or repetition < 1:
         raise SystemExit("object_order and repetition must be positive")
-    return f"G{object_order:02d}_{object_id}_R{repetition}"
+    return f"G{object_order:02d}_{object_id}", f"R{repetition}"
 
 
 def main():
@@ -49,8 +49,11 @@ def main():
     parser.add_argument("--execute", action="store_true")
     args = parser.parse_args()
     row = load_row(args.schedule, args.subject_id, args.trial_order)
-    group_dir = group_directory_name(row)
-    output_dir = args.data_root / row["subject_id"] / row["session_id"] / group_dir
+    group_dir, repetition_dir = group_directory_parts(row)
+    output_dir = (
+        args.data_root / row["subject_id"] / row["session_id"]
+        / group_dir / repetition_dir
+    )
     command = [
         sys.executable, str(Path(__file__).with_name("interactive_teleop.py")),
         "--mode", row["condition"], "--run-kind", args.run_kind,

@@ -7,8 +7,9 @@ rename a raw acquisition file after validation; corrections belong in an audit l
 
 New acquisitions are grouped automatically as:
 
-`P01/P01_S1/G01_apple_R1/`
+`P01/P01_S1/G01_apple/R1/`
 
-Each `G##_object_R#` directory contains the four scheduled conditions for one object
-and repetition. Technical repeat attempts remain in the same group with a new run
-UUID. Existing flat pilot data are not moved or renamed.
+Each `G##_object` directory contains one object class. Its `R1` and `R2`
+subdirectories each contain the four scheduled conditions for that repetition.
+Technical repeat attempts remain in the same repetition directory with a new run
+UUID. Existing pilot data are not moved or renamed.

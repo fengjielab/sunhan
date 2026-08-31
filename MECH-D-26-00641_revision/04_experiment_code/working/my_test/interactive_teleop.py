@@ -2236,6 +2236,7 @@ class InteractiveTeleop:
             script_path.with_name("force_metrics.py"),
             script_path.with_name("run_scheduled_trial.py"),
             script_path.with_name("pilot.py"),
+            script_path.with_name("formal.py"),
             script_path.with_name("smoke.py"),
             script_path.resolve().parents[3] / "07_analysis" / "validate_trial.py",
             WORKING_ROOT / "plans" / "force_estimator.py",

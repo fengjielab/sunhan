@@ -3,7 +3,7 @@ import math
 
 from ablation_design import CONDITIONS, FIXED_BASELINE, resolve_parameters
 from experiment_protocol import json_safe
-from run_scheduled_trial import group_directory_name
+from run_scheduled_trial import group_directory_parts
 
 
 PROFILE = {
@@ -78,20 +78,20 @@ class AblationDesignTests(unittest.TestCase):
     def test_group_directory_keeps_four_conditions_together(self):
         common = {"object_order": "4", "object_id": "banana", "repetition": "1"}
         names = {
-            group_directory_name({**common, "condition": condition})
+            group_directory_parts({**common, "condition": condition})
             for condition in CONDITIONS
         }
-        self.assertEqual(names, {"G04_banana_R1"})
+        self.assertEqual(names, {("G04_banana", "R1")})
 
     def test_group_directory_separates_repetitions(self):
-        first = group_directory_name({
+        first = group_directory_parts({
             "object_order": "2", "object_id": "cup", "repetition": "1",
         })
-        second = group_directory_name({
+        second = group_directory_parts({
             "object_order": "2", "object_id": "cup", "repetition": "2",
         })
-        self.assertEqual(first, "G02_cup_R1")
-        self.assertEqual(second, "G02_cup_R2")
+        self.assertEqual(first, ("G02_cup", "R1"))
+        self.assertEqual(second, ("G02_cup", "R2"))
 
 
 if __name__ == "__main__":
