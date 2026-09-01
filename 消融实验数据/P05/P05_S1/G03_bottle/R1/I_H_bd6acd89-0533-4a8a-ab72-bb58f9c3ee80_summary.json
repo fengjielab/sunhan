@@ -1,0 +1,853 @@
+{
+  "schema_version": 3,
+  "timestamp": "20260901_161331",
+  "saved_at": "2026-09-01T16:13:32.037539",
+  "run_uuid": "bd6acd89-0533-4a8a-ab72-bb58f9c3ee80",
+  "run_kind": "formal",
+  "run_config": "/home/mfj/sunhan/MECH-D-26-00641_revision/06_formal_data/P05/P05_S1/G03_bottle/R1/run_config_bd6acd89-0533-4a8a-ab72-bb58f9c3ee80.json",
+  "session_id": "P05_S1",
+  "schedule_id": "MECH-D-26-00641-ABLATION-v1-seed260641",
+  "subject_id": "P05",
+  "object_id": "bottle",
+  "trial_id": "P05_T19",
+  "trial_order": 19,
+  "repetition": 1,
+  "mode": {
+    "mode": "I_H",
+    "condition": "I_H",
+    "adaptive_impedance": true,
+    "adaptive_haptics": true,
+    "adaptive_gripper": false,
+    "vision_enabled": true,
+    "vision_auto_map": true,
+    "vision_force_fusion": false,
+    "vision_locked": true,
+    "vision_locked_class": "bottle",
+    "vision_label": "medium"
+  },
+  "runtime": {
+    "duration_s": 24.17,
+    "traj_length_m": 0.44,
+    "mean_speed_ms": 0.0287,
+    "speed_variance": 0.000819,
+    "speed_std_ms": 0.0286,
+    "max_speed_ms": 0.1269
+  },
+  "trajectory": {
+    "n_samples": 2178,
+    "pos_x_range_m": [
+      -0.0333,
+      0.0044
+    ],
+    "pos_y_range_m": [
+      -0.1045,
+      0.0287
+    ],
+    "pos_z_range_m": [
+      -0.008,
+      0.105
+    ]
+  },
+  "external_force": {
+    "source": "Franka estimated external wrench",
+    "metric": "norm(Fx, Fy, Fz)",
+    "F_ext_peak_N": 6.938,
+    "F_ext_peak_time_s": 16.7988,
+    "F_ext_mean_N": 3.385,
+    "n_samples": 2178
+  },
+  "final_params": {
+    "K_trans": 150.0,
+    "K_rot": 10.0,
+    "damping_ratio": 1.0,
+    "K_fb": 0.5,
+    "deadband": 0.4,
+    "scale": 3.0,
+    "vision_base_K_trans": 150.0,
+    "vision_base_K_rot": 10.0,
+    "fusion_delta_K_final": 0.0
+  },
+  "applied_condition_params": {
+    "K_trans": 150.0,
+    "K_rot": 10.0,
+    "damping_ratio": 1.0,
+    "K_fb": 0.5,
+    "deadband": 0.4,
+    "scale": 3.0,
+    "gripper_speed": 0.05,
+    "gripper_force": 15.0,
+    "effective_force_threshold_N": 0.8,
+    "condition_id": "I_H",
+    "adaptive_impedance": true,
+    "adaptive_haptics": true,
+    "adaptive_gripper": false
+  },
+  "timing": {
+    "control_target_frequency_hz": 200.0,
+    "control_target_dt_s": 0.005,
+    "parameter_transition_duration_ms": 381.505724,
+    "vision_queue_age_ms_final": 66.812617,
+    "control_deadline_miss_count": 120,
+    "haptic_saturation_count": 0
+  },
+  "fusion_config": null,
+  "experiment": {
+    "schema_version": 3,
+    "mode": "I_H",
+    "subject_id": "P05",
+    "object_id": "bottle",
+    "trial_id": "P05_T19",
+    "started_at_unix": 1788250387.851643,
+    "phase": "COMPLETE",
+    "completed": true,
+    "incomplete": false,
+    "recognition_time_s": 1.557499345002725,
+    "operation_time_s": 13.241345752998313,
+    "force_baseline_mean_N": 1.107948182431531,
+    "force_baseline_std_N": 0.022885214521940388,
+    "force_threshold_N": 1.1766038259973521,
+    "events": [
+      {
+        "event": "system_start",
+        "system_time": 0.0,
+        "phase": "PREP"
+      },
+      {
+        "event": "vision_start",
+        "system_time": 8.128731627999514,
+        "phase": "PREP"
+      },
+      {
+        "event": "force_baseline_ready",
+        "system_time": 8.814735590996861,
+        "phase": "PREP",
+        "mean_N": 1.107948182431531,
+        "std_N": 0.022885214521940388,
+        "threshold_N": 1.1766038259973521
+      },
+      {
+        "event": "first_frame",
+        "system_time": 8.871443394997186,
+        "phase": "PREP"
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 10.42545719699774,
+        "phase": "PREP",
+        "confidence": 0.9446337819099426,
+        "detected_class": "bottle",
+        "frame_id": 1,
+        "queue_age_ms": 1553.991941
+      },
+      {
+        "event": "parameter_transition_start",
+        "system_time": 10.428842944998905,
+        "phase": "PREP",
+        "condition": "I_H",
+        "target_K_trans": 150.0,
+        "target_K_rot": 10.0,
+        "target_zeta": 1.0,
+        "target_K_fb": 0.5,
+        "target_deadband": 0.4
+      },
+      {
+        "event": "vision_lock",
+        "system_time": 10.428942739999911,
+        "phase": "PREP",
+        "detected_class": "bottle",
+        "semantic_label": "medium",
+        "confidence": 0.9446337819099426,
+        "condition": "I_H",
+        "adaptive_haptics": true,
+        "adaptive_gripper": false,
+        "capture_perf_time_ns": 23119612328370,
+        "result_receive_perf_time_ns": 23121166320311
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 10.472324865997507,
+        "phase": "PREP",
+        "confidence": 0.9377695322036743,
+        "detected_class": "bottle",
+        "frame_id": 21,
+        "queue_age_ms": 231.820025
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 10.539168747996882,
+        "phase": "PREP",
+        "confidence": 0.9361332654953003,
+        "detected_class": "bottle",
+        "frame_id": 24,
+        "queue_age_ms": 118.338747
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 10.60558576800031,
+        "phase": "PREP",
+        "confidence": 0.9374880194664001,
+        "detected_class": "bottle",
+        "frame_id": 25,
+        "queue_age_ms": 133.430724
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 10.740690558999631,
+        "phase": "PREP",
+        "confidence": 0.9350079298019409,
+        "detected_class": "bottle",
+        "frame_id": 26,
+        "queue_age_ms": 201.78969
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 10.744323440998414,
+        "phase": "PREP",
+        "confidence": 0.9316726326942444,
+        "detected_class": "bottle",
+        "frame_id": 27,
+        "queue_age_ms": 138.844824
+      },
+      {
+        "event": "parameter_transition_end",
+        "system_time": 10.810376090998034,
+        "phase": "PREP",
+        "condition": "I_H",
+        "duration_ms": 381.505724
+      },
+      {
+        "event": "system_ready",
+        "system_time": 10.814776571998664,
+        "phase": "READY"
+      },
+      {
+        "event": "task_start",
+        "system_time": 10.814776571998664,
+        "phase": "APPROACH",
+        "trigger": "system_ready"
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 10.880282907997753,
+        "phase": "APPROACH",
+        "confidence": 0.9366716146469116,
+        "detected_class": "bottle",
+        "frame_id": 28,
+        "queue_age_ms": 140.030086
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 10.939394255998195,
+        "phase": "APPROACH",
+        "confidence": 0.93272864818573,
+        "detected_class": "bottle",
+        "frame_id": 29,
+        "queue_age_ms": 195.46875
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 11.059953552998195,
+        "phase": "APPROACH",
+        "confidence": 0.9333117604255676,
+        "detected_class": "bottle",
+        "frame_id": 31,
+        "queue_age_ms": 180.447607
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 11.09906782699909,
+        "phase": "APPROACH",
+        "confidence": 0.9338337182998657,
+        "detected_class": "bottle",
+        "frame_id": 32,
+        "queue_age_ms": 159.886486
+      },
+      {
+        "event": "contact_onset",
+        "system_time": 11.064546301997325,
+        "phase": "APPROACH",
+        "threshold_N": 1.1766038259973521
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 11.139507112999127,
+        "phase": "APPROACH",
+        "confidence": 0.9346364736557007,
+        "detected_class": "bottle",
+        "frame_id": 33,
+        "queue_age_ms": 79.778817
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 11.206129547997989,
+        "phase": "APPROACH",
+        "confidence": 0.9326089024543762,
+        "detected_class": "bottle",
+        "frame_id": 34,
+        "queue_age_ms": 107.423401
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 11.27288595400023,
+        "phase": "APPROACH",
+        "confidence": 0.9372735023498535,
+        "detected_class": "bottle",
+        "frame_id": 35,
+        "queue_age_ms": 133.572825
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 11.33963219999714,
+        "phase": "APPROACH",
+        "confidence": 0.9299529194831848,
+        "detected_class": "bottle",
+        "frame_id": 36,
+        "queue_age_ms": 133.681102
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 11.406380549997266,
+        "phase": "APPROACH",
+        "confidence": 0.9132767915725708,
+        "detected_class": "bottle",
+        "frame_id": 37,
+        "queue_age_ms": 133.764841
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 11.473110876999272,
+        "phase": "APPROACH",
+        "confidence": 0.9154198169708252,
+        "detected_class": "bottle",
+        "frame_id": 38,
+        "queue_age_ms": 133.757781
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 11.539636861998588,
+        "phase": "APPROACH",
+        "confidence": 0.9166980981826782,
+        "detected_class": "bottle",
+        "frame_id": 39,
+        "queue_age_ms": 133.512724
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 11.634568556997692,
+        "phase": "APPROACH",
+        "confidence": 0.9246302247047424,
+        "detected_class": "bottle",
+        "frame_id": 40,
+        "queue_age_ms": 161.721216
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 11.673285770997609,
+        "phase": "APPROACH",
+        "confidence": 0.9231844544410706,
+        "detected_class": "bottle",
+        "frame_id": 41,
+        "queue_age_ms": 133.857456
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 11.739992331000394,
+        "phase": "APPROACH",
+        "confidence": 0.9209977984428406,
+        "detected_class": "bottle",
+        "frame_id": 42,
+        "queue_age_ms": 105.680225
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 11.874677119998523,
+        "phase": "APPROACH",
+        "confidence": 0.9178969860076904,
+        "detected_class": "bottle",
+        "frame_id": 43,
+        "queue_age_ms": 201.735649
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 11.878139557997201,
+        "phase": "APPROACH",
+        "confidence": 0.9290492534637451,
+        "detected_class": "bottle",
+        "frame_id": 44,
+        "queue_age_ms": 138.447051
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 11.940088526000181,
+        "phase": "APPROACH",
+        "confidence": 0.942707359790802,
+        "detected_class": "bottle",
+        "frame_id": 45,
+        "queue_age_ms": 66.080036
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 12.054537637999601,
+        "phase": "APPROACH",
+        "confidence": 0.9486339688301086,
+        "detected_class": "bottle",
+        "frame_id": 46,
+        "queue_age_ms": 176.760437
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 12.073606437999842,
+        "phase": "APPROACH",
+        "confidence": 0.9483649730682373,
+        "detected_class": "bottle",
+        "frame_id": 47,
+        "queue_age_ms": 133.803651
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 12.23100363499907,
+        "phase": "APPROACH",
+        "confidence": 0.9438909292221069,
+        "detected_class": "bottle",
+        "frame_id": 48,
+        "queue_age_ms": 176.929835
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 12.373897199999192,
+        "phase": "APPROACH",
+        "confidence": 0.9446064829826355,
+        "detected_class": "bottle",
+        "frame_id": 49,
+        "queue_age_ms": 300.631829
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 12.412431672997627,
+        "phase": "APPROACH",
+        "confidence": 0.9443151950836182,
+        "detected_class": "bottle",
+        "frame_id": 51,
+        "queue_age_ms": 181.938225
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 12.47370433299875,
+        "phase": "APPROACH",
+        "confidence": 0.8877180218696594,
+        "detected_class": "bottle",
+        "frame_id": 53,
+        "queue_age_ms": 100.056639
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 12.540452992998325,
+        "phase": "APPROACH",
+        "confidence": 0.8091848492622375,
+        "detected_class": "bottle",
+        "frame_id": 54,
+        "queue_age_ms": 128.536672
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 12.692715326000325,
+        "phase": "APPROACH",
+        "confidence": 0.8841380476951599,
+        "detected_class": "bottle",
+        "frame_id": 55,
+        "queue_age_ms": 219.232944
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 12.69623126499937,
+        "phase": "APPROACH",
+        "confidence": 0.8285839557647705,
+        "detected_class": "bottle",
+        "frame_id": 56,
+        "queue_age_ms": 155.914454
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 12.807493932999932,
+        "phase": "APPROACH",
+        "confidence": 0.6868674755096436,
+        "detected_class": "bottle",
+        "frame_id": 57,
+        "queue_age_ms": 115.016051
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 12.87434048599971,
+        "phase": "APPROACH",
+        "confidence": 0.5573886632919312,
+        "detected_class": "bottle",
+        "frame_id": 58,
+        "queue_age_ms": 178.337886
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 13.011652080000204,
+        "phase": "APPROACH",
+        "confidence": 0.6297259330749512,
+        "detected_class": "bottle",
+        "frame_id": 60,
+        "queue_age_ms": 204.479173
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 13.014965345999371,
+        "phase": "APPROACH",
+        "confidence": 0.6811392307281494,
+        "detected_class": "bottle",
+        "frame_id": 61,
+        "queue_age_ms": 140.951452
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 13.074174759000016,
+        "phase": "APPROACH",
+        "confidence": 0.6920821666717529,
+        "detected_class": "bottle",
+        "frame_id": 62,
+        "queue_age_ms": 62.87794
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 13.150737807998667,
+        "phase": "APPROACH",
+        "confidence": 0.6719254851341248,
+        "detected_class": "bottle",
+        "frame_id": 63,
+        "queue_age_ms": 135.958061
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 13.207636163999268,
+        "phase": "APPROACH",
+        "confidence": 0.6321850419044495,
+        "detected_class": "bottle",
+        "frame_id": 64,
+        "queue_age_ms": 133.646514
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 13.274504572997103,
+        "phase": "APPROACH",
+        "confidence": 0.650233268737793,
+        "detected_class": "bottle",
+        "frame_id": 65,
+        "queue_age_ms": 124.24343
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 13.341091772999789,
+        "phase": "APPROACH",
+        "confidence": 0.5579504370689392,
+        "detected_class": "bottle",
+        "frame_id": 66,
+        "queue_age_ms": 133.634184
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 13.407824432997586,
+        "phase": "APPROACH",
+        "confidence": 0.682502269744873,
+        "detected_class": "bottle",
+        "frame_id": 67,
+        "queue_age_ms": 133.651302
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 13.47448056400026,
+        "phase": "APPROACH",
+        "confidence": 0.42130976915359497,
+        "detected_class": "bottle",
+        "frame_id": 68,
+        "queue_age_ms": 133.630341
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 13.568584163000196,
+        "phase": "APPROACH",
+        "confidence": 0.3818334639072418,
+        "detected_class": "bottle",
+        "frame_id": 69,
+        "queue_age_ms": 161.037344
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 13.608230128000287,
+        "phase": "APPROACH",
+        "confidence": 0.8136512637138367,
+        "detected_class": "bottle",
+        "frame_id": 70,
+        "queue_age_ms": 133.975554
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 13.674560688999918,
+        "phase": "APPROACH",
+        "confidence": 0.5709918737411499,
+        "detected_class": "bottle",
+        "frame_id": 71,
+        "queue_age_ms": 106.525324
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 13.808620903997507,
+        "phase": "APPROACH",
+        "confidence": 0.3430340886116028,
+        "detected_class": "vase",
+        "frame_id": 72,
+        "queue_age_ms": 200.847901
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 13.812618431998999,
+        "phase": "APPROACH",
+        "confidence": 0.3497009873390198,
+        "detected_class": "vase",
+        "frame_id": 73,
+        "queue_age_ms": 138.279674
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 13.874859064999328,
+        "phase": "APPROACH",
+        "confidence": 0.3299371302127838,
+        "detected_class": "vase",
+        "frame_id": 74,
+        "queue_age_ms": 66.560221
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 13.988614690999384,
+        "phase": "APPROACH",
+        "confidence": 0.46090707182884216,
+        "detected_class": "vase",
+        "frame_id": 75,
+        "queue_age_ms": 176.311219
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 14.307809771999018,
+        "phase": "APPROACH",
+        "confidence": 0.4381256103515625,
+        "detected_class": "donut",
+        "frame_id": 80,
+        "queue_age_ms": 166.376777
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 14.446967971998674,
+        "phase": "APPROACH",
+        "confidence": 0.32858940958976746,
+        "detected_class": "cake",
+        "frame_id": 83,
+        "queue_age_ms": 105.369452
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 14.645559485998092,
+        "phase": "APPROACH",
+        "confidence": 0.3546479344367981,
+        "detected_class": "cake",
+        "frame_id": 85,
+        "queue_age_ms": 162.055826
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 14.68399762399713,
+        "phase": "APPROACH",
+        "confidence": 0.45727139711380005,
+        "detected_class": "cake",
+        "frame_id": 86,
+        "queue_age_ms": 142.317651
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 14.742243618999055,
+        "phase": "APPROACH",
+        "confidence": 0.35047489404678345,
+        "detected_class": "cake",
+        "frame_id": 87,
+        "queue_age_ms": 97.078862
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 14.80880408899975,
+        "phase": "APPROACH",
+        "confidence": 0.34456953406333923,
+        "detected_class": "cake",
+        "frame_id": 88,
+        "queue_age_ms": 125.009788
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 14.882644949997484,
+        "phase": "APPROACH",
+        "confidence": 0.26448309421539307,
+        "detected_class": "cake",
+        "frame_id": 89,
+        "queue_age_ms": 140.742236
+      },
+      {
+        "event": "grasp_start",
+        "system_time": 14.938335920996906,
+        "phase": "GRASP"
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 14.942303159998119,
+        "phase": "GRASP",
+        "confidence": 0.25649166107177734,
+        "detected_class": "cake",
+        "frame_id": 91,
+        "queue_age_ms": 59.993779
+      },
+      {
+        "event": "grasp_success",
+        "system_time": 16.58966164999947,
+        "phase": "TRANSPORT",
+        "grasp_success": true
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 16.826016281997,
+        "phase": "TRANSPORT",
+        "confidence": 0.3308078348636627,
+        "detected_class": "sink",
+        "frame_id": 119,
+        "queue_age_ms": 82.712305
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 16.877145260998077,
+        "phase": "TRANSPORT",
+        "confidence": 0.3177673816680908,
+        "detected_class": "car",
+        "frame_id": 120,
+        "queue_age_ms": 51.360256
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 16.94363033300033,
+        "phase": "TRANSPORT",
+        "confidence": 0.37640807032585144,
+        "detected_class": "car",
+        "frame_id": 121,
+        "queue_age_ms": 66.850418
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 18.678344870997535,
+        "phase": "TRANSPORT",
+        "confidence": 0.26617059111595154,
+        "detected_class": "bench",
+        "frame_id": 147,
+        "queue_age_ms": 66.832903
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 19.54574779599716,
+        "phase": "TRANSPORT",
+        "confidence": 0.26930832862854004,
+        "detected_class": "bird",
+        "frame_id": 159,
+        "queue_age_ms": 133.789404
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 20.546306770997035,
+        "phase": "TRANSPORT",
+        "confidence": 0.25378841161727905,
+        "detected_class": "bird",
+        "frame_id": 174,
+        "queue_age_ms": 99.885403
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 20.64542214299945,
+        "phase": "TRANSPORT",
+        "confidence": 0.3200591504573822,
+        "detected_class": "bench",
+        "frame_id": 176,
+        "queue_age_ms": 99.319355
+      },
+      {
+        "event": "release_start",
+        "system_time": 22.230853229997592,
+        "phase": "RELEASE"
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 22.948146705999534,
+        "phase": "RELEASE",
+        "confidence": 0.6477683782577515,
+        "detected_class": "bear",
+        "frame_id": 211,
+        "queue_age_ms": 66.950008
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 23.148030324999127,
+        "phase": "RELEASE",
+        "confidence": 0.5389028787612915,
+        "detected_class": "vase",
+        "frame_id": 214,
+        "queue_age_ms": 66.790149
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 23.281489872999373,
+        "phase": "RELEASE",
+        "confidence": 0.2602124512195587,
+        "detected_class": "bottle",
+        "frame_id": 216,
+        "queue_age_ms": 66.938689
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 23.48172619199977,
+        "phase": "RELEASE",
+        "confidence": 0.3081142008304596,
+        "detected_class": "bird",
+        "frame_id": 219,
+        "queue_age_ms": 66.945728
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 23.68192180999904,
+        "phase": "RELEASE",
+        "confidence": 0.2766340374946594,
+        "detected_class": "vase",
+        "frame_id": 222,
+        "queue_age_ms": 66.972292
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 23.815455206997285,
+        "phase": "RELEASE",
+        "confidence": 0.42587989568710327,
+        "detected_class": "vase",
+        "frame_id": 224,
+        "queue_age_ms": 67.180346
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 23.948667174998263,
+        "phase": "RELEASE",
+        "confidence": 0.4005444049835205,
+        "detected_class": "parking meter",
+        "frame_id": 226,
+        "queue_age_ms": 66.812617
+      },
+      {
+        "event": "task_end",
+        "system_time": 24.056122324996977,
+        "phase": "COMPLETE",
+        "success": true
+      }
+    ]
+  }
+}

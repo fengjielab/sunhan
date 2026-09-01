@@ -1,0 +1,979 @@
+{
+  "schema_version": 3,
+  "timestamp": "20260901_163636",
+  "saved_at": "2026-09-01T16:36:36.397305",
+  "run_uuid": "aa17c91a-9aa6-490c-bff7-ee8300d9705f",
+  "run_kind": "formal",
+  "run_config": "/home/mfj/sunhan/MECH-D-26-00641_revision/06_formal_data/P05/P05_S2/G06_mouse/R1/run_config_aa17c91a-9aa6-490c-bff7-ee8300d9705f.json",
+  "session_id": "P05_S2",
+  "schedule_id": "MECH-D-26-00641-ABLATION-v1-seed260641",
+  "subject_id": "P05",
+  "object_id": "mouse",
+  "trial_id": "P05_T41",
+  "trial_order": 41,
+  "repetition": 1,
+  "mode": {
+    "mode": "I_H",
+    "condition": "I_H",
+    "adaptive_impedance": true,
+    "adaptive_haptics": true,
+    "adaptive_gripper": false,
+    "vision_enabled": true,
+    "vision_auto_map": true,
+    "vision_force_fusion": false,
+    "vision_locked": true,
+    "vision_locked_class": "mouse",
+    "vision_label": "hard"
+  },
+  "runtime": {
+    "duration_s": 25.7,
+    "traj_length_m": 0.4831,
+    "mean_speed_ms": 0.0285,
+    "speed_variance": 0.000551,
+    "speed_std_ms": 0.0235,
+    "max_speed_ms": 0.1235
+  },
+  "trajectory": {
+    "n_samples": 2354,
+    "pos_x_range_m": [
+      -0.0112,
+      0.0277
+    ],
+    "pos_y_range_m": [
+      -0.1007,
+      0.0204
+    ],
+    "pos_z_range_m": [
+      -0.0453,
+      0.0925
+    ]
+  },
+  "external_force": {
+    "source": "Franka estimated external wrench",
+    "metric": "norm(Fx, Fy, Fz)",
+    "F_ext_peak_N": 7.96,
+    "F_ext_peak_time_s": 17.6166,
+    "F_ext_mean_N": 3.552,
+    "n_samples": 2354
+  },
+  "final_params": {
+    "K_trans": 200.0,
+    "K_rot": 13.0,
+    "damping_ratio": 1.2,
+    "K_fb": 0.7,
+    "deadband": 0.5,
+    "scale": 3.0,
+    "vision_base_K_trans": 200.0,
+    "vision_base_K_rot": 13.0,
+    "fusion_delta_K_final": 0.0
+  },
+  "applied_condition_params": {
+    "K_trans": 200.0,
+    "K_rot": 13.0,
+    "damping_ratio": 1.2,
+    "K_fb": 0.7,
+    "deadband": 0.5,
+    "scale": 3.0,
+    "gripper_speed": 0.05,
+    "gripper_force": 15.0,
+    "effective_force_threshold_N": 0.7142857142857143,
+    "condition_id": "I_H",
+    "adaptive_impedance": true,
+    "adaptive_haptics": true,
+    "adaptive_gripper": false
+  },
+  "timing": {
+    "control_target_frequency_hz": 200.0,
+    "control_target_dt_s": 0.005,
+    "parameter_transition_duration_ms": 818.111648,
+    "vision_queue_age_ms_final": 133.672909,
+    "control_deadline_miss_count": 138,
+    "haptic_saturation_count": 492
+  },
+  "fusion_config": null,
+  "experiment": {
+    "schema_version": 3,
+    "mode": "I_H",
+    "subject_id": "P05",
+    "object_id": "mouse",
+    "trial_id": "P05_T41",
+    "started_at_unix": 1788251770.6926906,
+    "phase": "COMPLETE",
+    "completed": true,
+    "incomplete": false,
+    "recognition_time_s": 1.5790947459972813,
+    "operation_time_s": 14.12514632300008,
+    "force_baseline_mean_N": 0.5289422482190601,
+    "force_baseline_std_N": 0.1194295308970315,
+    "force_threshold_N": 1.0,
+    "events": [
+      {
+        "event": "system_start",
+        "system_time": 0.0,
+        "phase": "PREP"
+      },
+      {
+        "event": "vision_start",
+        "system_time": 8.267672608999419,
+        "phase": "PREP"
+      },
+      {
+        "event": "force_baseline_ready",
+        "system_time": 9.040145475999452,
+        "phase": "PREP",
+        "mean_N": 0.5289422482190601,
+        "std_N": 0.1194295308970315,
+        "threshold_N": 1.0
+      },
+      {
+        "event": "first_frame",
+        "system_time": 9.068374643000425,
+        "phase": "PREP"
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 10.643859820000216,
+        "phase": "PREP",
+        "confidence": 0.5787508487701416,
+        "detected_class": "mouse",
+        "frame_id": 1,
+        "queue_age_ms": 1575.47568
+      },
+      {
+        "event": "parameter_transition_start",
+        "system_time": 10.64738532499905,
+        "phase": "PREP",
+        "condition": "I_H",
+        "target_K_trans": 200.0,
+        "target_K_rot": 13.0,
+        "target_zeta": 1.2,
+        "target_K_fb": 0.7,
+        "target_deadband": 0.5
+      },
+      {
+        "event": "vision_lock",
+        "system_time": 10.647469388997706,
+        "phase": "PREP",
+        "detected_class": "mouse",
+        "semantic_label": "hard",
+        "confidence": 0.5787508487701416,
+        "condition": "I_H",
+        "adaptive_haptics": true,
+        "adaptive_gripper": false,
+        "capture_perf_time_ns": 24502650303985,
+        "result_receive_perf_time_ns": 24504225779665
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 10.710625640997023,
+        "phase": "PREP",
+        "confidence": 0.9196527600288391,
+        "detected_class": "mouse",
+        "frame_id": 21,
+        "queue_age_ms": 301.409661
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 10.736219973998232,
+        "phase": "PREP",
+        "confidence": 0.9077458381652832,
+        "detected_class": "mouse",
+        "frame_id": 24,
+        "queue_age_ms": 94.792911
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 10.810684756997944,
+        "phase": "PREP",
+        "confidence": 0.9173745512962341,
+        "detected_class": "mouse",
+        "frame_id": 25,
+        "queue_age_ms": 100.409592
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 10.949882572997012,
+        "phase": "PREP",
+        "confidence": 0.9242348670959473,
+        "detected_class": "mouse",
+        "frame_id": 26,
+        "queue_age_ms": 214.057414
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 10.953493557997717,
+        "phase": "PREP",
+        "confidence": 0.9039304256439209,
+        "detected_class": "mouse",
+        "frame_id": 27,
+        "queue_age_ms": 143.127202
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 11.015215063998767,
+        "phase": "PREP",
+        "confidence": 0.9324888586997986,
+        "detected_class": "mouse",
+        "frame_id": 28,
+        "queue_age_ms": 65.794529
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 11.157822916997247,
+        "phase": "PREP",
+        "confidence": 0.9273012280464172,
+        "detected_class": "mouse",
+        "frame_id": 29,
+        "queue_age_ms": 204.652567
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 11.161549602999003,
+        "phase": "PREP",
+        "confidence": 0.9208679795265198,
+        "detected_class": "mouse",
+        "frame_id": 30,
+        "queue_age_ms": 146.560919
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 11.222574100000202,
+        "phase": "PREP",
+        "confidence": 0.9172857999801636,
+        "detected_class": "mouse",
+        "frame_id": 31,
+        "queue_age_ms": 64.976551
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 11.365533790998597,
+        "phase": "PREP",
+        "confidence": 0.9371263980865479,
+        "detected_class": "mouse",
+        "frame_id": 32,
+        "queue_age_ms": 204.306701
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 11.369751287998952,
+        "phase": "PREP",
+        "confidence": 0.9238280653953552,
+        "detected_class": "mouse",
+        "frame_id": 33,
+        "queue_age_ms": 147.343363
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 11.454784967998421,
+        "phase": "PREP",
+        "confidence": 0.9206127524375916,
+        "detected_class": "mouse",
+        "frame_id": 34,
+        "queue_age_ms": 185.234089
+      },
+      {
+        "event": "parameter_transition_end",
+        "system_time": 11.46549686599974,
+        "phase": "PREP",
+        "condition": "I_H",
+        "duration_ms": 818.111648
+      },
+      {
+        "event": "system_ready",
+        "system_time": 11.465385209998203,
+        "phase": "READY"
+      },
+      {
+        "event": "task_start",
+        "system_time": 11.465385209998203,
+        "phase": "APPROACH",
+        "trigger": "system_ready"
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 11.469905646998086,
+        "phase": "APPROACH",
+        "confidence": 0.9383310079574585,
+        "detected_class": "mouse",
+        "frame_id": 35,
+        "queue_age_ms": 100.350821
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 11.536712638997415,
+        "phase": "APPROACH",
+        "confidence": 0.9248506426811218,
+        "detected_class": "mouse",
+        "frame_id": 36,
+        "queue_age_ms": 82.146129
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 11.603351439000107,
+        "phase": "APPROACH",
+        "confidence": 0.9400044083595276,
+        "detected_class": "mouse",
+        "frame_id": 37,
+        "queue_age_ms": 133.70195
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 11.670190847999038,
+        "phase": "APPROACH",
+        "confidence": 0.9270583391189575,
+        "detected_class": "mouse",
+        "frame_id": 38,
+        "queue_age_ms": 133.795633
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 11.766767123997852,
+        "phase": "APPROACH",
+        "confidence": 0.9200004935264587,
+        "detected_class": "mouse",
+        "frame_id": 39,
+        "queue_age_ms": 163.572127
+      },
+      {
+        "event": "contact_onset",
+        "system_time": 11.643091201000061,
+        "phase": "APPROACH",
+        "threshold_N": 1.0
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 11.805288395000389,
+        "phase": "APPROACH",
+        "confidence": 0.9283615350723267,
+        "detected_class": "mouse",
+        "frame_id": 40,
+        "queue_age_ms": 135.493708
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 11.870296742999926,
+        "phase": "APPROACH",
+        "confidence": 0.8746263980865479,
+        "detected_class": "mouse",
+        "frame_id": 41,
+        "queue_age_ms": 103.842062
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 11.93679457899998,
+        "phase": "APPROACH",
+        "confidence": 0.7506304979324341,
+        "detected_class": "mouse",
+        "frame_id": 42,
+        "queue_age_ms": 131.789921
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 12.013449714999297,
+        "phase": "APPROACH",
+        "confidence": 0.7153005003929138,
+        "detected_class": "mouse",
+        "frame_id": 43,
+        "queue_age_ms": 143.470576
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 12.07040510799925,
+        "phase": "APPROACH",
+        "confidence": 0.7743398547172546,
+        "detected_class": "mouse",
+        "frame_id": 44,
+        "queue_age_ms": 133.84136
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 12.137031431997457,
+        "phase": "APPROACH",
+        "confidence": 0.7501758337020874,
+        "detected_class": "mouse",
+        "frame_id": 45,
+        "queue_age_ms": 123.860388
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 12.203842666996934,
+        "phase": "APPROACH",
+        "confidence": 0.9055880308151245,
+        "detected_class": "mouse",
+        "frame_id": 46,
+        "queue_age_ms": 133.744736
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 12.270559598997352,
+        "phase": "APPROACH",
+        "confidence": 0.9227086305618286,
+        "detected_class": "mouse",
+        "frame_id": 47,
+        "queue_age_ms": 133.764379
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 12.337136328998895,
+        "phase": "APPROACH",
+        "confidence": 0.9119033217430115,
+        "detected_class": "mouse",
+        "frame_id": 48,
+        "queue_age_ms": 133.580308
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 12.471901191998768,
+        "phase": "APPROACH",
+        "confidence": 0.8598122000694275,
+        "detected_class": "mouse",
+        "frame_id": 49,
+        "queue_age_ms": 201.658603
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 12.475634086997161,
+        "phase": "APPROACH",
+        "confidence": 0.7680028676986694,
+        "detected_class": "mouse",
+        "frame_id": 50,
+        "queue_age_ms": 138.760477
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 12.537387360000139,
+        "phase": "APPROACH",
+        "confidence": 0.8468871116638184,
+        "detected_class": "mouse",
+        "frame_id": 51,
+        "queue_age_ms": 65.967321
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 12.661131610999291,
+        "phase": "APPROACH",
+        "confidence": 0.8991420865058899,
+        "detected_class": "mouse",
+        "frame_id": 52,
+        "queue_age_ms": 185.67712
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 12.670916039998701,
+        "phase": "APPROACH",
+        "confidence": 0.9057925343513489,
+        "detected_class": "mouse",
+        "frame_id": 53,
+        "queue_age_ms": 133.859312
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 12.752145357997506,
+        "phase": "APPROACH",
+        "confidence": 0.8698990345001221,
+        "detected_class": "mouse",
+        "frame_id": 54,
+        "queue_age_ms": 91.073185
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 12.81238523799766,
+        "phase": "APPROACH",
+        "confidence": 0.8364322185516357,
+        "detected_class": "mouse",
+        "frame_id": 55,
+        "queue_age_ms": 141.79237
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 12.870949074000237,
+        "phase": "APPROACH",
+        "confidence": 0.897357165813446,
+        "detected_class": "mouse",
+        "frame_id": 56,
+        "queue_age_ms": 119.39639
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 12.937540176997572,
+        "phase": "APPROACH",
+        "confidence": 0.9265794157981873,
+        "detected_class": "mouse",
+        "frame_id": 57,
+        "queue_age_ms": 125.369089
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 13.051730402999965,
+        "phase": "APPROACH",
+        "confidence": 0.9353285431861877,
+        "detected_class": "mouse",
+        "frame_id": 58,
+        "queue_age_ms": 181.098454
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 13.071014214998286,
+        "phase": "APPROACH",
+        "confidence": 0.7549950480461121,
+        "detected_class": "mouse",
+        "frame_id": 59,
+        "queue_age_ms": 133.711472
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 13.138118028997269,
+        "phase": "APPROACH",
+        "confidence": 0.7615890502929688,
+        "detected_class": "mouse",
+        "frame_id": 60,
+        "queue_age_ms": 86.72722
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 13.259246473997337,
+        "phase": "APPROACH",
+        "confidence": 0.7317185997962952,
+        "detected_class": "mouse",
+        "frame_id": 61,
+        "queue_age_ms": 188.4231
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 13.271203290998528,
+        "phase": "APPROACH",
+        "confidence": 0.6881909966468811,
+        "detected_class": "mouse",
+        "frame_id": 62,
+        "queue_age_ms": 133.627679
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 13.348949409999477,
+        "phase": "APPROACH",
+        "confidence": 0.7372701168060303,
+        "detected_class": "mouse",
+        "frame_id": 63,
+        "queue_age_ms": 90.055465
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 13.404594696999993,
+        "phase": "APPROACH",
+        "confidence": 0.9150999784469604,
+        "detected_class": "mouse",
+        "frame_id": 64,
+        "queue_age_ms": 133.672148
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 13.491624725997099,
+        "phase": "APPROACH",
+        "confidence": 0.9173173904418945,
+        "detected_class": "mouse",
+        "frame_id": 65,
+        "queue_age_ms": 142.9605
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 13.56054017799761,
+        "phase": "APPROACH",
+        "confidence": 0.8131284713745117,
+        "detected_class": "mouse",
+        "frame_id": 66,
+        "queue_age_ms": 156.121141
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 13.604813375997765,
+        "phase": "APPROACH",
+        "confidence": 0.8658282160758972,
+        "detected_class": "mouse",
+        "frame_id": 67,
+        "queue_age_ms": 113.538973
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 13.671446267999272,
+        "phase": "APPROACH",
+        "confidence": 0.9151316285133362,
+        "detected_class": "mouse",
+        "frame_id": 68,
+        "queue_age_ms": 111.213759
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 13.738094406999153,
+        "phase": "APPROACH",
+        "confidence": 0.9106006622314453,
+        "detected_class": "mouse",
+        "frame_id": 69,
+        "queue_age_ms": 133.58239
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 13.80546295899694,
+        "phase": "APPROACH",
+        "confidence": 0.8837361335754395,
+        "detected_class": "mouse",
+        "frame_id": 70,
+        "queue_age_ms": 134.363111
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 13.871583565996843,
+        "phase": "APPROACH",
+        "confidence": 0.8530000448226929,
+        "detected_class": "mouse",
+        "frame_id": 71,
+        "queue_age_ms": 133.727478
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 13.938273667998146,
+        "phase": "APPROACH",
+        "confidence": 0.8518313765525818,
+        "detected_class": "mouse",
+        "frame_id": 72,
+        "queue_age_ms": 133.646045
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 14.005049108000094,
+        "phase": "APPROACH",
+        "confidence": 0.9362298250198364,
+        "detected_class": "mouse",
+        "frame_id": 73,
+        "queue_age_ms": 133.710805
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 14.071730660998583,
+        "phase": "APPROACH",
+        "confidence": 0.8789281249046326,
+        "detected_class": "mouse",
+        "frame_id": 74,
+        "queue_age_ms": 133.727185
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 14.169839804999356,
+        "phase": "APPROACH",
+        "confidence": 0.902209997177124,
+        "detected_class": "mouse",
+        "frame_id": 75,
+        "queue_age_ms": 165.091006
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 14.20545189999757,
+        "phase": "APPROACH",
+        "confidence": 0.8447360396385193,
+        "detected_class": "mouse",
+        "frame_id": 76,
+        "queue_age_ms": 133.90952
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 14.27206247399954,
+        "phase": "APPROACH",
+        "confidence": 0.8664258122444153,
+        "detected_class": "mouse",
+        "frame_id": 77,
+        "queue_age_ms": 102.508762
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 14.371654593996936,
+        "phase": "APPROACH",
+        "confidence": 0.8329036831855774,
+        "detected_class": "mouse",
+        "frame_id": 78,
+        "queue_age_ms": 166.556737
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 14.40548486699845,
+        "phase": "APPROACH",
+        "confidence": 0.8357529044151306,
+        "detected_class": "mouse",
+        "frame_id": 79,
+        "queue_age_ms": 133.683878
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 14.472225301000435,
+        "phase": "APPROACH",
+        "confidence": 0.8306574821472168,
+        "detected_class": "mouse",
+        "frame_id": 80,
+        "queue_age_ms": 100.817461
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 14.582029706998583,
+        "phase": "APPROACH",
+        "confidence": 0.8673230409622192,
+        "detected_class": "mouse",
+        "frame_id": 81,
+        "queue_age_ms": 176.898
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 14.605478681998648,
+        "phase": "APPROACH",
+        "confidence": 0.8889554142951965,
+        "detected_class": "mouse",
+        "frame_id": 82,
+        "queue_age_ms": 133.561112
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 14.672252824999305,
+        "phase": "APPROACH",
+        "confidence": 0.8445088863372803,
+        "detected_class": "mouse",
+        "frame_id": 83,
+        "queue_age_ms": 90.515787
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 14.739167584997631,
+        "phase": "APPROACH",
+        "confidence": 0.8394590020179749,
+        "detected_class": "mouse",
+        "frame_id": 84,
+        "queue_age_ms": 133.877561
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 14.80569281699718,
+        "phase": "APPROACH",
+        "confidence": 0.804985761642456,
+        "detected_class": "mouse",
+        "frame_id": 85,
+        "queue_age_ms": 133.7929
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 14.873173170999507,
+        "phase": "APPROACH",
+        "confidence": 0.8016741275787354,
+        "detected_class": "mouse",
+        "frame_id": 86,
+        "queue_age_ms": 134.435633
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 14.939176551997662,
+        "phase": "APPROACH",
+        "confidence": 0.760034441947937,
+        "detected_class": "mouse",
+        "frame_id": 87,
+        "queue_age_ms": 133.71222
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 15.005833139999595,
+        "phase": "APPROACH",
+        "confidence": 0.4842338562011719,
+        "detected_class": "mouse",
+        "frame_id": 88,
+        "queue_age_ms": 132.848093
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 15.081402298998,
+        "phase": "APPROACH",
+        "confidence": 0.41368138790130615,
+        "detected_class": "mouse",
+        "frame_id": 89,
+        "queue_age_ms": 142.594101
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 15.139212346999557,
+        "phase": "APPROACH",
+        "confidence": 0.4031675159931183,
+        "detected_class": "mouse",
+        "frame_id": 90,
+        "queue_age_ms": 133.706117
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 15.20598924299702,
+        "phase": "APPROACH",
+        "confidence": 0.4464225769042969,
+        "detected_class": "mouse",
+        "frame_id": 92,
+        "queue_age_ms": 66.959022
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 15.28916387299978,
+        "phase": "APPROACH",
+        "confidence": 0.6057154536247253,
+        "detected_class": "mouse",
+        "frame_id": 93,
+        "queue_age_ms": 83.478917
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 15.339464382999722,
+        "phase": "APPROACH",
+        "confidence": 0.5296309590339661,
+        "detected_class": "mouse",
+        "frame_id": 94,
+        "queue_age_ms": 50.547425
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 15.4060900939985,
+        "phase": "APPROACH",
+        "confidence": 0.5660517811775208,
+        "detected_class": "mouse",
+        "frame_id": 95,
+        "queue_age_ms": 66.946683
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 15.49722797999857,
+        "phase": "APPROACH",
+        "confidence": 0.6195866465568542,
+        "detected_class": "mouse",
+        "frame_id": 96,
+        "queue_age_ms": 91.401143
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 15.606421507996856,
+        "phase": "APPROACH",
+        "confidence": 0.399655818939209,
+        "detected_class": "mouse",
+        "frame_id": 97,
+        "queue_age_ms": 109.658273
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 15.67263761600043,
+        "phase": "APPROACH",
+        "confidence": 0.2704506814479828,
+        "detected_class": "mouse",
+        "frame_id": 98,
+        "queue_age_ms": 133.251091
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 15.739690205999068,
+        "phase": "APPROACH",
+        "confidence": 0.37815001606941223,
+        "detected_class": "mouse",
+        "frame_id": 99,
+        "queue_age_ms": 133.66516
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 15.806542612997873,
+        "phase": "APPROACH",
+        "confidence": 0.2846290171146393,
+        "detected_class": "mouse",
+        "frame_id": 100,
+        "queue_age_ms": 134.011883
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 15.897595958998863,
+        "phase": "APPROACH",
+        "confidence": 0.2727745771408081,
+        "detected_class": "mouse",
+        "frame_id": 101,
+        "queue_age_ms": 158.200364
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 15.939675687997806,
+        "phase": "APPROACH",
+        "confidence": 0.5423908233642578,
+        "detected_class": "mouse",
+        "frame_id": 102,
+        "queue_age_ms": 133.393133
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 16.006496358997538,
+        "phase": "APPROACH",
+        "confidence": 0.3715061843395233,
+        "detected_class": "mouse",
+        "frame_id": 103,
+        "queue_age_ms": 109.313974
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 16.14934071300013,
+        "phase": "APPROACH",
+        "confidence": 0.36031627655029297,
+        "detected_class": "mouse",
+        "frame_id": 104,
+        "queue_age_ms": 209.818307
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 16.152789670999482,
+        "phase": "APPROACH",
+        "confidence": 0.3904295265674591,
+        "detected_class": "mouse",
+        "frame_id": 105,
+        "queue_age_ms": 146.524794
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 16.20676077600001,
+        "phase": "APPROACH",
+        "confidence": 0.5523138046264648,
+        "detected_class": "mouse",
+        "frame_id": 106,
+        "queue_age_ms": 57.779409
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 16.324612305998016,
+        "phase": "APPROACH",
+        "confidence": 0.5653486251831055,
+        "detected_class": "mouse",
+        "frame_id": 107,
+        "queue_age_ms": 172.008922
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 16.34011848999944,
+        "phase": "APPROACH",
+        "confidence": 0.27347737550735474,
+        "detected_class": "mouse",
+        "frame_id": 108,
+        "queue_age_ms": 133.672909
+      },
+      {
+        "event": "grasp_start",
+        "system_time": 16.521269274999213,
+        "phase": "GRASP"
+      },
+      {
+        "event": "grasp_success",
+        "system_time": 17.829500823998387,
+        "phase": "TRANSPORT",
+        "grasp_success": true
+      },
+      {
+        "event": "release_start",
+        "system_time": 24.01100855799814,
+        "phase": "RELEASE"
+      },
+      {
+        "event": "task_end",
+        "system_time": 25.590531532998284,
+        "phase": "COMPLETE",
+        "success": true
+      }
+    ]
+  }
+}
