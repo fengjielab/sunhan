@@ -1,0 +1,1474 @@
+{
+  "schema_version": 3,
+  "timestamp": "20260903_135929",
+  "saved_at": "2026-09-03T13:59:29.248375",
+  "run_uuid": "344a2d82-dfa8-40ad-b979-4dbd502cd08c",
+  "run_kind": "formal",
+  "run_config": "/home/mfj/sunhan/MECH-D-26-00641_revision/06_formal_data/P07/P07_S1/G02_mouse/R1/run_config_344a2d82-dfa8-40ad-b979-4dbd502cd08c.json",
+  "session_id": "P07_S1",
+  "schedule_id": "MECH-D-26-00641-ABLATION-v1-seed260641",
+  "subject_id": "P07",
+  "object_id": "mouse",
+  "trial_id": "P07_T11",
+  "trial_order": 11,
+  "repetition": 1,
+  "mode": {
+    "mode": "I_G",
+    "condition": "I_G",
+    "adaptive_impedance": true,
+    "adaptive_haptics": false,
+    "adaptive_gripper": true,
+    "vision_enabled": true,
+    "vision_auto_map": true,
+    "vision_force_fusion": false,
+    "vision_locked": true,
+    "vision_locked_class": "mouse",
+    "vision_label": "hard"
+  },
+  "runtime": {
+    "duration_s": 24.92,
+    "traj_length_m": 0.379,
+    "mean_speed_ms": 0.0228,
+    "speed_variance": 0.000512,
+    "speed_std_ms": 0.0226,
+    "max_speed_ms": 0.1271
+  },
+  "trajectory": {
+    "n_samples": 2223,
+    "pos_x_range_m": [
+      -0.0379,
+      -0.0009
+    ],
+    "pos_y_range_m": [
+      -0.1033,
+      0.0307
+    ],
+    "pos_z_range_m": [
+      0.0043,
+      0.1081
+    ]
+  },
+  "external_force": {
+    "source": "Franka estimated external wrench",
+    "metric": "norm(Fx, Fy, Fz)",
+    "F_ext_peak_N": 6.216,
+    "F_ext_peak_time_s": 19.0608,
+    "F_ext_mean_N": 3.112,
+    "n_samples": 2223
+  },
+  "final_params": {
+    "K_trans": 200.0,
+    "K_rot": 13.0,
+    "damping_ratio": 1.2,
+    "K_fb": 0.4,
+    "deadband": 0.4,
+    "scale": 3.0,
+    "vision_base_K_trans": 200.0,
+    "vision_base_K_rot": 13.0,
+    "fusion_delta_K_final": 0.0
+  },
+  "applied_condition_params": {
+    "K_trans": 200.0,
+    "K_rot": 13.0,
+    "damping_ratio": 1.2,
+    "K_fb": 0.4,
+    "deadband": 0.4,
+    "scale": 3.0,
+    "gripper_speed": 0.1,
+    "gripper_force": 20.0,
+    "effective_force_threshold_N": 1.0,
+    "condition_id": "I_G",
+    "adaptive_impedance": true,
+    "adaptive_haptics": false,
+    "adaptive_gripper": true
+  },
+  "timing": {
+    "control_target_frequency_hz": 200.0,
+    "control_target_dt_s": 0.005,
+    "parameter_transition_duration_ms": 425.886057,
+    "vision_queue_age_ms_final": 66.999316,
+    "control_deadline_miss_count": 136,
+    "haptic_saturation_count": 0
+  },
+  "fusion_config": null,
+  "experiment": {
+    "schema_version": 3,
+    "mode": "I_G",
+    "subject_id": "P07",
+    "object_id": "mouse",
+    "trial_id": "P07_T11",
+    "started_at_unix": 1788415144.315172,
+    "phase": "COMPLETE",
+    "completed": true,
+    "incomplete": false,
+    "recognition_time_s": 1.5473913570167497,
+    "operation_time_s": 13.84679985800176,
+    "force_baseline_mean_N": 0.8290781407544974,
+    "force_baseline_std_N": 0.023668107455748284,
+    "force_threshold_N": 1.0,
+    "events": [
+      {
+        "event": "system_start",
+        "system_time": 0.0,
+        "phase": "PREP"
+      },
+      {
+        "event": "vision_start",
+        "system_time": 8.108471768995514,
+        "phase": "PREP"
+      },
+      {
+        "event": "force_baseline_ready",
+        "system_time": 8.648794884997187,
+        "phase": "PREP",
+        "mean_N": 0.8290781407544974,
+        "std_N": 0.023668107455748284,
+        "threshold_N": 1.0
+      },
+      {
+        "event": "first_frame",
+        "system_time": 8.96061701097642,
+        "phase": "PREP"
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 10.496670432999963,
+        "phase": "PREP",
+        "confidence": 0.6999390721321106,
+        "detected_class": "mouse",
+        "frame_id": 1,
+        "queue_age_ms": 1536.031501
+      },
+      {
+        "event": "parameter_transition_start",
+        "system_time": 10.507887726998888,
+        "phase": "PREP",
+        "condition": "I_G",
+        "target_K_trans": 200.0,
+        "target_K_rot": 13.0,
+        "target_zeta": 1.2,
+        "target_K_fb": 0.4,
+        "target_deadband": 0.4
+      },
+      {
+        "event": "vision_lock",
+        "system_time": 10.50800836799317,
+        "phase": "PREP",
+        "detected_class": "mouse",
+        "semantic_label": "hard",
+        "confidence": 0.6999390721321106,
+        "condition": "I_G",
+        "adaptive_haptics": false,
+        "adaptive_gripper": true,
+        "capture_perf_time_ns": 187876165030203,
+        "result_receive_perf_time_ns": 187877701061704
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 10.618714894982986,
+        "phase": "PREP",
+        "confidence": 0.7575870156288147,
+        "detected_class": "mouse",
+        "frame_id": 20,
+        "queue_age_ms": 331.337704
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 10.628555398987373,
+        "phase": "PREP",
+        "confidence": 0.7736366391181946,
+        "detected_class": "mouse",
+        "frame_id": 24,
+        "queue_age_ms": 134.035943
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 10.761783016001573,
+        "phase": "PREP",
+        "confidence": 0.7993981838226318,
+        "detected_class": "mouse",
+        "frame_id": 25,
+        "queue_age_ms": 143.329836
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 10.828266045980854,
+        "phase": "PREP",
+        "confidence": 0.7957616448402405,
+        "detected_class": "mouse",
+        "frame_id": 26,
+        "queue_age_ms": 200.2095
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 10.895159904001048,
+        "phase": "PREP",
+        "confidence": 0.8578749895095825,
+        "detected_class": "mouse",
+        "frame_id": 28,
+        "queue_age_ms": 133.711481
+      },
+      {
+        "event": "parameter_transition_end",
+        "system_time": 10.933775379991857,
+        "phase": "PREP",
+        "condition": "I_G",
+        "duration_ms": 425.886057
+      },
+      {
+        "event": "system_ready",
+        "system_time": 10.934623480978189,
+        "phase": "READY"
+      },
+      {
+        "event": "task_start",
+        "system_time": 10.934623480978189,
+        "phase": "APPROACH",
+        "trigger": "system_ready"
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 10.983737422997365,
+        "phase": "APPROACH",
+        "confidence": 0.8506894707679749,
+        "detected_class": "mouse",
+        "frame_id": 29,
+        "queue_age_ms": 155.685267
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 11.028661380987614,
+        "phase": "APPROACH",
+        "confidence": 0.8165378570556641,
+        "detected_class": "mouse",
+        "frame_id": 30,
+        "queue_age_ms": 133.805222
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 11.095114464988,
+        "phase": "APPROACH",
+        "confidence": 0.8547354340553284,
+        "detected_class": "mouse",
+        "frame_id": 31,
+        "queue_age_ms": 111.793071
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 11.161893255979521,
+        "phase": "APPROACH",
+        "confidence": 0.8554161787033081,
+        "detected_class": "mouse",
+        "frame_id": 32,
+        "queue_age_ms": 133.641273
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 11.228671215998475,
+        "phase": "APPROACH",
+        "confidence": 0.8769761323928833,
+        "detected_class": "mouse",
+        "frame_id": 33,
+        "queue_age_ms": 133.793888
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 11.295413526997436,
+        "phase": "APPROACH",
+        "confidence": 0.9010716080665588,
+        "detected_class": "mouse",
+        "frame_id": 34,
+        "queue_age_ms": 133.771956
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 11.366738805983914,
+        "phase": "APPROACH",
+        "confidence": 0.8758525252342224,
+        "detected_class": "mouse",
+        "frame_id": 35,
+        "queue_age_ms": 138.317663
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 11.42879309298587,
+        "phase": "APPROACH",
+        "confidence": 0.8354231119155884,
+        "detected_class": "mouse",
+        "frame_id": 36,
+        "queue_age_ms": 133.718209
+      },
+      {
+        "event": "contact_onset",
+        "system_time": 11.402352025004802,
+        "phase": "APPROACH",
+        "threshold_N": 1.0
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 11.495694649987854,
+        "phase": "APPROACH",
+        "confidence": 0.673944890499115,
+        "detected_class": "mouse",
+        "frame_id": 37,
+        "queue_age_ms": 129.142212
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 11.56235529697733,
+        "phase": "APPROACH",
+        "confidence": 0.756648600101471,
+        "detected_class": "mouse",
+        "frame_id": 38,
+        "queue_age_ms": 133.874139
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 11.629056862002471,
+        "phase": "APPROACH",
+        "confidence": 0.45896458625793457,
+        "detected_class": "mouse",
+        "frame_id": 39,
+        "queue_age_ms": 133.754252
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 11.704632280976512,
+        "phase": "APPROACH",
+        "confidence": 0.8443586826324463,
+        "detected_class": "mouse",
+        "frame_id": 40,
+        "queue_age_ms": 142.670526
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 11.762435497978004,
+        "phase": "APPROACH",
+        "confidence": 0.84955894947052,
+        "detected_class": "mouse",
+        "frame_id": 41,
+        "queue_age_ms": 133.713261
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 11.829042754980037,
+        "phase": "APPROACH",
+        "confidence": 0.8354048728942871,
+        "detected_class": "mouse",
+        "frame_id": 42,
+        "queue_age_ms": 124.579223
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 11.903665795980487,
+        "phase": "APPROACH",
+        "confidence": 0.6770033240318298,
+        "detected_class": "mouse",
+        "frame_id": 43,
+        "queue_age_ms": 141.569953
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 11.96240048398613,
+        "phase": "APPROACH",
+        "confidence": 0.9430928230285645,
+        "detected_class": "mouse",
+        "frame_id": 44,
+        "queue_age_ms": 133.561867
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 12.04219149198616,
+        "phase": "APPROACH",
+        "confidence": 0.9230003952980042,
+        "detected_class": "mouse",
+        "frame_id": 45,
+        "queue_age_ms": 139.043263
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 12.12219909997657,
+        "phase": "APPROACH",
+        "confidence": 0.9196746349334717,
+        "detected_class": "mouse",
+        "frame_id": 46,
+        "queue_age_ms": 160.061491
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 12.162666079995688,
+        "phase": "APPROACH",
+        "confidence": 0.9476789832115173,
+        "detected_class": "mouse",
+        "frame_id": 47,
+        "queue_age_ms": 120.867213
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 12.22933441598434,
+        "phase": "APPROACH",
+        "confidence": 0.9324536919593811,
+        "detected_class": "mouse",
+        "frame_id": 48,
+        "queue_age_ms": 107.389605
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 12.361746016977122,
+        "phase": "APPROACH",
+        "confidence": 0.8862465620040894,
+        "detected_class": "mouse",
+        "frame_id": 49,
+        "queue_age_ms": 199.398392
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 12.365549996990012,
+        "phase": "APPROACH",
+        "confidence": 0.9092693328857422,
+        "detected_class": "mouse",
+        "frame_id": 50,
+        "queue_age_ms": 136.354671
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 12.429670960991643,
+        "phase": "APPROACH",
+        "confidence": 0.9180847406387329,
+        "detected_class": "mouse",
+        "frame_id": 51,
+        "queue_age_ms": 68.367957
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 12.541737889987417,
+        "phase": "APPROACH",
+        "confidence": 0.7448061108589172,
+        "detected_class": "mouse",
+        "frame_id": 52,
+        "queue_age_ms": 176.678466
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 12.563224229990738,
+        "phase": "APPROACH",
+        "confidence": 0.7859299778938293,
+        "detected_class": "mouse",
+        "frame_id": 53,
+        "queue_age_ms": 133.975886
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 12.680606334004551,
+        "phase": "APPROACH",
+        "confidence": 0.8447222709655762,
+        "detected_class": "mouse",
+        "frame_id": 54,
+        "queue_age_ms": 139.280853
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 12.696494502975838,
+        "phase": "APPROACH",
+        "confidence": 0.7573216557502747,
+        "detected_class": "mouse",
+        "frame_id": 55,
+        "queue_age_ms": 133.763349
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 12.763043268001638,
+        "phase": "APPROACH",
+        "confidence": 0.5939552187919617,
+        "detected_class": "mouse",
+        "frame_id": 56,
+        "queue_age_ms": 82.677716
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 12.860811409977032,
+        "phase": "APPROACH",
+        "confidence": 0.6372656226158142,
+        "detected_class": "mouse",
+        "frame_id": 57,
+        "queue_age_ms": 164.721144
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 12.896462659991812,
+        "phase": "APPROACH",
+        "confidence": 0.8091375231742859,
+        "detected_class": "mouse",
+        "frame_id": 58,
+        "queue_age_ms": 133.593288
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 13.000119073985843,
+        "phase": "APPROACH",
+        "confidence": 0.9060646295547485,
+        "detected_class": "mouse",
+        "frame_id": 59,
+        "queue_age_ms": 139.544429
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 13.0371987419785,
+        "phase": "APPROACH",
+        "confidence": 0.9195705652236938,
+        "detected_class": "mouse",
+        "frame_id": 60,
+        "queue_age_ms": 140.922779
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 13.096497303980868,
+        "phase": "APPROACH",
+        "confidence": 0.9313823580741882,
+        "detected_class": "mouse",
+        "frame_id": 61,
+        "queue_age_ms": 96.61413
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 13.175256304995855,
+        "phase": "APPROACH",
+        "confidence": 0.8179602026939392,
+        "detected_class": "mouse",
+        "frame_id": 62,
+        "queue_age_ms": 138.458217
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 13.273948594985995,
+        "phase": "APPROACH",
+        "confidence": 0.7885916233062744,
+        "detected_class": "mouse",
+        "frame_id": 63,
+        "queue_age_ms": 177.58704
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 13.296697730984306,
+        "phase": "APPROACH",
+        "confidence": 0.7309949994087219,
+        "detected_class": "mouse",
+        "frame_id": 64,
+        "queue_age_ms": 121.801093
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 13.37401609797962,
+        "phase": "APPROACH",
+        "confidence": 0.7035532593727112,
+        "detected_class": "mouse",
+        "frame_id": 65,
+        "queue_age_ms": 100.613888
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 13.512520327989478,
+        "phase": "APPROACH",
+        "confidence": 0.5091022849082947,
+        "detected_class": "mouse",
+        "frame_id": 66,
+        "queue_age_ms": 216.038649
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 13.516485548985656,
+        "phase": "APPROACH",
+        "confidence": 0.5343256592750549,
+        "detected_class": "mouse",
+        "frame_id": 67,
+        "queue_age_ms": 143.234328
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 13.711054460000014,
+        "phase": "APPROACH",
+        "confidence": 0.4236566424369812,
+        "detected_class": "mouse",
+        "frame_id": 68,
+        "queue_age_ms": 198.865345
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 13.714922769984696,
+        "phase": "APPROACH",
+        "confidence": 0.4130731523036957,
+        "detected_class": "mouse",
+        "frame_id": 69,
+        "queue_age_ms": 198.744809
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 13.850094872002956,
+        "phase": "APPROACH",
+        "confidence": 0.6134423613548279,
+        "detected_class": "mouse",
+        "frame_id": 71,
+        "queue_age_ms": 139.569695
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 13.89713248697808,
+        "phase": "APPROACH",
+        "confidence": 0.5266149640083313,
+        "detected_class": "mouse",
+        "frame_id": 72,
+        "queue_age_ms": 182.463442
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 13.963916131004225,
+        "phase": "APPROACH",
+        "confidence": 0.7969068288803101,
+        "detected_class": "mouse",
+        "frame_id": 74,
+        "queue_age_ms": 114.21677
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 14.030665756989038,
+        "phase": "APPROACH",
+        "confidence": 0.7086673974990845,
+        "detected_class": "mouse",
+        "frame_id": 75,
+        "queue_age_ms": 133.706328
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 14.0974283409887,
+        "phase": "APPROACH",
+        "confidence": 0.6588695049285889,
+        "detected_class": "mouse",
+        "frame_id": 76,
+        "queue_age_ms": 133.710378
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 14.170187184994575,
+        "phase": "APPROACH",
+        "confidence": 0.5121896266937256,
+        "detected_class": "mouse",
+        "frame_id": 77,
+        "queue_age_ms": 139.743848
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 14.230828197003575,
+        "phase": "APPROACH",
+        "confidence": 0.5466211438179016,
+        "detected_class": "mouse",
+        "frame_id": 78,
+        "queue_age_ms": 133.763962
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 14.297438651003176,
+        "phase": "APPROACH",
+        "confidence": 0.49009859561920166,
+        "detected_class": "mouse",
+        "frame_id": 79,
+        "queue_age_ms": 127.565005
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 14.368374598998344,
+        "phase": "APPROACH",
+        "confidence": 0.4737487733364105,
+        "detected_class": "mouse",
+        "frame_id": 80,
+        "queue_age_ms": 137.87184
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 14.431026796984952,
+        "phase": "APPROACH",
+        "confidence": 0.43068817257881165,
+        "detected_class": "mouse",
+        "frame_id": 81,
+        "queue_age_ms": 133.843267
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 14.507527608977398,
+        "phase": "APPROACH",
+        "confidence": 0.368024080991745,
+        "detected_class": "mouse",
+        "frame_id": 82,
+        "queue_age_ms": 139.570712
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 14.564370426989626,
+        "phase": "APPROACH",
+        "confidence": 0.39416608214378357,
+        "detected_class": "mouse",
+        "frame_id": 83,
+        "queue_age_ms": 133.62095
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 14.630938269983744,
+        "phase": "APPROACH",
+        "confidence": 0.40781790018081665,
+        "detected_class": "mouse",
+        "frame_id": 84,
+        "queue_age_ms": 123.800441
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 14.70571778799058,
+        "phase": "APPROACH",
+        "confidence": 0.4308649003505707,
+        "detected_class": "mouse",
+        "frame_id": 85,
+        "queue_age_ms": 141.521648
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 14.764663690992165,
+        "phase": "APPROACH",
+        "confidence": 0.32330435514450073,
+        "detected_class": "mouse",
+        "frame_id": 86,
+        "queue_age_ms": 133.931617
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 14.831154575978871,
+        "phase": "APPROACH",
+        "confidence": 0.26262587308883667,
+        "detected_class": "mouse",
+        "frame_id": 87,
+        "queue_age_ms": 125.712028
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 14.897804746986367,
+        "phase": "APPROACH",
+        "confidence": 0.2877036929130554,
+        "detected_class": "mouse",
+        "frame_id": 88,
+        "queue_age_ms": 133.511637
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 15.025214131979737,
+        "phase": "APPROACH",
+        "confidence": 0.36864784359931946,
+        "detected_class": "car",
+        "frame_id": 90,
+        "queue_age_ms": 127.638669
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 15.098114912980236,
+        "phase": "APPROACH",
+        "confidence": 0.363656610250473,
+        "detected_class": "car",
+        "frame_id": 91,
+        "queue_age_ms": 73.179086
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 15.164818591001676,
+        "phase": "APPROACH",
+        "confidence": 0.39427295327186584,
+        "detected_class": "car",
+        "frame_id": 92,
+        "queue_age_ms": 133.310879
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 15.23150827398058,
+        "phase": "APPROACH",
+        "confidence": 0.39940011501312256,
+        "detected_class": "car",
+        "frame_id": 93,
+        "queue_age_ms": 133.598205
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 15.345242256997153,
+        "phase": "APPROACH",
+        "confidence": 0.48952779173851013,
+        "detected_class": "car",
+        "frame_id": 94,
+        "queue_age_ms": 180.577745
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 15.384507681999821,
+        "phase": "APPROACH",
+        "confidence": 0.511606752872467,
+        "detected_class": "car",
+        "frame_id": 95,
+        "queue_age_ms": 153.230553
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 15.431805683998391,
+        "phase": "APPROACH",
+        "confidence": 0.5763487219810486,
+        "detected_class": "car",
+        "frame_id": 96,
+        "queue_age_ms": 86.890203
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 15.498416749003809,
+        "phase": "APPROACH",
+        "confidence": 0.4925304353237152,
+        "detected_class": "car",
+        "frame_id": 97,
+        "queue_age_ms": 114.933063
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 15.565019259986002,
+        "phase": "APPROACH",
+        "confidence": 0.6432196497917175,
+        "detected_class": "car",
+        "frame_id": 98,
+        "queue_age_ms": 133.545505
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 15.631643023982178,
+        "phase": "APPROACH",
+        "confidence": 0.5978651642799377,
+        "detected_class": "car",
+        "frame_id": 99,
+        "queue_age_ms": 133.482689
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 15.698775425000349,
+        "phase": "APPROACH",
+        "confidence": 0.5185485482215881,
+        "detected_class": "car",
+        "frame_id": 100,
+        "queue_age_ms": 133.929673
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 15.765445306984475,
+        "phase": "APPROACH",
+        "confidence": 0.5478418469429016,
+        "detected_class": "car",
+        "frame_id": 101,
+        "queue_age_ms": 134.020154
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 15.83195320298546,
+        "phase": "APPROACH",
+        "confidence": 0.49042385816574097,
+        "detected_class": "car",
+        "frame_id": 102,
+        "queue_age_ms": 133.570787
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 15.898616402002517,
+        "phase": "APPROACH",
+        "confidence": 0.5748441815376282,
+        "detected_class": "car",
+        "frame_id": 103,
+        "queue_age_ms": 133.577001
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 15.965225099993404,
+        "phase": "APPROACH",
+        "confidence": 0.4534452259540558,
+        "detected_class": "car",
+        "frame_id": 104,
+        "queue_age_ms": 133.646477
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 16.03229640898644,
+        "phase": "APPROACH",
+        "confidence": 0.2510451078414917,
+        "detected_class": "car",
+        "frame_id": 105,
+        "queue_age_ms": 133.910185
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 16.176224244001787,
+        "phase": "APPROACH",
+        "confidence": 0.31377509236335754,
+        "detected_class": "car",
+        "frame_id": 107,
+        "queue_age_ms": 144.384894
+      },
+      {
+        "event": "grasp_start",
+        "system_time": 16.18092002600315,
+        "phase": "GRASP"
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 16.298936512990622,
+        "phase": "GRASP",
+        "confidence": 0.31717032194137573,
+        "detected_class": "car",
+        "frame_id": 108,
+        "queue_age_ms": 122.971763
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 16.365621934994124,
+        "phase": "GRASP",
+        "confidence": 0.3689019978046417,
+        "detected_class": "car",
+        "frame_id": 109,
+        "queue_age_ms": 186.034308
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 16.432568952004658,
+        "phase": "GRASP",
+        "confidence": 0.38838183879852295,
+        "detected_class": "car",
+        "frame_id": 111,
+        "queue_age_ms": 133.840026
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 16.499009716993896,
+        "phase": "GRASP",
+        "confidence": 0.31760016083717346,
+        "detected_class": "car",
+        "frame_id": 112,
+        "queue_age_ms": 133.667605
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 16.565748536988394,
+        "phase": "GRASP",
+        "confidence": 0.36067473888397217,
+        "detected_class": "car",
+        "frame_id": 113,
+        "queue_age_ms": 133.592115
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 16.6323648999969,
+        "phase": "GRASP",
+        "confidence": 0.3425956070423126,
+        "detected_class": "car",
+        "frame_id": 114,
+        "queue_age_ms": 133.617995
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 16.699198351998348,
+        "phase": "GRASP",
+        "confidence": 0.26002928614616394,
+        "detected_class": "person",
+        "frame_id": 116,
+        "queue_age_ms": 66.954104
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 16.765849666000577,
+        "phase": "GRASP",
+        "confidence": 0.3169717490673065,
+        "detected_class": "car",
+        "frame_id": 117,
+        "queue_age_ms": 66.884429
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 16.832703642983688,
+        "phase": "GRASP",
+        "confidence": 0.28898561000823975,
+        "detected_class": "car",
+        "frame_id": 118,
+        "queue_age_ms": 67.119761
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 16.899294732982526,
+        "phase": "GRASP",
+        "confidence": 0.27074354887008667,
+        "detected_class": "car",
+        "frame_id": 119,
+        "queue_age_ms": 66.909778
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 16.96605242099031,
+        "phase": "GRASP",
+        "confidence": 0.30223551392555237,
+        "detected_class": "car",
+        "frame_id": 120,
+        "queue_age_ms": 66.918667
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 17.03279422398191,
+        "phase": "GRASP",
+        "confidence": 0.31799641251564026,
+        "detected_class": "car",
+        "frame_id": 121,
+        "queue_age_ms": 66.939057
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 17.09936987099354,
+        "phase": "GRASP",
+        "confidence": 0.2833196222782135,
+        "detected_class": "car",
+        "frame_id": 122,
+        "queue_age_ms": 66.804249
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 17.166279149998445,
+        "phase": "GRASP",
+        "confidence": 0.30506908893585205,
+        "detected_class": "car",
+        "frame_id": 123,
+        "queue_age_ms": 67.142849
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 17.23288610597956,
+        "phase": "GRASP",
+        "confidence": 0.26027873158454895,
+        "detected_class": "car",
+        "frame_id": 124,
+        "queue_age_ms": 66.840058
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 17.29962020998937,
+        "phase": "GRASP",
+        "confidence": 0.31410765647888184,
+        "detected_class": "car",
+        "frame_id": 125,
+        "queue_age_ms": 66.942305
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 17.36630959599279,
+        "phase": "GRASP",
+        "confidence": 0.40914323925971985,
+        "detected_class": "car",
+        "frame_id": 126,
+        "queue_age_ms": 66.87427
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 17.433094866981264,
+        "phase": "GRASP",
+        "confidence": 0.39216893911361694,
+        "detected_class": "car",
+        "frame_id": 127,
+        "queue_age_ms": 66.963393
+      },
+      {
+        "event": "grasp_success",
+        "system_time": 17.484319024981232,
+        "phase": "TRANSPORT",
+        "grasp_success": true
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 17.499776854994707,
+        "phase": "TRANSPORT",
+        "confidence": 0.4717426896095276,
+        "detected_class": "car",
+        "frame_id": 128,
+        "queue_age_ms": 66.9216
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 17.623767179989954,
+        "phase": "TRANSPORT",
+        "confidence": 0.47064775228500366,
+        "detected_class": "car",
+        "frame_id": 129,
+        "queue_age_ms": 124.276263
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 17.70009356798255,
+        "phase": "TRANSPORT",
+        "confidence": 0.5147090554237366,
+        "detected_class": "car",
+        "frame_id": 130,
+        "queue_age_ms": 76.67239
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 17.80413818199304,
+        "phase": "TRANSPORT",
+        "confidence": 0.5525875687599182,
+        "detected_class": "car",
+        "frame_id": 131,
+        "queue_age_ms": 144.180851
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 17.83344113000203,
+        "phase": "TRANSPORT",
+        "confidence": 0.5876226425170898,
+        "detected_class": "car",
+        "frame_id": 132,
+        "queue_age_ms": 133.712693
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 17.943129169987515,
+        "phase": "TRANSPORT",
+        "confidence": 0.46371862292289734,
+        "detected_class": "car",
+        "frame_id": 133,
+        "queue_age_ms": 139.342922
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 17.98012007700163,
+        "phase": "TRANSPORT",
+        "confidence": 0.4957647919654846,
+        "detected_class": "car",
+        "frame_id": 134,
+        "queue_age_ms": 146.874347
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 18.033437076985138,
+        "phase": "TRANSPORT",
+        "confidence": 0.375982403755188,
+        "detected_class": "car",
+        "frame_id": 135,
+        "queue_age_ms": 90.634488
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 18.142373127979226,
+        "phase": "TRANSPORT",
+        "confidence": 0.328971266746521,
+        "detected_class": "car",
+        "frame_id": 136,
+        "queue_age_ms": 162.682426
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 18.180508798977826,
+        "phase": "TRANSPORT",
+        "confidence": 0.2572063207626343,
+        "detected_class": "car",
+        "frame_id": 137,
+        "queue_age_ms": 147.246731
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 19.75993025599746,
+        "phase": "TRANSPORT",
+        "confidence": 0.25451573729515076,
+        "detected_class": "car",
+        "frame_id": 161,
+        "queue_age_ms": 125.468386
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 19.83477927898639,
+        "phase": "TRANSPORT",
+        "confidence": 0.36696383357048035,
+        "detected_class": "car",
+        "frame_id": 162,
+        "queue_age_ms": 75.24056
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 19.95860975497635,
+        "phase": "TRANSPORT",
+        "confidence": 0.3856547772884369,
+        "detected_class": "car",
+        "frame_id": 163,
+        "queue_age_ms": 190.800567
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 19.96836391100078,
+        "phase": "TRANSPORT",
+        "confidence": 0.36803388595581055,
+        "detected_class": "car",
+        "frame_id": 164,
+        "queue_age_ms": 133.873512
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 20.03480552599649,
+        "phase": "TRANSPORT",
+        "confidence": 0.3535309433937073,
+        "detected_class": "car",
+        "frame_id": 165,
+        "queue_age_ms": 76.729779
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 20.101637537998613,
+        "phase": "TRANSPORT",
+        "confidence": 0.3441227674484253,
+        "detected_class": "car",
+        "frame_id": 166,
+        "queue_age_ms": 133.662442
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 20.17035046798992,
+        "phase": "TRANSPORT",
+        "confidence": 0.34446507692337036,
+        "detected_class": "car",
+        "frame_id": 168,
+        "queue_age_ms": 69.070608
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 20.27746097499039,
+        "phase": "TRANSPORT",
+        "confidence": 0.46640223264694214,
+        "detected_class": "car",
+        "frame_id": 169,
+        "queue_age_ms": 107.325764
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 20.371508535987232,
+        "phase": "TRANSPORT",
+        "confidence": 0.3648637533187866,
+        "detected_class": "car",
+        "frame_id": 170,
+        "queue_age_ms": 94.347641
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 20.43526652798755,
+        "phase": "TRANSPORT",
+        "confidence": 0.33091479539871216,
+        "detected_class": "car",
+        "frame_id": 171,
+        "queue_age_ms": 119.600796
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 20.509828031994402,
+        "phase": "TRANSPORT",
+        "confidence": 0.32883328199386597,
+        "detected_class": "car",
+        "frame_id": 172,
+        "queue_age_ms": 138.913991
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 20.56842817598954,
+        "phase": "TRANSPORT",
+        "confidence": 0.29747679829597473,
+        "detected_class": "car",
+        "frame_id": 173,
+        "queue_age_ms": 133.354671
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 20.747822792996885,
+        "phase": "TRANSPORT",
+        "confidence": 0.29150912165641785,
+        "detected_class": "car",
+        "frame_id": 176,
+        "queue_age_ms": 112.7956
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 20.846193773002597,
+        "phase": "TRANSPORT",
+        "confidence": 0.2883961498737335,
+        "detected_class": "car",
+        "frame_id": 177,
+        "queue_age_ms": 98.74045
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 20.90227508699172,
+        "phase": "TRANSPORT",
+        "confidence": 0.2591060400009155,
+        "detected_class": "car",
+        "frame_id": 179,
+        "queue_age_ms": 56.438865
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 22.836870319995796,
+        "phase": "TRANSPORT",
+        "confidence": 0.256142258644104,
+        "detected_class": "car",
+        "frame_id": 208,
+        "queue_age_ms": 57.516692
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 23.037071144004585,
+        "phase": "TRANSPORT",
+        "confidence": 0.31923815608024597,
+        "detected_class": "car",
+        "frame_id": 211,
+        "queue_age_ms": 65.257729
+      },
+      {
+        "event": "release_start",
+        "system_time": 23.21625860198401,
+        "phase": "RELEASE"
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 23.370516580995172,
+        "phase": "RELEASE",
+        "confidence": 0.2726784646511078,
+        "detected_class": "car",
+        "frame_id": 215,
+        "queue_age_ms": 133.137959
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 23.504017886996735,
+        "phase": "RELEASE",
+        "confidence": 0.290470153093338,
+        "detected_class": "car",
+        "frame_id": 218,
+        "queue_age_ms": 66.937996
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 23.57065019599395,
+        "phase": "RELEASE",
+        "confidence": 0.28829488158226013,
+        "detected_class": "car",
+        "frame_id": 219,
+        "queue_age_ms": 66.863129
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 23.704150356992614,
+        "phase": "RELEASE",
+        "confidence": 0.35408324003219604,
+        "detected_class": "car",
+        "frame_id": 220,
+        "queue_age_ms": 133.74677
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 23.771107771986863,
+        "phase": "RELEASE",
+        "confidence": 0.27248427271842957,
+        "detected_class": "car",
+        "frame_id": 221,
+        "queue_age_ms": 133.880993
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 23.90422598499572,
+        "phase": "RELEASE",
+        "confidence": 0.4273921549320221,
+        "detected_class": "car",
+        "frame_id": 224,
+        "queue_age_ms": 66.816562
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 24.03848115800065,
+        "phase": "RELEASE",
+        "confidence": 0.48188766837120056,
+        "detected_class": "car",
+        "frame_id": 225,
+        "queue_age_ms": 134.509404
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 24.104486622993136,
+        "phase": "RELEASE",
+        "confidence": 0.3324286937713623,
+        "detected_class": "car",
+        "frame_id": 226,
+        "queue_age_ms": 133.632696
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 24.171520609001163,
+        "phase": "RELEASE",
+        "confidence": 0.3736494779586792,
+        "detected_class": "car",
+        "frame_id": 227,
+        "queue_age_ms": 133.440267
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 24.23789570198278,
+        "phase": "RELEASE",
+        "confidence": 0.44324159622192383,
+        "detected_class": "car",
+        "frame_id": 228,
+        "queue_age_ms": 133.58423
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 24.37578580097761,
+        "phase": "RELEASE",
+        "confidence": 0.3614685535430908,
+        "detected_class": "car",
+        "frame_id": 229,
+        "queue_age_ms": 204.58349
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 24.379574605001835,
+        "phase": "RELEASE",
+        "confidence": 0.40431278944015503,
+        "detected_class": "car",
+        "frame_id": 230,
+        "queue_age_ms": 141.862883
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 24.505255489988485,
+        "phase": "RELEASE",
+        "confidence": 0.34341034293174744,
+        "detected_class": "car",
+        "frame_id": 231,
+        "queue_age_ms": 129.795233
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 24.57144055198296,
+        "phase": "RELEASE",
+        "confidence": 0.25073474645614624,
+        "detected_class": "car",
+        "frame_id": 234,
+        "queue_age_ms": 66.479822
+      },
+      {
+        "event": "vision_detection",
+        "system_time": 24.638258438993944,
+        "phase": "RELEASE",
+        "confidence": 0.25030168890953064,
+        "detected_class": "car",
+        "frame_id": 235,
+        "queue_age_ms": 66.999316
+      },
+      {
+        "event": "task_end",
+        "system_time": 24.78142333897995,
+        "phase": "COMPLETE",
+        "success": true
+      }
+    ]
+  }
+}

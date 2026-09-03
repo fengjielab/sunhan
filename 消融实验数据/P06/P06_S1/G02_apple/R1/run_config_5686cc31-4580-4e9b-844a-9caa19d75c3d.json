@@ -1,0 +1,85 @@
+{
+  "schema_version": 3,
+  "source_baseline_commit": "1c1ad02b07e4d269e09423b0c14879acd482eeab",
+  "source_baseline_tag": "MECH-D-26-00641-submitted",
+  "run_uuid": "5686cc31-4580-4e9b-844a-9caa19d75c3d",
+  "run_kind": "formal",
+  "trajectory_dir": "/home/mfj/sunhan/MECH-D-26-00641_revision/06_formal_data/P06/P06_S1/G02_apple/R1",
+  "condition": "I_G",
+  "session_id": "P06_S1",
+  "schedule_id": "MECH-D-26-00641-ABLATION-v1-seed260641",
+  "subject_id": "P06",
+  "object_id": "apple",
+  "trial_id": "P06_T09",
+  "trial_order": 9,
+  "repetition": 1,
+  "haptic_force_limit_N": 3.0,
+  "control": {
+    "target_frequency_hz": 200.0,
+    "target_period_s": 0.005,
+    "deadline_definition": "control_compute_time_s > target_period_s"
+  },
+  "design": {
+    "schema_version": 3,
+    "fixed_baseline": {
+      "K_trans": 150.0,
+      "K_rot": 10.0,
+      "damping_ratio": 1.0,
+      "K_fb": 0.4,
+      "deadband": 0.4,
+      "scale": 3.0,
+      "gripper_speed": 0.05,
+      "gripper_force": 15.0
+    },
+    "conditions": {
+      "I": {
+        "condition_id": "I",
+        "adaptive_impedance": true,
+        "adaptive_haptics": false,
+        "adaptive_gripper": false
+      },
+      "I_H": {
+        "condition_id": "I_H",
+        "adaptive_impedance": true,
+        "adaptive_haptics": true,
+        "adaptive_gripper": false
+      },
+      "I_G": {
+        "condition_id": "I_G",
+        "adaptive_impedance": true,
+        "adaptive_haptics": false,
+        "adaptive_gripper": true
+      },
+      "I_H_G": {
+        "condition_id": "I_H_G",
+        "adaptive_impedance": true,
+        "adaptive_haptics": true,
+        "adaptive_gripper": true
+      }
+    }
+  },
+  "host": {
+    "hostname": "mfj-NUC11PAHi5",
+    "platform": "Linux-5.15.202-rt94-x86_64-with-glibc2.29",
+    "python": "3.8.10"
+  },
+  "code": {
+    "/home/mfj/sunhan/MECH-D-26-00641_revision/04_experiment_code/working/my_test/interactive_teleop.py": "d73cf03d1e0cc642f63caad3c9cb6c3ffc8b38b4c4dcf966c3011935b5bc4143",
+    "/home/mfj/sunhan/MECH-D-26-00641_revision/04_experiment_code/working/my_test/ablation_design.py": "5180279a066881fafcb02062969d1c6e62ccbebb8e4f4215b6a05ff7802380f1",
+    "/home/mfj/sunhan/MECH-D-26-00641_revision/04_experiment_code/working/my_test/experiment_protocol.py": "60490aa395c0ad72b09b44def628b7844340794b41984126efa5f19716d1506e",
+    "/home/mfj/sunhan/MECH-D-26-00641_revision/04_experiment_code/working/my_test/force_metrics.py": "00b27753a5825f2b3b425c08a6bd68fba28bfee4fbe9d02cec2486aeb93d4504",
+    "/home/mfj/sunhan/MECH-D-26-00641_revision/04_experiment_code/working/my_test/run_scheduled_trial.py": "d928ed59371c0c89dff3befd1ba49c8cfc599739405c6dd429c8f978f244bb79",
+    "/home/mfj/sunhan/MECH-D-26-00641_revision/04_experiment_code/working/my_test/pilot.py": "575aef860d8169828fcd6fb8e6da750cce9c45cd2edc0dc7f1ee2e33f7948151",
+    "/home/mfj/sunhan/MECH-D-26-00641_revision/04_experiment_code/working/my_test/formal.py": "f7276183be517354b34c5e1cff825388cc5b95b1a431dbcd9cbc7c55d6f52add",
+    "/home/mfj/sunhan/MECH-D-26-00641_revision/04_experiment_code/working/my_test/smoke.py": "85b4846c36c1b53c6e982fdf66a6a863bb47c83a90be2fba4f98bea5f40eb033",
+    "/home/mfj/sunhan/MECH-D-26-00641_revision/07_analysis/validate_trial.py": "617100941a71e3613a1207f8ec0062e662a012426172ab95c5d453798e088dfb",
+    "/home/mfj/sunhan/MECH-D-26-00641_revision/04_experiment_code/working/plans/force_estimator.py": "c3b873ddc6381a1db880af32230bd56f9b6d2647f358cee7071db89cfabea901",
+    "/home/mfj/sunhan/MECH-D-26-00641_revision/04_experiment_code/working/biaoding/vision_physics_mapper.py": "cfe46b28b1aec1930f1b6418a1c85dc5f1df5e0de3ef410ab25beeff4522cdc9"
+  },
+  "vision_model": {
+    "path": "/home/mfj/sunhan/yolo/ultralytics-8.3.163/yolo11n.pt",
+    "sha256": "0ebbc80d4a7680d14987a577cd21342b65ecfd94632bd9a8da63ae6417644ee1",
+    "confidence_threshold": 0.25
+  },
+  "created_wall_time_ns": 1788405724215102751
+}
