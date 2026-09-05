@@ -92,6 +92,10 @@ python3 offline_vision_capture.py --make-manifest-only
 10. 如果需要暂停实验，输入 `Q` 并回车退出；已经按 `Y` 保存的轮次不会丢失。
 11. 下一轮开始前，把上一轮的物体全部拿出画面，再按新的 Episode 说明重新摆放。
 
+在同一个条件里，同一物体的轮次是连续的。终端打印 `▸ 本组物体：…` 时表示
+要开始下一个物体的轮次，此时才需要换物体；同一物体组内的各轮只换位置、
+不换物体。
+
 ### 键盘按键
 
 | 按键 | 作用 |
@@ -124,9 +128,16 @@ Put banana ... 3 cm RIGHT of center ...
 
 五个重复位置使用同一个物体 A 即可，不需要每个位置换一根香蕉。除 `new_instance` 条件外，不要随意更换成 B 物体。
 
-### 任务顺序是随机的
+### 任务顺序：按物体分组，组内仍随机
 
-程序会随机打乱每个条件中的任务。因此不能假设第一轮一定是香蕉，也不能假设 R01、R02、R03 按顺序出现。每一轮都以终端显示的 `Episode` 和英文摆放说明为准。
+每个条件默认开启 `--group-by-object`（同类连续录制）：同一物体的轮次连续录完
+再换下一个物体，终端在换物体前会打印 `▸ 本组物体：…` 提示。例如看到
+`▸ 本组物体：香蕉` 后，就一直用香蕉把这一组的位置录完，不要中途换成瓶子或
+剪刀；看到 `▸ 本组物体：瓶子` 再换瓶子。
+
+同一物体内部的 R01–R05 顺序与任务表一致（仍是原实验的随机顺序），不能假设
+R01、R02、R03 一定按编号出现。每一轮都以终端显示的 `Episode` 和英文摆放
+说明为准。
 
 ## 五、八种实验条件具体怎么摆
 
@@ -135,7 +146,7 @@ Put banana ... 3 cm RIGHT of center ...
 启动命令：
 
 ```bash
-python3 offline_vision_capture.py --model "$MODEL" --output "$OUT" --condition normal
+python3 offline_vision_capture.py --model "$MODEL" --output "$OUT" --condition normal --group-by-object
 ```
 
 每一轮只放终端指定的一个目标物：香蕉 A、瓶子 A 或剪刀 A。根据 `R01–R05` 放在指定位置，使用正常实验室光照，画面中不要出现其他物体。
@@ -155,7 +166,7 @@ python3 offline_vision_capture.py --model "$MODEL" --output "$OUT" --condition n
 启动命令：
 
 ```bash
-python3 offline_vision_capture.py --model "$MODEL" --output "$OUT" --condition dim
+python3 offline_vision_capture.py --model "$MODEL" --output "$OUT" --condition dim --group-by-object
 ```
 
 1. 目标物体仍然放在终端指定的 `R01–R05` 位置。
@@ -171,7 +182,7 @@ python3 offline_vision_capture.py --model "$MODEL" --output "$OUT" --condition d
 启动命令：
 
 ```bash
-python3 offline_vision_capture.py --model "$MODEL" --output "$OUT" --condition backlight
+python3 offline_vision_capture.py --model "$MODEL" --output "$OUT" --condition backlight --group-by-object
 ```
 
 1. 目标物体仍然放在终端指定的位置。
@@ -185,7 +196,7 @@ python3 offline_vision_capture.py --model "$MODEL" --output "$OUT" --condition b
 启动命令：
 
 ```bash
-python3 offline_vision_capture.py --model "$MODEL" --output "$OUT" --condition occlusion50
+python3 offline_vision_capture.py --model "$MODEL" --output "$OUT" --condition occlusion50 --group-by-object
 ```
 
 1. 目标物体仍然放在终端指定的 `R01–R05` 位置。
@@ -200,7 +211,7 @@ python3 offline_vision_capture.py --model "$MODEL" --output "$OUT" --condition o
 启动命令：
 
 ```bash
-python3 offline_vision_capture.py --model "$MODEL" --output "$OUT" --condition clutter
+python3 offline_vision_capture.py --model "$MODEL" --output "$OUT" --condition clutter --group-by-object
 ```
 
 每一轮放置：
@@ -217,7 +228,7 @@ python3 offline_vision_capture.py --model "$MODEL" --output "$OUT" --condition c
 启动命令：
 
 ```bash
-python3 offline_vision_capture.py --model "$MODEL" --output "$OUT" --condition multiobject
+python3 offline_vision_capture.py --model "$MODEL" --output "$OUT" --condition multiobject --group-by-object
 ```
 
 每一轮放两个物体：
@@ -242,7 +253,7 @@ python3 offline_vision_capture.py --model "$MODEL" --output "$OUT" --condition m
 启动命令：
 
 ```bash
-python3 offline_vision_capture.py --model "$MODEL" --output "$OUT" --condition new_instance
+python3 offline_vision_capture.py --model "$MODEL" --output "$OUT" --condition new_instance --group-by-object
 ```
 
 每一轮只放一个目标物，但必须使用同一类别的 B 物体：
@@ -258,7 +269,7 @@ python3 offline_vision_capture.py --model "$MODEL" --output "$OUT" --condition n
 启动命令：
 
 ```bash
-python3 offline_vision_capture.py --model "$MODEL" --output "$OUT" --condition unknown
+python3 offline_vision_capture.py --model "$MODEL" --output "$OUT" --condition unknown --group-by-object
 ```
 
 每一轮只放终端指定的一个未知物体：订书机、螺丝刀、卷尺、小纸盒或海绵。未知物体只做 `R01–R03` 三个位置：中心、左侧 3 cm、右侧 3 cm。
@@ -272,7 +283,7 @@ python3 offline_vision_capture.py --model "$MODEL" --output "$OUT" --condition u
 ### 第一天：先做正常光照 15 轮
 
 ```bash
-python3 offline_vision_capture.py --model "$MODEL" --output "$OUT" --condition normal
+python3 offline_vision_capture.py --model "$MODEL" --output "$OUT" --condition normal --group-by-object
 ```
 
 正常组完成后，检查输出目录：

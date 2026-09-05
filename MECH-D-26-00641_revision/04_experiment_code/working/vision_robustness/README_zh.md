@@ -41,15 +41,24 @@ python3 offline_vision_capture.py --make-manifest-only
 python3 offline_vision_capture.py \
   --model /home/mfj/sunhan/yolo/ultralytics-8.3.163/yolo11n.pt \
   --output /home/mfj/sunhan/vision_robustness_data \
-  --condition normal
+  --condition normal \
+  --group-by-object
 ```
 
-正常组15轮完成后程序会自动结束。程序会自动从该条件的第一条未完成任务继续，因此可以随时按 `Q` 停止，下一次执行同一命令即可续采。
+`--group-by-object` 表示“同类连续录制”：同一光照下先连续录完同一物体（如
+香蕉的 5 个位置），再换下一个物体；换物体时程序会打印 `▸ 本组物体：…`
+提示。同类内部的 R01–R05 顺序仍与 `scene_manifest.csv` 相同（原实验的随机
+顺序），只是不同物体不再互相穿插。如确要按清单里穿插的原顺序录制，去掉
+`--group-by-object` 即可。
 
-后续弱光组使用同样的命令，只需将最后一项改为：
+正常组15轮完成后程序会自动结束。程序会自动从该条件（下一个未完成的物体组）
+第一条未完成任务继续，因此可以随时按 `Q` 停止，下一次执行同一命令即可续采。
+
+后续弱光组使用同样的命令，只需把最后两行改为：
 
 ```bash
---condition dim
+  --condition dim \
+  --group-by-object
 ```
 
 ## 3. 每一轮怎么操作

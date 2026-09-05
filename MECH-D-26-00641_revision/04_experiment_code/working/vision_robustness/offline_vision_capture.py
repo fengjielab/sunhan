@@ -22,7 +22,7 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional, Sequence
 
 WIDTH = 424
 HEIGHT = 240
@@ -33,6 +33,13 @@ EPISODE_DURATION_S = 10.0
 EXPECTED_MODEL_SHA256 = (
     "0ebbc80d4a7680d14987a577cd21342b65ecfd94632bd9a8da63ae6417644ee1"
 )
+
+# 物体英文 -> 中文（仅用于“同类连续录制”的界面提示，不影响任何数据）。
+OBJ_ZH = {
+    "banana": "香蕉",
+    "bottle": "瓶子",
+    "scissors": "剪刀",
+}
 
 # This reproduces the built-in table in vision_physics_mapper.py.
 CLASS_TO_STRATEGY = {
@@ -446,6 +453,20 @@ def run_episode(pipeline, model, episode, output_root: Path, capture_conf: float
             return "quit", None
 
 
+def group_pending_by_object(
+    pending: Sequence[Dict[str, str]],
+) -> List[Dict[str, str]]:
+    """稳定排序：先按 condition、再按 object_name 聚块，组内保持清单原相对顺序。
+
+    用于“同类连续录制”：同一光照内同一物体排在一起；组内仍是最初清单里的
+    相对顺序，因此对原伪随机设计的改动最小。completed 集合仍是分组序前缀，
+    断点续采不会漏录也不会重录。
+    """
+    return sorted(
+        pending, key=lambda row: (row["condition"], row["object_name"])
+    )
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -469,6 +490,12 @@ def parse_args():
         "--condition",
         choices=["normal", "dim", "backlight", "occlusion50", "clutter", "multiobject", "new_instance", "unknown"],
         help="Run only unfinished episodes from one scene condition.",
+    )
+    parser.add_argument(
+        "--group-by-object",
+        action="store_true",
+        help="同一条件内把同一物体（object_name）的条目排在一起连续录制；"
+             "稳定排序：组内保持清单原相对顺序。默认不分组，按清单原顺序。",
     )
     parser.add_argument("--allow-model-mismatch", action="store_true")
     parser.add_argument("--capture-conf", type=float, default=COLLECTION_THRESHOLD)
@@ -519,6 +546,8 @@ def main() -> int:
             if row["episode_id"] not in completed
             and (args.condition is None or row["condition"] == args.condition)
         ]
+        if args.group_by_object:
+            pending = group_pending_by_object(pending)
 
     if not pending:
         print("All 120 episodes are complete.")
@@ -560,8 +589,25 @@ def main() -> int:
 
     try:
         index = 0
+        prev_object = None
         while index < len(pending):
             episode = pending[index]
+            if args.group_by_object and episode["object_name"] != prev_object:
+                prev_object = episode["object_name"]
+                group_left = sum(
+                    1 for r in pending[index:]
+                    if r["object_name"] == prev_object
+                )
+                obj_zh = OBJ_ZH.get(prev_object, prev_object)
+                print()
+                print("-" * 78)
+                print(
+                    f"  ▸ 本组物体：{obj_zh}"
+                    f"（实例 {episode.get('instance_id') or '-'}，"
+                    f"本组共 {group_left} 条连续录制，组内顺序同清单）"
+                )
+                print("  摆好后按 SPACE 开始录像，录完 Y 保存 / R 重做 / Q 退出")
+                print("-" * 78)
             action, summary = run_episode(
                 pipeline, model, episode, args.output, args.capture_conf
             )
